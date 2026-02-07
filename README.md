@@ -19,7 +19,7 @@ The only solution for now is on cloud (but we will provide on-premise later)
 
 - Code-First Extensibility: Modeled after n8n, we reject the "black box" node approach. While we offer pre-built nodes (e.g., "Mint ERC-20"), our killer feature is the Code Node. Users can inject raw JavaScript/TypeScript into any step of the workflow, allowing for infinite flexibility in data transformation and logic.
 - Workflow is non-linear (conditional, loop)
-- The "Compiler" Pattern (Not Interpreter): We do not "run" workflows on our servers. We compile in browser, check errors, send it to server to run workflow simulate. The end goal for now is to download .zip project and let user deploy manually. 
+- The "Compiler" Pattern (Not Interpreter): We do not "run" workflows on our servers. We compile in browser, check errors, send it to server to run workflow simulate. The end goal for now is to download .zip project and let user deploy manually.
 
 # Tech Stack
 
@@ -64,10 +64,10 @@ The only solution for now is on cloud (but we will provide on-premise later)
 
 ```mermaid
 graph LR
-    A[Frontend<br/>(ReactFlow)]
+    A["Frontend<br/>(ReactFlow)"]
     B[Node-Edge object<br/>from backend]
-    C[Transpiler<br/>(Rust)]
-    D[CRE code<br/>(TypeScript)]
+    C["Transpiler<br/>(Rust)"]
+    D["CRE code<br/>(TypeScript)"]
     E[cre workflow<br/>simulate]
     F[Download CRE.zip]
 
@@ -86,4 +86,3 @@ graph LR
     style E fill:#ffcccc,stroke:#ff4d00,stroke-width:2px
     style F fill:#ffcccc,stroke:#ff4d00,stroke-width:2px
 ```
-
