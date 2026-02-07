@@ -18,7 +18,6 @@ This file guides agents and contributors working in this repo.
 
 # Non-Negotiables
 
-- We use test-driven development (TDD). Add or update tests first, then implement to make them pass.
 - UX and node-edge graph interactions should be inspired by n8n (but using React Flow).
 - CRE is the runtime stack target; workflows are compiled, not interpreted on our servers.
 
@@ -38,7 +37,6 @@ This file guides agents and contributors working in this repo.
 
 # Testing
 
-- Follow TDD: write tests first.
 - Prefer fast, deterministic tests.
 - Add tests alongside changes in the relevant area (`frontend`, `backend`, `compiler`). If it's typescript, will use Jest
 

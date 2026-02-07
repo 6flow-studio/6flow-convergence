@@ -1,6 +1,6 @@
 /**
  * NOT FINALIZED
- * 
+ *
  * 6Flow Studio - Node & Edge Schema Definitions
  *
  * These TypeScript interfaces define the data model for the visual workflow builder.
@@ -20,6 +20,21 @@ export interface Position {
   y: number;
 }
 
+/** Error handling behavior when a node fails */
+export type OnErrorBehavior = 'stop' | 'continue' | 'continueWithError';
+
+/** Common settings shared by all nodes */
+export interface NodeSettings {
+  retryOnFail?: {
+    enabled: boolean;
+    maxTries: number;          // 1-5, default 3
+    waitBetweenTries: number;  // ms, default 1000
+  };
+  onError?: OnErrorBehavior;   // default 'stop'
+  notes?: string;              // User-facing documentation note
+  executeOnce?: boolean;       // Only process first item (for batch scenarios)
+}
+
 /** Generic base node - all nodes extend this */
 export interface BaseNode<T extends NodeType, C> {
   id: string;
@@ -29,6 +44,7 @@ export interface BaseNode<T extends NodeType, C> {
     label: string;
     config: C;
   };
+  settings?: NodeSettings;
 }
 
 /** Edge connecting two nodes */
@@ -107,7 +123,8 @@ export interface EvmArg {
 
 /** Cron Trigger - schedule-based execution */
 export interface CronTriggerConfig {
-  schedule: string;    // Cron expression: "0 */10 * * * *" (min 30s interval)
+  schedule: string;    // 6-field cron: "0 */10 * * * *" (min 30s interval)
+  timezone?: string;   // IANA timezone: "America/New_York" (default UTC)
 }
 
 export type CronTriggerNode = BaseNode<'cronTrigger', CronTriggerConfig>;
@@ -119,8 +136,24 @@ export interface CronTriggerOutput {
 // -----------------------------------------------------------------------------
 
 /** HTTP Trigger - webhook-based execution */
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD';
+
+export type WebhookAuth =
+  | { type: 'none' }
+  | { type: 'evmSignature'; authorizedAddresses: string[] }
+  | { type: 'headerAuth'; headerName: string; headerValueSecret: string }
+  | { type: 'basicAuth'; usernameSecret: string; passwordSecret: string };
+
+export type WebhookResponseMode = 'immediate' | 'lastNode' | 'respondNode';
+
 export interface HttpTriggerConfig {
-  authorizedKeys: string[]; // EVM addresses authorized to call this endpoint
+  httpMethod: HttpMethod;
+  path?: string;                             // Custom path suffix (auto-generated base)
+  authentication: WebhookAuth;
+  responseMode: WebhookResponseMode;
+  responseCode?: number;                     // Custom status code (default 200)
+  responseHeaders?: Record<string, string>;
+  allowedOrigins?: string[];                 // CORS origins
 }
 
 export type HttpTriggerNode = BaseNode<'httpTrigger', HttpTriggerConfig>;
@@ -135,15 +168,16 @@ export interface HttpTriggerOutput {
 
 /** EVM Log Trigger - blockchain event-based execution */
 export interface EvmLogTriggerConfig {
-  chainSelectorName: string;    // e.g., "ethereum-testnet-sepolia"
-  contractAddress: string;      // "0x..."
-  eventSignature: string;       // "Transfer(address,address,uint256)"
+  chainSelectorName: ChainSelectorName;
+  contractAddresses: string[];           // Max 5 per CRE
+  eventSignature: string;                // "Transfer(address,address,uint256)"
   eventAbi: AbiEvent;
   topicFilters?: {
-    topic1?: string[];          // Indexed param 1 filter values
-    topic2?: string[];          // Indexed param 2 filter values
-    topic3?: string[];          // Indexed param 3 filter values
+    topic1?: string[];                   // Indexed param filters (max 10 values each)
+    topic2?: string[];
+    topic3?: string[];
   };
+  blockConfirmation?: 'latest' | 'finalized'; // Finality preference (default 'finalized')
 }
 
 export type EvmLogTriggerNode = BaseNode<'evmLogTrigger', EvmLogTriggerConfig>;
@@ -159,50 +193,53 @@ export interface EvmLogTriggerOutput {
 // ACTION NODES (Capabilities)
 // =============================================================================
 
-/** HTTP GET - fetch data from external API */
-export interface HttpGetConfig {
-  url: string;                           // Can include {{variables}} for interpolation
-  headers: Record<string, string>;
-  cacheMaxAge: number;                   // Seconds (max 600)
-  expectedStatusCodes?: number[];        // Default [200]
+/** HTTP Request - fetch/send data to external APIs */
+export type HttpAuthConfig =
+  | { type: 'none' }
+  | { type: 'headerAuth'; headerName: string; valueSecret: string }
+  | { type: 'basicAuth'; usernameSecret: string; passwordSecret: string }
+  | { type: 'bearerToken'; tokenSecret: string }
+  | { type: 'queryAuth'; paramName: string; valueSecret: string };
+
+export interface HttpRequestConfig {
+  method: HttpMethod;
+  url: string;                                     // Supports {{variable}} interpolation
+  authentication?: HttpAuthConfig;
+  headers?: Record<string, string>;
+  queryParameters?: Record<string, string>;
+  body?: {
+    contentType: 'json' | 'formUrlEncoded' | 'raw';
+    data: string;                                   // Template with {{variables}}
+  };
+  cacheMaxAge?: number;                             // Seconds (max 600 per CRE)
+  timeout?: number;                                 // ms (max 10000 per CRE)
+  expectedStatusCodes?: number[];                   // Default [200]
+  responseFormat?: 'json' | 'text' | 'binary';
+  followRedirects?: boolean;                        // Default true
+  ignoreSSL?: boolean;                              // For dev/testing
 }
 
-export type HttpGetNode = BaseNode<'httpGet', HttpGetConfig>;
+export type HttpRequestNode = BaseNode<'httpRequest', HttpRequestConfig>;
 
-export interface HttpGetOutput {
+export interface HttpRequestOutput {
   statusCode: number;
-  body: string;                          // Base64 encoded response body
-  headers: Record<string, string>;
-}
-
-// -----------------------------------------------------------------------------
-
-/** HTTP POST - send data to external API */
-export interface HttpPostConfig {
-  url: string;
-  headers: Record<string, string>;
-  bodyTemplate: string;                  // JSON template with {{variables}}
-  cacheMaxAge: number;
-}
-
-export type HttpPostNode = BaseNode<'httpPost', HttpPostConfig>;
-
-export interface HttpPostOutput {
-  statusCode: number;
-  body: string;
+  body: string;                          // Base64 encoded (per CRE)
   headers: Record<string, string>;
 }
 
 // -----------------------------------------------------------------------------
 
 /** EVM Read - read from smart contract (view/pure functions) */
+export type BlockNumber = 'latest' | 'finalized' | string; // string for custom bigint
+
 export interface EvmReadConfig {
-  chainSelectorName: string;
+  chainSelectorName: ChainSelectorName;
   contractAddress: string;
   abi: AbiFunction;
   functionName: string;
   args: EvmArg[];
-  blockNumber?: 'latest' | 'finalized' | number;
+  fromAddress?: string;                    // Sender address (default zero address)
+  blockNumber?: BlockNumber;
 }
 
 export type EvmReadNode = BaseNode<'evmRead', EvmReadConfig>;
@@ -213,11 +250,12 @@ export type EvmReadOutput = Record<string, unknown>; // Decoded return values
 
 /** EVM Write - write to blockchain via CRE Forwarder */
 export interface EvmWriteConfig {
-  chainSelectorName: string;
+  chainSelectorName: ChainSelectorName;
   receiverAddress: string;               // Consumer contract address (must implement IReceiver)
-  gasLimit: string;                      // e.g., "500000"
-  abiParams: AbiParameter[];             // Parameters to encode
-  dataMapping: EvmArg[];                 // Where data comes from
+  gasLimit: string;                      // Max "5000000" per CRE
+  abiParams: AbiParameter[];
+  dataMapping: EvmArg[];
+  value?: string;                        // Native currency amount (wei as string)
 }
 
 export type EvmWriteNode = BaseNode<'evmWrite', EvmWriteConfig>;
@@ -244,11 +282,14 @@ export interface GetSecretOutput {
 // TRANSFORM NODES (Data Processing)
 // =============================================================================
 
-/** Code Node - user-defined TypeScript/JavaScript logic */
+/** Code Node - user-defined TypeScript logic */
+export type CodeExecutionMode = 'runOnceForAll' | 'runOnceForEach';
+
 export interface CodeNodeConfig {
-  code: string;                          // User's TypeScript code
-  inputVariables: string[];              // Variables available from previous nodes
-  outputType: 'object' | 'string' | 'number' | 'boolean';
+  code: string;
+  language?: 'typescript';               // Explicit, future-proof (default 'typescript')
+  executionMode: CodeExecutionMode;
+  inputVariables: string[];
   timeout?: number;                      // Max execution time (ms)
 }
 
@@ -260,7 +301,8 @@ export type CodeNodeNode = BaseNode<'codeNode', CodeNodeConfig>;
 
 /** JSON Parse - parse HTTP response body */
 export interface JsonParseConfig {
-  sourcePath?: string;                   // Optional JSONPath to extract specific data
+  sourcePath?: string;                   // JSONPath to extract specific data
+  strict?: boolean;                      // Throw on invalid JSON (default true)
 }
 
 export type JsonParseNode = BaseNode<'jsonParse', JsonParseConfig>;
@@ -271,7 +313,7 @@ export type JsonParseNode = BaseNode<'jsonParse', JsonParseConfig>;
 
 /** ABI Encode - encode data for EVM write */
 export interface AbiEncodeConfig {
-  abiParams: string;                     // e.g., "uint256 value, address recipient"
+  abiParams: AbiParameter[];
   dataMapping: {
     paramName: string;
     source: string;                      // "{{previousNode.fieldName}}"
@@ -288,8 +330,8 @@ export interface AbiEncodeOutput {
 
 /** ABI Decode - decode data from EVM read */
 export interface AbiDecodeConfig {
-  abiParams: string;                     // Types to decode: "uint256, address, bool"
-  outputNames: string[];                 // Names for each decoded value
+  abiParams: AbiParameter[];
+  outputNames: string[];
 }
 
 export type AbiDecodeNode = BaseNode<'abiDecode', AbiDecodeConfig>;
@@ -299,58 +341,83 @@ export type AbiDecodeOutput = Record<string, unknown>;
 // -----------------------------------------------------------------------------
 
 /** Merge - combine multiple inputs into one */
+export type MergeStrategy =
+  | { mode: 'append' }
+  | { mode: 'matchingFields'; joinFields: string[]; outputType: 'keepMatches' | 'keepNonMatches' | 'keepAll' | 'enrichInput1' | 'enrichInput2' }
+  | { mode: 'position'; includeUnpaired?: boolean }
+  | { mode: 'combinations' }
+  | { mode: 'custom'; code: string };
+
 export interface MergeConfig {
-  strategy: 'object' | 'array' | 'first' | 'custom';
-  customCode?: string;                   // If strategy is 'custom'
+  strategy: MergeStrategy;
+  numberOfInputs?: number;               // Default 2, max 5
+  clashHandling?: 'preferInput1' | 'preferInput2' | 'addSuffix';
 }
 
 export type MergeNode = BaseNode<'merge', MergeConfig>;
-
-// Input handles: "input1", "input2", "input3", etc.
-// Output: merged data based on strategy
 
 // =============================================================================
 // CONTROL FLOW NODES
 // =============================================================================
 
-/** If/Else - conditional branching */
-export interface IfElseConfig {
-  condition: string;                     // JavaScript expression: "input.value > 100"
+/** Comparison operators for structured conditions */
+export type ComparisonOperator =
+  | 'equals' | 'notEquals'
+  | 'gt' | 'gte' | 'lt' | 'lte'
+  | 'contains' | 'notContains'
+  | 'startsWith' | 'endsWith'
+  | 'regex' | 'notRegex'
+  | 'exists' | 'notExists'
+  | 'isEmpty' | 'isNotEmpty';
+
+export interface Condition {
+  field: string;                          // "input.fieldName" or "{{nodeId.field}}"
+  operator: ComparisonOperator;
+  value?: string;                         // Not needed for exists/isEmpty operators
 }
 
-export type IfElseNode = BaseNode<'ifElse', IfElseConfig>;
+/** Filter - remove items matching a condition */
+export interface FilterConfig {
+  conditions: Condition[];
+  combineWith: 'and' | 'or';
+}
+
+export type FilterNode = BaseNode<'filter', FilterConfig>;
+
+// Output: filtered array with non-matching items removed
+
+// -----------------------------------------------------------------------------
+
+/** If - route to different branches based on a true/false condition */
+export interface IfConfig {
+  conditions: Condition[];
+  combineWith: 'and' | 'or';
+}
+
+export type IfNode = BaseNode<'if', IfConfig>;
 
 // Output handles: "true", "false"
 
-// -----------------------------------------------------------------------------
+// =============================================================================
+// AI NODES
+// =============================================================================
 
-/** Switch - multi-path branching */
-export interface SwitchConfig {
-  expression: string;                    // e.g., "input.status"
-  cases: {
-    value: string;
-    handleName: string;
-  }[];
-  hasDefault: boolean;
+/** AI Node - call an AI model for inference */
+export interface AINodeConfig {
+  provider: string;                        // "openai" | "anthropic" | "custom"
+  baseUrl: string;
+  model: string;
+  apiKeySecret: string;                    // References secret name
+  systemPrompt: string;
+  userPrompt: string;                      // Template with {{variables}}
+  temperature?: number;                    // 0-2 (default 0.7)
+  maxTokens?: number;                      // Max output tokens
+  responseFormat?: 'text' | 'json';
+  timeout?: number;                        // ms
+  maxRetries?: number;                     // Default 3
 }
 
-export type SwitchNode = BaseNode<'switch', SwitchConfig>;
-
-// Output handles: case handleNames + optionally "default"
-
-// -----------------------------------------------------------------------------
-
-/** Loop - iterate over array */
-export interface LoopConfig {
-  iterableSource: string;                // e.g., "input.items"
-  itemVariable: string;                  // e.g., "item"
-  indexVariable: string;                 // e.g., "index"
-  maxIterations: number;                 // Safety limit (CRE has execution time limits)
-}
-
-export type LoopNode = BaseNode<'loop', LoopConfig>;
-
-// Output handles: "item" (inside loop body), "complete" (after loop finishes)
+export type AINode = BaseNode<'ai', AINodeConfig>;
 
 // =============================================================================
 // OUTPUT NODES (Termination)
@@ -366,8 +433,11 @@ export type ReturnNode = BaseNode<'return', ReturnConfig>;
 // -----------------------------------------------------------------------------
 
 /** Log - debug logging */
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+
 export interface LogConfig {
-  messageTemplate: string;               // e.g., "Value is {{input.value}}"
+  level: LogLevel;                         // Default 'info'
+  messageTemplate: string;
 }
 
 export type LogNode = BaseNode<'log', LogConfig>;
@@ -387,7 +457,7 @@ export type ErrorNode = BaseNode<'error', ErrorConfig>;
 
 /** Mint Token - convenience wrapper for token minting */
 export interface MintTokenConfig {
-  chainSelectorName: string;
+  chainSelectorName: ChainSelectorName;
   tokenContractAddress: string;
   tokenAbi: AbiFunction;                 // mint(address,uint256) ABI
   recipientSource: string;               // "{{kycNode.walletAddress}}"
@@ -403,7 +473,7 @@ export type MintTokenNode = BaseNode<'mintToken', MintTokenConfig>;
 
 /** Burn Token - convenience wrapper for token burning */
 export interface BurnTokenConfig {
-  chainSelectorName: string;
+  chainSelectorName: ChainSelectorName;
   tokenContractAddress: string;
   tokenAbi: AbiFunction;                 // burn(address,uint256) ABI
   fromSource: string;
@@ -417,7 +487,7 @@ export type BurnTokenNode = BaseNode<'burnToken', BurnTokenConfig>;
 
 /** Transfer Token - convenience wrapper for token transfer */
 export interface TransferTokenConfig {
-  chainSelectorName: string;
+  chainSelectorName: ChainSelectorName;
   tokenContractAddress: string;
   tokenAbi: AbiFunction;                 // transfer(address,uint256) ABI
   toSource: string;
@@ -427,7 +497,9 @@ export interface TransferTokenConfig {
 
 export type TransferTokenNode = BaseNode<'transferToken', TransferTokenConfig>;
 
-// -----------------------------------------------------------------------------
+// =============================================================================
+// REGULATION NODES
+// =============================================================================
 
 /** Check KYC - verify user KYC status */
 export interface CheckKycConfig {
@@ -450,7 +522,7 @@ export interface CheckKycOutput {
 
 /** Check Balance - check token balance */
 export interface CheckBalanceConfig {
-  chainSelectorName: string;
+  chainSelectorName: ChainSelectorName;
   tokenContractAddress: string;
   tokenAbi: AbiFunction;                 // balanceOf(address) ABI
   addressSource: string;
@@ -473,8 +545,7 @@ export type NodeType =
   | 'httpTrigger'
   | 'evmLogTrigger'
   // Actions
-  | 'httpGet'
-  | 'httpPost'
+  | 'httpRequest'
   | 'evmRead'
   | 'evmWrite'
   | 'getSecret'
@@ -485,9 +556,10 @@ export type NodeType =
   | 'abiDecode'
   | 'merge'
   // Control Flow
-  | 'ifElse'
-  | 'switch'
-  | 'loop'
+  | 'filter'
+  | 'if'
+  // AI
+  | 'ai'
   // Output
   | 'return'
   | 'log'
@@ -496,6 +568,7 @@ export type NodeType =
   | 'mintToken'
   | 'burnToken'
   | 'transferToken'
+  // Regulation
   | 'checkKyc'
   | 'checkBalance';
 
@@ -506,8 +579,7 @@ export type WorkflowNode =
   | HttpTriggerNode
   | EvmLogTriggerNode
   // Actions
-  | HttpGetNode
-  | HttpPostNode
+  | HttpRequestNode
   | EvmReadNode
   | EvmWriteNode
   | GetSecretNode
@@ -518,9 +590,10 @@ export type WorkflowNode =
   | AbiDecodeNode
   | MergeNode
   // Control Flow
-  | IfElseNode
-  | SwitchNode
-  | LoopNode
+  | FilterNode
+  | IfNode
+  // AI
+  | AINode
   // Output
   | ReturnNode
   | LogNode
@@ -529,6 +602,7 @@ export type WorkflowNode =
   | MintTokenNode
   | BurnTokenNode
   | TransferTokenNode
+  // Regulation
   | CheckKycNode
   | CheckBalanceNode;
 
@@ -543,7 +617,7 @@ export function isTriggerNode(node: WorkflowNode): node is CronTriggerNode | Htt
 
 /** Check if a node is an action node (capability) */
 export function isActionNode(node: WorkflowNode): boolean {
-  return ['httpGet', 'httpPost', 'evmRead', 'evmWrite', 'getSecret'].includes(node.type);
+  return ['httpRequest', 'evmRead', 'evmWrite', 'getSecret'].includes(node.type);
 }
 
 /** Check if a node is a transform node */
@@ -553,7 +627,12 @@ export function isTransformNode(node: WorkflowNode): boolean {
 
 /** Check if a node is a control flow node */
 export function isControlFlowNode(node: WorkflowNode): boolean {
-  return ['ifElse', 'switch', 'loop'].includes(node.type);
+  return ['filter', 'if'].includes(node.type);
+}
+
+/** Check if a node is an AI node */
+export function isAINode(node: WorkflowNode): boolean {
+  return ['ai'].includes(node.type);
 }
 
 /** Check if a node is an output node (termination) */
@@ -563,7 +642,12 @@ export function isOutputNode(node: WorkflowNode): boolean {
 
 /** Check if a node is a tokenization-specific node */
 export function isTokenizationNode(node: WorkflowNode): boolean {
-  return ['mintToken', 'burnToken', 'transferToken', 'checkKyc', 'checkBalance'].includes(node.type);
+  return ['mintToken', 'burnToken', 'transferToken'].includes(node.type);
+}
+
+/** Check if a node is a regulation node */
+export function isRegulationNode(node: WorkflowNode): boolean {
+  return ['checkKyc', 'checkBalance'].includes(node.type);
 }
 
 // =============================================================================
@@ -601,7 +685,7 @@ export type ChainSelectorName = typeof SUPPORTED_CHAINS[number];
 /**
  * Example: A simple tokenization workflow
  *
- * [Cron Trigger] -> [HTTP GET (KYC API)] -> [JSON Parse] -> [If/Else (isApproved)]
+ * [Cron Trigger] -> [HTTP Request (KYC API)] -> [JSON Parse] -> [If (isApproved)]
  *                                                                |
  *                                                    true -------+------- false
  *                                                      |                    |
@@ -628,19 +712,24 @@ export const exampleWorkflow: Workflow = {
       position: { x: 100, y: 200 },
       data: {
         label: 'Every 10 minutes',
-        config: { schedule: '0 */10 * * * *' },
+        config: { schedule: '0 */10 * * * *', timezone: 'UTC' },
       },
     },
     {
       id: 'http-1',
-      type: 'httpGet',
+      type: 'httpRequest',
       position: { x: 300, y: 200 },
       data: {
         label: 'Check KYC Status',
         config: {
+          method: 'GET',
           url: 'https://kyc-api.example.com/status/{{walletAddress}}',
-          headers: { 'Authorization': 'Bearer {{secrets.KYC_API_KEY}}' },
+          authentication: {
+            type: 'bearerToken',
+            tokenSecret: 'KYC_API_KEY',
+          },
           cacheMaxAge: 60,
+          responseFormat: 'json',
         },
       },
     },
@@ -655,11 +744,16 @@ export const exampleWorkflow: Workflow = {
     },
     {
       id: 'condition-1',
-      type: 'ifElse',
+      type: 'if',
       position: { x: 700, y: 200 },
       data: {
         label: 'Is Approved?',
-        config: { condition: 'input.isApproved === true' },
+        config: {
+          conditions: [
+            { field: 'input.isApproved', operator: 'equals', value: 'true' },
+          ],
+          combineWith: 'and',
+        },
       },
     },
     {
@@ -693,7 +787,10 @@ export const exampleWorkflow: Workflow = {
       position: { x: 900, y: 300 },
       data: {
         label: 'Log Rejection',
-        config: { messageTemplate: 'User {{parse-1.walletAddress}} not KYC approved' },
+        config: {
+          level: 'warn',
+          messageTemplate: 'User {{parse-1.walletAddress}} not KYC approved',
+        },
       },
     },
     {
