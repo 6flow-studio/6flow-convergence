@@ -13,7 +13,7 @@ This file guides agents and contributors working in this repo.
 ├── backend/    # NestJS backend services
 ├── compiler/   # Rust-based compiler for CRE
 ├── frontend/   # NextJS frontend application
-├── shared/     # Shared helper functions and data models across codebase
+├── shared/     # Shared helper functions and data models across TypeScript codebase
 ```
 
 # Non-Negotiables
@@ -39,6 +39,16 @@ This file guides agents and contributors working in this repo.
 
 - Prefer fast, deterministic tests.
 - Add tests alongside changes in the relevant area (`frontend`, `backend`, `compiler`). If it's typescript, will use Jest
+
+# Compiler
+- Compiler direction: use a 4-phase pipeline (Parse -> Validate -> IR -> Codegen) where visual workflow JSON is converted into a semantic IR before generating CRE output.
+- Treat convenience nodes (e.g., mintToken, checkKyc) as syntax sugar expanded in IR into primitive CRE capabilities, so codegen only emits canonical CRE patterns (initWorkflow, handlers, capabilities, consensus).
+- Expose three WASM APIs for frontend use: validate_workflow (graph-level checks), validate_node (live node checks), and compile_workflow (full build), with all errors carrying node_id for React Flow highlighting.
+- Compiler output must be a complete deployable CRE project bundle (main.ts, config.json, workflow.yaml, project.yaml, secrets.yaml, package.json), not just a single source file.
+
+# Important Notes
+- If you change the data type of a node, make sure you check and update the data type in the frontend, backend, and compiler. (mostly in shared/model/node.ts and compiler/src/ir/types.rs). If it affects the test, update the test as well.
+
 
 # External Knowledges
 

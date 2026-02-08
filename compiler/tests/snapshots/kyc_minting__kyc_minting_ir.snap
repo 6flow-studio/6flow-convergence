@@ -1,0 +1,304 @@
+---
+source: tests/kyc_minting.rs
+assertion_line: 265
+expression: ir
+---
+{
+  "metadata": {
+    "id": "kyc-gated-minting",
+    "name": "KYC-Gated Token Minting",
+    "description": "Periodically checks KYC status and mints tokens for approved users",
+    "version": "1.0.0",
+    "is_testnet": true,
+    "default_chain_selector": "ethereum-testnet-sepolia"
+  },
+  "trigger": {
+    "type": "Cron",
+    "schedule": {
+      "kind": "ConfigRef",
+      "field": "schedule"
+    },
+    "timezone": {
+      "kind": "Literal",
+      "literal_type": "String",
+      "value": "UTC"
+    }
+  },
+  "trigger_param": "CronTrigger",
+  "config_schema": [
+    {
+      "name": "schedule",
+      "zod_type": "String",
+      "default_value": "0 */10 * * * *",
+      "description": "Cron schedule (min 30s interval)"
+    },
+    {
+      "name": "walletAddress",
+      "zod_type": "String",
+      "default_value": null,
+      "description": "Wallet address to check KYC for"
+    },
+    {
+      "name": "tokenContractAddress",
+      "zod_type": "String",
+      "default_value": null,
+      "description": "ERC-20 token contract address"
+    },
+    {
+      "name": "mintAmount",
+      "zod_type": "String",
+      "default_value": null,
+      "description": "Amount to mint (in wei)"
+    }
+  ],
+  "required_secrets": [
+    {
+      "name": "KYC_API_KEY",
+      "env_variable": "KYC_API_KEY_VAR"
+    }
+  ],
+  "evm_chains": [
+    {
+      "chain_selector_name": "ethereum-testnet-sepolia",
+      "binding_name": "evmClient_eth_sepolia",
+      "used_for_trigger": false
+    }
+  ],
+  "handler_body": {
+    "steps": [
+      {
+        "id": "http-1",
+        "source_node_ids": [
+          "http-1"
+        ],
+        "label": "Fetch KYC status",
+        "operation": {
+          "type": "HttpRequest",
+          "method": "Get",
+          "url": {
+            "kind": "Template",
+            "parts": [
+              {
+                "part_type": "Lit",
+                "value": "https://kyc-api.example.com/status/"
+              },
+              {
+                "part_type": "Expr",
+                "value": {
+                  "kind": "ConfigRef",
+                  "field": "walletAddress"
+                }
+              }
+            ]
+          },
+          "headers": [],
+          "query_params": [],
+          "body": null,
+          "authentication": {
+            "type": "BearerToken",
+            "token_secret": "KYC_API_KEY"
+          },
+          "cache_max_age_seconds": 60,
+          "timeout_ms": 5000,
+          "expected_status_codes": [
+            200
+          ],
+          "response_format": "Json",
+          "consensus": {
+            "type": "Identical"
+          }
+        },
+        "output": {
+          "variable_name": "step_http_1",
+          "ts_type": "{ statusCode: number; body: string; headers: Record<string, string> }",
+          "destructure_fields": null
+        }
+      },
+      {
+        "id": "parse-1",
+        "source_node_ids": [
+          "parse-1"
+        ],
+        "label": "Parse KYC response",
+        "operation": {
+          "type": "JsonParse",
+          "input": {
+            "kind": "Binding",
+            "step_id": "http-1",
+            "field_path": "body"
+          },
+          "source_path": null,
+          "strict": true
+        },
+        "output": {
+          "variable_name": "step_parse_1",
+          "ts_type": "any",
+          "destructure_fields": null
+        }
+      },
+      {
+        "id": "condition-1",
+        "source_node_ids": [
+          "condition-1"
+        ],
+        "label": "Check if KYC approved",
+        "operation": {
+          "type": "Branch",
+          "conditions": [
+            {
+              "field": {
+                "kind": "Binding",
+                "step_id": "parse-1",
+                "field_path": "isApproved"
+              },
+              "operator": "Equals",
+              "value": {
+                "kind": "Literal",
+                "literal_type": "Boolean",
+                "value": true
+              }
+            }
+          ],
+          "combine_with": "And",
+          "true_branch": {
+            "steps": [
+              {
+                "id": "mint-1___encode",
+                "source_node_ids": [
+                  "mint-1"
+                ],
+                "label": "ABI encode mint call",
+                "operation": {
+                  "type": "AbiEncode",
+                  "abi_params_json": "[{\"name\":\"to\",\"type\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\"}]",
+                  "data_mappings": [
+                    {
+                      "param_name": "to",
+                      "value": {
+                        "kind": "ConfigRef",
+                        "field": "walletAddress"
+                      }
+                    },
+                    {
+                      "param_name": "amount",
+                      "value": {
+                        "kind": "ConfigRef",
+                        "field": "mintAmount"
+                      }
+                    }
+                  ]
+                },
+                "output": {
+                  "variable_name": "step_mint_1___encode",
+                  "ts_type": "{ encoded: string }",
+                  "destructure_fields": null
+                }
+              },
+              {
+                "id": "mint-1___write",
+                "source_node_ids": [
+                  "mint-1"
+                ],
+                "label": "Execute mint transaction",
+                "operation": {
+                  "type": "EvmWrite",
+                  "evm_client_binding": "evmClient_eth_sepolia",
+                  "receiver_address": {
+                    "kind": "ConfigRef",
+                    "field": "tokenContractAddress"
+                  },
+                  "gas_limit": {
+                    "kind": "Literal",
+                    "literal_type": "Integer",
+                    "value": 1000000
+                  },
+                  "encoded_data": {
+                    "kind": "Binding",
+                    "step_id": "mint-1___encode",
+                    "field_path": "encoded"
+                  },
+                  "value_wei": null
+                },
+                "output": {
+                  "variable_name": "step_mint_1___write",
+                  "ts_type": "{ txHash: string; status: string }",
+                  "destructure_fields": null
+                }
+              },
+              {
+                "id": "return-1",
+                "source_node_ids": [
+                  "return-1"
+                ],
+                "label": "Return mint success",
+                "operation": {
+                  "type": "Return",
+                  "expression": {
+                    "kind": "Literal",
+                    "literal_type": "String",
+                    "value": "Minted successfully"
+                  }
+                },
+                "output": null
+              }
+            ]
+          },
+          "false_branch": {
+            "steps": [
+              {
+                "id": "log-1",
+                "source_node_ids": [
+                  "log-1"
+                ],
+                "label": "Log KYC rejection",
+                "operation": {
+                  "type": "Log",
+                  "level": "Warn",
+                  "message": {
+                    "kind": "Template",
+                    "parts": [
+                      {
+                        "part_type": "Lit",
+                        "value": "User "
+                      },
+                      {
+                        "part_type": "Expr",
+                        "value": {
+                          "kind": "ConfigRef",
+                          "field": "walletAddress"
+                        }
+                      },
+                      {
+                        "part_type": "Lit",
+                        "value": " not KYC approved"
+                      }
+                    ]
+                  }
+                },
+                "output": null
+              },
+              {
+                "id": "return-2",
+                "source_node_ids": [
+                  "return-2"
+                ],
+                "label": "Return rejection",
+                "operation": {
+                  "type": "Return",
+                  "expression": {
+                    "kind": "Literal",
+                    "literal_type": "String",
+                    "value": "KYC not approved"
+                  }
+                },
+                "output": null
+              }
+            ]
+          },
+          "reconverge_at": null
+        },
+        "output": null
+      }
+    ]
+  }
+}
