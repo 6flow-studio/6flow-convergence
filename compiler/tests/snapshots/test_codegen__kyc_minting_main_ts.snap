@@ -1,0 +1,84 @@
+---
+source: tests/test_codegen.rs
+expression: main_ts.content
+---
+import { cre, ok, consensusIdenticalAggregation, getNetwork, Runner, type Runtime, type HTTPSendRequester, type CronTrigger } from "@chainlink/cre-sdk";
+import { encodeFunctionData, parseAbi } from "viem";
+import { z } from "zod";
+
+const configSchema = z.object({
+  schedule: z.string().default("0 */10 * * * *"),
+  walletAddress: z.string(),
+  tokenContractAddress: z.string(),
+  mintAmount: z.string(),
+});
+
+type Config = z.infer<typeof configSchema>;
+
+const fetch_http_1 = (sendRequester: HTTPSendRequester, config: Config) => {
+  const req = {
+    url: `https://kyc-api.example.com/status/${config.walletAddress}`,
+    method: "GET" as const,
+    cacheSettings: {
+      store: true,
+      maxAge: { seconds: 60n },
+    },
+  };
+
+  const resp = sendRequester.sendRequest(req).result();
+
+  if (!ok(resp)) {
+    throw new Error(`HTTP request failed with status: ${resp.statusCode}`);
+  }
+
+  return { statusCode: resp.statusCode, body: resp.body, headers: resp.headers };
+};
+
+const onCronTrigger = (runtime: Runtime<Config>, triggerData: CronTrigger): string => {
+  const httpClient = new cre.capabilities.HTTPClient();
+  const evmClient_eth_sepolia = new cre.capabilities.EVMClient(getNetwork({ chainFamily: "evm", chainSelectorName: "ethereum-testnet-sepolia", isTestnet: true })!.chainSelector.selector);
+
+  // Fetch KYC status
+  const step_http_1 = httpClient.sendRequest(runtime, fetch_http_1, consensusIdenticalAggregation())(runtime.config).result();
+  // Parse KYC response
+  const step_parse_1 = JSON.parse(Buffer.from(step_http_1.body, "base64").toString("utf-8"));
+  // Check if KYC approved
+  if (step_parse_1.isApproved === true) {
+    // ABI encode mint call
+    const step_mint_1___encode = {
+      encoded: encodeFunctionData({
+        abi: [{"name":"to","type":"address"},{"name":"amount","type":"uint256"}],
+        args: [runtime.config.walletAddress, runtime.config.mintAmount],
+      }),
+    };
+    // Execute mint transaction
+    const step_mint_1___write = evmClient_eth_sepolia.write(runtime, {
+      receiverAddress: runtime.config.tokenContractAddress,
+      gasLimit: BigInt(1000000),
+      data: step_mint_1___encode.encoded,
+    }).result();
+    return "Minted successfully";
+  } else {
+    runtime.log(`[WARN] ${`User ${runtime.config.walletAddress} not KYC approved`}`);
+    return "KYC not approved";
+  }
+};
+
+const initWorkflow = (config: Config) => {
+  return [
+    cre.handler(
+      new cre.capabilities.CronCapability().trigger({
+        schedule: config.schedule,
+        timezone: "UTC",
+      }),
+      onCronTrigger,
+    ),
+  ];
+};
+
+export async function main() {
+  const runner = await Runner.newRunner<Config>({ configSchema });
+  await runner.run(initWorkflow);
+}
+
+main();

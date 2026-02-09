@@ -2,7 +2,7 @@
 
 This crate is the compiler core for 6Flow workflows.
 
-## IR overview
+## Intermediate Representation (IR) overview
 
 Top-level type: `WorkflowIR`
 
@@ -44,6 +44,14 @@ Execution model:
 - Control flow: `Branch`, `Filter`, `Merge`
 - AI: `AiCall`
 - Output/termination: `Log`, `ErrorThrow`, `Return`
+
+## Codegen
+
+Codegen entrypoint: `codegen(&WorkflowIR) -> CodegenOutput`.
+
+Takes a validated `WorkflowIR` and produces a complete, deployable CRE TypeScript project bundle (7 files: `main.ts`, `config.json`, `secrets.yaml`, `workflow.yaml`, `project.yaml`, `package.json`, `tsconfig.json`). The `main.ts` follows CRE's canonical structure: imports, config schema, top-level fetch functions, handler, `initWorkflow`, and `main()`. HTTP/AI fetch functions are emitted at the top level as required by CRE's `sendRequest` pattern. Branch/Merge diamond patterns are handled by coupling the Branch emitter with the Merge step to emit `let` declarations before the `if/else`.
+
+Module structure in `src/codegen/`: `writer` (indent-aware string builder), `value_expr` (IR expressions to TypeScript), `imports` (IR scan for needed imports), `config_schema`, `fetch_fns`, `handler`, `operations` (per-Operation emit), `trigger`, `files` (YAML/JSON generators).
 
 ## Validation
 

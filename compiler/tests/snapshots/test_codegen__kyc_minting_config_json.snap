@@ -1,0 +1,10 @@
+---
+source: tests/test_codegen.rs
+expression: config.content
+---
+{
+  "schedule": "0 */10 * * * *",
+  "walletAddress": "",
+  "tokenContractAddress": "",
+  "mintAmount": ""
+}

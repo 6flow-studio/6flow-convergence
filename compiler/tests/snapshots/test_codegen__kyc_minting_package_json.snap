@@ -1,0 +1,14 @@
+---
+source: tests/test_codegen.rs
+expression: pkg.content
+---
+{
+  "name": "kyc-gated-minting",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@chainlink/cre-sdk": "latest",
+    "zod": "^3.24",
+    "viem": "^2.0"
+  }
+}
