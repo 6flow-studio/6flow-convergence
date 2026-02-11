@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "6flow Studio",
+  title: "6FLOW Studio",
   description: "Visual workflow builder for Chainlink CRE",
 };
 

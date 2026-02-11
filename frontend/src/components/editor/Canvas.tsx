@@ -8,6 +8,7 @@ import {
   MiniMap,
   BackgroundVariant,
   type NodeTypes,
+  type EdgeTypes,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
@@ -22,6 +23,7 @@ import { OutputNode } from "./nodes/OutputNode";
 import { TokenizationNode } from "./nodes/TokenizationNode";
 import { AINode } from "./nodes/AINode";
 import { RegulationNode } from "./nodes/RegulationNode";
+import { DeletableEdge } from "./edges/DeletableEdge";
 
 const nodeTypes: NodeTypes = {
   trigger: TriggerNode,
@@ -32,6 +34,10 @@ const nodeTypes: NodeTypes = {
   tokenization: TokenizationNode,
   ai: AINode,
   regulation: RegulationNode,
+};
+
+const edgeTypes: EdgeTypes = {
+  deletable: DeletableEdge,
 };
 
 function minimapNodeColor(node: WorkflowNode): string {
@@ -98,8 +104,9 @@ export function Canvas() {
         onNodeClick={onNodeClick}
         onPaneClick={onPaneClick}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         defaultEdgeOptions={{
-          type: "smoothstep",
+          type: "deletable",
           animated: true,
           style: { stroke: "#3f3f46", strokeWidth: 2 },
         }}

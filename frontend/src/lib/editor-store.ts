@@ -34,6 +34,7 @@ interface EditorState {
   onConnect: OnConnect;
   addNode: (type: NodeType, position: { x: number; y: number }) => void;
   removeNode: (id: string) => void;
+  removeEdge: (id: string) => void;
   updateNodeConfig: (id: string, config: Record<string, unknown>) => void;
   updateNodeLabel: (id: string, label: string) => void;
   selectNode: (id: string | null) => void;
@@ -84,6 +85,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     };
 
     set({ nodes: [...get().nodes, newNode] });
+  },
+
+  removeEdge: (id) => {
+    set({ edges: get().edges.filter((e) => e.id !== id) });
   },
 
   removeNode: (id) => {

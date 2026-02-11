@@ -5,7 +5,7 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { api } from "../../../convex/_generated/api";
-import { Hexagon, Plus, Trash2, LogOut, Workflow } from "lucide-react";
+import { Plus, Trash2, LogOut, Workflow } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Id } from "../../../convex/_generated/dataModel";
 
@@ -46,10 +46,10 @@ export default function DashboardPage() {
       <div className="h-14 bg-surface-1 border-b border-edge-dim flex items-center px-6 justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-md bg-accent-blue/10 flex items-center justify-center">
-            <Hexagon size={16} className="text-accent-blue" />
+            <span className="text-accent-blue text-sm font-bold">六</span>
           </div>
           <span className="text-[13px] font-bold text-zinc-100 tracking-tight">
-            6flow Studio
+            6FLOW Studio
           </span>
         </div>
         <Button

@@ -4,7 +4,7 @@ import { useConvexAuth } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { Hexagon } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 
 export default function LoginPage() {
@@ -28,10 +28,10 @@ export default function LoginPage() {
         <div className="flex flex-col items-center gap-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-accent-blue/10 flex items-center justify-center">
-              <Hexagon size={22} className="text-accent-blue" />
+              <span className="text-accent-blue text-xl font-bold">六</span>
             </div>
             <span className="text-xl font-bold text-zinc-100 tracking-tight">
-              6flow Studio
+              6FLOW Studio
             </span>
           </div>
 

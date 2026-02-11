@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useState, useCallback, useEffect } from "react";
 import { useEditorStore } from "@/lib/editor-store";
 import { getNodeEntry, CATEGORY_COLORS } from "@/lib/node-registry";
 import { Input } from "@/components/ui/input";
@@ -7,6 +8,91 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { X, Trash2, Settings2 } from "lucide-react";
+import type { NodeType } from "@6flow/shared/model/node";
+import {
+  CodeNodeConfigRenderer,
+  HttpRequestConfigRenderer,
+  HttpTriggerConfigRenderer,
+  IfConfigRenderer,
+  FilterConfigRenderer,
+  AIConfigRenderer,
+  GenericConfigRenderer,
+  CronTriggerConfigRenderer,
+  GetSecretConfigRenderer,
+  JsonParseConfigRenderer,
+  ReturnConfigRenderer,
+  LogConfigRenderer,
+  ErrorConfigRenderer,
+  CheckKycConfigRenderer,
+  TokenNodeConfigRenderer,
+  CheckBalanceConfigRenderer,
+  EvmLogTriggerConfigRenderer,
+  EvmReadConfigRenderer,
+  EvmWriteConfigRenderer,
+  AbiEncodeConfigRenderer,
+  AbiDecodeConfigRenderer,
+  MergeConfigRenderer,
+} from "./config-renderers";
+
+function renderNodeConfig(
+  nodeType: NodeType,
+  config: Record<string, unknown>,
+  onChange: (patch: Record<string, unknown>) => void
+) {
+  switch (nodeType) {
+    case "codeNode":
+      return <CodeNodeConfigRenderer config={config as any} onChange={onChange} />;
+    case "httpRequest":
+      return <HttpRequestConfigRenderer config={config as any} onChange={onChange} />;
+    case "httpTrigger":
+      return <HttpTriggerConfigRenderer config={config as any} onChange={onChange} />;
+    case "if":
+      return <IfConfigRenderer config={config as any} onChange={onChange} />;
+    case "filter":
+      return <FilterConfigRenderer config={config as any} onChange={onChange} />;
+    case "ai":
+      return <AIConfigRenderer config={config as any} onChange={onChange} />;
+    case "cronTrigger":
+      return <CronTriggerConfigRenderer config={config as any} onChange={onChange} />;
+    case "evmLogTrigger":
+      return <EvmLogTriggerConfigRenderer config={config as any} onChange={onChange} />;
+    case "evmRead":
+      return <EvmReadConfigRenderer config={config as any} onChange={onChange} />;
+    case "evmWrite":
+      return <EvmWriteConfigRenderer config={config as any} onChange={onChange} />;
+    case "getSecret":
+      return <GetSecretConfigRenderer config={config as any} onChange={onChange} />;
+    case "jsonParse":
+      return <JsonParseConfigRenderer config={config as any} onChange={onChange} />;
+    case "abiEncode":
+      return <AbiEncodeConfigRenderer config={config as any} onChange={onChange} />;
+    case "abiDecode":
+      return <AbiDecodeConfigRenderer config={config as any} onChange={onChange} />;
+    case "merge":
+      return <MergeConfigRenderer config={config as any} onChange={onChange} />;
+    case "return":
+      return <ReturnConfigRenderer config={config as any} onChange={onChange} />;
+    case "log":
+      return <LogConfigRenderer config={config as any} onChange={onChange} />;
+    case "error":
+      return <ErrorConfigRenderer config={config as any} onChange={onChange} />;
+    case "mintToken":
+      return <TokenNodeConfigRenderer variant="mint" config={config as any} onChange={onChange} />;
+    case "burnToken":
+      return <TokenNodeConfigRenderer variant="burn" config={config as any} onChange={onChange} />;
+    case "transferToken":
+      return <TokenNodeConfigRenderer variant="transfer" config={config as any} onChange={onChange} />;
+    case "checkKyc":
+      return <CheckKycConfigRenderer config={config as any} onChange={onChange} />;
+    case "checkBalance":
+      return <CheckBalanceConfigRenderer config={config as any} onChange={onChange} />;
+    default:
+      return <GenericConfigRenderer config={config} onChange={onChange} />;
+  }
+}
+
+const MIN_WIDTH = 280;
+const MAX_WIDTH = 600;
 
 export function ConfigPanel() {
   const selectedNodeId = useEditorStore((s) => s.selectedNodeId);
@@ -15,6 +101,37 @@ export function ConfigPanel() {
   const updateNodeLabel = useEditorStore((s) => s.updateNodeLabel);
   const removeNode = useEditorStore((s) => s.removeNode);
   const selectNode = useEditorStore((s) => s.selectNode);
+
+  const [width, setWidth] = useState(MIN_WIDTH);
+  const isResizing = useRef(false);
+
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isResizing.current = true;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    const startX = e.clientX;
+    const startWidth = width;
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isResizing.current) return;
+      const delta = startX - e.clientX;
+      const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidth + delta));
+      setWidth(newWidth);
+    };
+
+    const onMouseUp = () => {
+      isResizing.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
+
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  }, [width]);
 
   if (!selectedNodeId) return null;
 
@@ -28,7 +145,15 @@ export function ConfigPanel() {
   const config = node.data.config;
 
   return (
-    <div className="w-[280px] bg-surface-1 border-l border-edge-dim flex flex-col h-full shrink-0 animate-slide-in-right">
+    <div
+      style={{ width }}
+      className="bg-surface-1 border-l border-edge-dim flex flex-col h-full shrink-0 animate-slide-in-right relative"
+    >
+      {/* Resize handle */}
+      <div
+        className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-accent-blue/40 transition-colors z-10"
+        onMouseDown={onMouseDown}
+      />
       {/* Header */}
       <div className="px-3 py-2.5 border-b border-edge-dim flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -84,52 +209,11 @@ export function ConfigPanel() {
               </span>
             </div>
 
-            <div className="space-y-2.5">
-              {Object.entries(config).map(([key, value]) => (
-                <div key={key}>
-                  <label className="text-[11px] text-zinc-500 mb-1 block font-medium">
-                    {key}
-                  </label>
-                  {typeof value === "string" ? (
-                    <Input
-                      value={value}
-                      onChange={(e) =>
-                        updateNodeConfig(node.id, { [key]: e.target.value })
-                      }
-                      className="h-8 bg-surface-2 border-edge-dim text-zinc-300 text-[12px] font-mono hover:border-edge-bright focus:border-accent-blue transition-colors"
-                    />
-                  ) : typeof value === "number" ? (
-                    <Input
-                      type="number"
-                      value={value}
-                      onChange={(e) =>
-                        updateNodeConfig(node.id, {
-                          [key]: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="h-8 bg-surface-2 border-edge-dim text-zinc-300 text-[12px] font-mono hover:border-edge-bright focus:border-accent-blue transition-colors"
-                    />
-                  ) : typeof value === "boolean" ? (
-                    <button
-                      onClick={() =>
-                        updateNodeConfig(node.id, { [key]: !value })
-                      }
-                      className={`text-[11px] px-2.5 py-1 rounded-md font-medium transition-colors ${
-                        value
-                          ? "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
-                          : "bg-surface-3 text-zinc-500 hover:text-zinc-400"
-                      }`}
-                    >
-                      {value ? "true" : "false"}
-                    </button>
-                  ) : (
-                    <div className="text-[11px] text-zinc-600 bg-surface-2 border border-edge-dim rounded-md px-2.5 py-2 font-mono leading-relaxed break-all">
-                      {JSON.stringify(value, null, 2).slice(0, 120)}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+            {renderNodeConfig(
+              node.data.nodeType,
+              config,
+              (patch) => updateNodeConfig(node.id, patch)
+            )}
           </div>
 
           {/* Delete */}

@@ -3,7 +3,7 @@
 import { useEditorStore } from "@/lib/editor-store";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Play, Hexagon, ArrowLeft, Cloud, CloudOff, Loader2 } from "lucide-react";
+import { CheckCircle, Play, ArrowLeft, Cloud, CloudOff, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 interface ToolbarProps {
@@ -25,9 +25,9 @@ export function Toolbar({ saveStatus }: ToolbarProps) {
 
       <div className="flex items-center gap-2.5">
         <div className="w-7 h-7 rounded-md bg-accent-blue/10 flex items-center justify-center">
-          <Hexagon size={16} className="text-accent-blue" />
+          <span className="text-accent-blue text-sm font-bold">六</span>
         </div>
-        <span className="text-[13px] font-bold text-zinc-100 tracking-tight">6flow</span>
+        <span className="text-[13px] font-bold text-zinc-100 tracking-tight">6FLOW</span>
       </div>
 
       <div className="w-px h-5 bg-edge-dim mx-1" />
