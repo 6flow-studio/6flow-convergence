@@ -1,0 +1,121 @@
+import { create } from "zustand";
+import {
+  type Node,
+  type Edge,
+  type OnNodesChange,
+  type OnEdgesChange,
+  type OnConnect,
+  applyNodeChanges,
+  applyEdgeChanges,
+  addEdge,
+} from "@xyflow/react";
+import type { NodeType } from "../../../shared/model/node";
+import { getNodeEntry } from "./node-registry";
+
+export interface WorkflowNodeData {
+  label: string;
+  nodeType: NodeType;
+  config: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export type WorkflowNode = Node<WorkflowNodeData>;
+export type WorkflowEdge = Edge;
+
+interface EditorState {
+  nodes: WorkflowNode[];
+  edges: WorkflowEdge[];
+  selectedNodeId: string | null;
+  workflowName: string;
+  workflowId: string | null;
+
+  onNodesChange: OnNodesChange<WorkflowNode>;
+  onEdgesChange: OnEdgesChange;
+  onConnect: OnConnect;
+  addNode: (type: NodeType, position: { x: number; y: number }) => void;
+  removeNode: (id: string) => void;
+  updateNodeConfig: (id: string, config: Record<string, unknown>) => void;
+  updateNodeLabel: (id: string, label: string) => void;
+  selectNode: (id: string | null) => void;
+  clearSelection: () => void;
+  setWorkflowName: (name: string) => void;
+  setWorkflowId: (id: string | null) => void;
+  loadWorkflow: (nodes: WorkflowNode[], edges: WorkflowEdge[]) => void;
+}
+
+let nodeIdCounter = 0;
+
+function generateNodeId(): string {
+  return `node_${Date.now()}_${nodeIdCounter++}`;
+}
+
+export const useEditorStore = create<EditorState>((set, get) => ({
+  nodes: [],
+  edges: [],
+  selectedNodeId: null,
+  workflowName: "Untitled Workflow",
+  workflowId: null,
+
+  onNodesChange: (changes) => {
+    set({ nodes: applyNodeChanges(changes, get().nodes) });
+  },
+
+  onEdgesChange: (changes) => {
+    set({ edges: applyEdgeChanges(changes, get().edges) });
+  },
+
+  onConnect: (connection) => {
+    set({ edges: addEdge(connection, get().edges) });
+  },
+
+  addNode: (type, position) => {
+    const entry = getNodeEntry(type);
+    if (!entry) return;
+
+    const newNode: WorkflowNode = {
+      id: generateNodeId(),
+      type: entry.category,
+      position,
+      data: {
+        label: entry.label,
+        nodeType: type,
+        config: { ...entry.defaultConfig },
+      },
+    };
+
+    set({ nodes: [...get().nodes, newNode] });
+  },
+
+  removeNode: (id) => {
+    set({
+      nodes: get().nodes.filter((n) => n.id !== id),
+      edges: get().edges.filter((e) => e.source !== id && e.target !== id),
+      selectedNodeId: get().selectedNodeId === id ? null : get().selectedNodeId,
+    });
+  },
+
+  updateNodeConfig: (id, config) => {
+    set({
+      nodes: get().nodes.map((n) =>
+        n.id === id ? { ...n, data: { ...n.data, config: { ...n.data.config, ...config } } } : n
+      ),
+    });
+  },
+
+  updateNodeLabel: (id, label) => {
+    set({
+      nodes: get().nodes.map((n) =>
+        n.id === id ? { ...n, data: { ...n.data, label } } : n
+      ),
+    });
+  },
+
+  selectNode: (id) => set({ selectedNodeId: id }),
+  clearSelection: () => set({ selectedNodeId: null }),
+  setWorkflowName: (name) => set({ workflowName: name }),
+  setWorkflowId: (id) => set({ workflowId: id }),
+
+  loadWorkflow: (nodes, edges) => {
+    set({ nodes, edges, selectedNodeId: null });
+  },
+}));
