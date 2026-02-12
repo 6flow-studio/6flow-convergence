@@ -1,0 +1,32 @@
+{
+    "id": "test",
+    "name": "Test",
+    "version": "1.0.0",
+    "globalConfig": { "isTestnet": true, "defaultChainSelector": "", "secrets": [] },
+    "nodes": [
+        {
+            "id": "t1",
+            "type": "cronTrigger",
+            "position": { "x": 0, "y": 0 },
+            "data": { "label": "Trigger", "config": { "schedule": "0 */5 * * * *" } }
+        },
+        {
+            "id": "if1",
+            "type": "if",
+            "position": { "x": 0, "y": 0 },
+            "data": { "label": "Check", "config": { "conditions": [{ "field": "x", "operator": "equals", "value": "1" }], "combineWith": "and" } }
+        },
+        {
+            "id": "r1",
+            "type": "return",
+            "position": { "x": 0, "y": 0 },
+            "data": { "label": "Return", "config": { "returnExpression": "\"ok\"" } }
+        }
+    ],
+    "edges": [
+        { "id": "e1", "source": "t1", "target": "if1" },
+        { "id": "e2", "source": "if1", "target": "r1" }
+    ],
+    "createdAt": "2025-01-01T00:00:00Z",
+    "updatedAt": "2025-01-01T00:00:00Z"
+}

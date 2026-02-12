@@ -1,5 +1,5 @@
 ---
-source: tests/test_codegen.rs
+source: tests/codegen_basic.rs
 expression: main_ts.content
 ---
 import { cre, ok, consensusIdenticalAggregation, getNetwork, Runner, type Runtime, type HTTPSendRequester, type CronTrigger } from "@chainlink/cre-sdk";

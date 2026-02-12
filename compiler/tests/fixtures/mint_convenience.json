@@ -1,0 +1,51 @@
+{
+    "id": "mint-test",
+    "name": "Mint",
+    "version": "1.0.0",
+    "globalConfig": { "isTestnet": true, "defaultChainSelector": "ethereum-testnet-sepolia", "secrets": [] },
+    "nodes": [
+        {
+            "id": "t1",
+            "type": "cronTrigger",
+            "position": { "x": 0, "y": 0 },
+            "data": { "label": "Trigger", "config": { "schedule": "0 */5 * * * *" } }
+        },
+        {
+            "id": "mint-1",
+            "type": "mintToken",
+            "position": { "x": 0, "y": 0 },
+            "data": {
+                "label": "Mint",
+                "config": {
+                    "chainSelectorName": "ethereum-testnet-sepolia",
+                    "tokenContractAddress": "0x1234567890abcdef1234567890abcdef12345678",
+                    "tokenAbi": {
+                        "type": "function",
+                        "name": "mint",
+                        "inputs": [
+                            { "name": "to", "type": "address" },
+                            { "name": "amount", "type": "uint256" }
+                        ],
+                        "outputs": [],
+                        "stateMutability": "nonpayable"
+                    },
+                    "recipientSource": "0xabcdef",
+                    "amountSource": "1000",
+                    "gasLimit": "500000"
+                }
+            }
+        },
+        {
+            "id": "r1",
+            "type": "return",
+            "position": { "x": 0, "y": 0 },
+            "data": { "label": "Done", "config": { "returnExpression": "\"ok\"" } }
+        }
+    ],
+    "edges": [
+        { "id": "e1", "source": "t1", "target": "mint-1" },
+        { "id": "e2", "source": "mint-1", "target": "r1" }
+    ],
+    "createdAt": "2025-01-01T00:00:00Z",
+    "updatedAt": "2025-01-01T00:00:00Z"
+}

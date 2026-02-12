@@ -1,0 +1,17 @@
+{
+    "id": "test",
+    "name": "Test",
+    "version": "1.0.0",
+    "globalConfig": { "isTestnet": true, "defaultChainSelector": "", "secrets": [] },
+    "nodes": [
+        {
+            "id": "r1",
+            "type": "return",
+            "position": { "x": 0, "y": 0 },
+            "data": { "label": "Return", "config": { "returnExpression": "\"ok\"" } }
+        }
+    ],
+    "edges": [],
+    "createdAt": "2025-01-01T00:00:00Z",
+    "updatedAt": "2025-01-01T00:00:00Z"
+}

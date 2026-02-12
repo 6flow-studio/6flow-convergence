@@ -1,6 +1,5 @@
 ---
-source: tests/kyc_minting.rs
-assertion_line: 265
+source: tests/e2e_kyc_minting.rs
 expression: ir
 ---
 {

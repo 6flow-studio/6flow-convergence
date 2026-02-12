@@ -46,6 +46,9 @@ This file guides agents and contributors working in this repo.
 - Expose three WASM APIs for frontend use: validate_workflow (graph-level checks), validate_node (live node checks), and compile_workflow (full build), with all errors carrying node_id for React Flow highlighting.
 - Compiler output must be a complete deployable CRE project bundle (main.ts, config.json, workflow.yaml, project.yaml, secrets.yaml, package.json), not just a single source file.
 
+## Implementation Status (as of 2026-02-12)
+The full compiler pipeline is now implemented with Parse → Validate → Lower → IR Validate → Codegen phases. The Parse module (`compiler/src/parse/`) deserializes workflow JSON from the frontend into Rust structs mirroring all 23 node types. The Validate module (`compiler/src/validate/`) enforces 10 graph-level rules (V001-V010) and 21 per-node config rules (N001-N021). The Lower module (`compiler/src/lower/`) transforms the parsed graph into WorkflowIR, expanding convenience nodes (mintToken→AbiEncode+EvmWrite, checkKyc→GetSecret+HttpRequest+JsonParse), resolving `{{nodeId.field}}` references into ValueExpr, detecting branch/merge patterns, and performing topological sort. WASM entry points in `compiler/src/wasm.rs` expose validate_workflow, validate_node, and compile_workflow for browser use. All phases are tested with 129 passing tests covering parse round-trips, validation rules, convenience node expansion, and end-to-end compilation.
+
 # Important Notes
 - If you change the data type of a node, make sure you check and update the data type in the frontend, backend, and compiler. (mostly in shared/model/node.ts and compiler/src/ir/types.rs). If it affects the test, update the test as well.
 

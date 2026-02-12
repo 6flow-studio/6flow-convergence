@@ -1,5 +1,5 @@
 ---
-source: tests/test_codegen.rs
+source: tests/codegen_basic.rs
 expression: config.content
 ---
 {

@@ -1,0 +1,131 @@
+{
+    "id": "example-tokenization-workflow",
+    "name": "KYC-Gated Token Minting",
+    "description": "Mint tokens only for KYC-approved users",
+    "version": "1.0.0",
+    "globalConfig": {
+        "isTestnet": true,
+        "defaultChainSelector": "ethereum-testnet-sepolia",
+        "secrets": [
+            { "name": "KYC_API_KEY", "envVariable": "KYC_API_KEY_VAR" }
+        ]
+    },
+    "nodes": [
+        {
+            "id": "trigger-1",
+            "type": "cronTrigger",
+            "position": { "x": 100, "y": 200 },
+            "data": {
+                "label": "Every 10 minutes",
+                "config": { "schedule": "0 */10 * * * *", "timezone": "UTC" }
+            }
+        },
+        {
+            "id": "http-1",
+            "type": "httpRequest",
+            "position": { "x": 300, "y": 200 },
+            "data": {
+                "label": "Check KYC Status",
+                "config": {
+                    "method": "GET",
+                    "url": "https://kyc-api.example.com/status/{{config.walletAddress}}",
+                    "authentication": {
+                        "type": "bearerToken",
+                        "tokenSecret": "KYC_API_KEY"
+                    },
+                    "cacheMaxAge": 60,
+                    "responseFormat": "json"
+                }
+            }
+        },
+        {
+            "id": "parse-1",
+            "type": "jsonParse",
+            "position": { "x": 500, "y": 200 },
+            "data": {
+                "label": "Parse KYC Response",
+                "config": {}
+            }
+        },
+        {
+            "id": "condition-1",
+            "type": "if",
+            "position": { "x": 700, "y": 200 },
+            "data": {
+                "label": "Is Approved?",
+                "config": {
+                    "conditions": [
+                        { "field": "{{parse-1.isApproved}}", "operator": "equals", "value": "true" }
+                    ],
+                    "combineWith": "and"
+                }
+            }
+        },
+        {
+            "id": "mint-1",
+            "type": "mintToken",
+            "position": { "x": 900, "y": 100 },
+            "data": {
+                "label": "Mint Tokens",
+                "config": {
+                    "chainSelectorName": "ethereum-testnet-sepolia",
+                    "tokenContractAddress": "0x1234567890abcdef1234567890abcdef12345678",
+                    "tokenAbi": {
+                        "type": "function",
+                        "name": "mint",
+                        "inputs": [
+                            { "name": "to", "type": "address" },
+                            { "name": "amount", "type": "uint256" }
+                        ],
+                        "outputs": [],
+                        "stateMutability": "nonpayable"
+                    },
+                    "recipientSource": "{{parse-1.walletAddress}}",
+                    "amountSource": "{{parse-1.tokenAmount}}",
+                    "gasLimit": "500000"
+                }
+            }
+        },
+        {
+            "id": "log-1",
+            "type": "log",
+            "position": { "x": 900, "y": 300 },
+            "data": {
+                "label": "Log Rejection",
+                "config": {
+                    "level": "warn",
+                    "messageTemplate": "User {{parse-1.walletAddress}} not KYC approved"
+                }
+            }
+        },
+        {
+            "id": "return-1",
+            "type": "return",
+            "position": { "x": 1100, "y": 100 },
+            "data": {
+                "label": "Return Success",
+                "config": { "returnExpression": "\"Minted successfully\"" }
+            }
+        },
+        {
+            "id": "return-2",
+            "type": "return",
+            "position": { "x": 1100, "y": 300 },
+            "data": {
+                "label": "Return Rejected",
+                "config": { "returnExpression": "\"KYC not approved\"" }
+            }
+        }
+    ],
+    "edges": [
+        { "id": "e1", "source": "trigger-1", "target": "http-1" },
+        { "id": "e2", "source": "http-1", "target": "parse-1" },
+        { "id": "e3", "source": "parse-1", "target": "condition-1" },
+        { "id": "e4", "source": "condition-1", "target": "mint-1", "sourceHandle": "true" },
+        { "id": "e5", "source": "condition-1", "target": "log-1", "sourceHandle": "false" },
+        { "id": "e6", "source": "mint-1", "target": "return-1" },
+        { "id": "e7", "source": "log-1", "target": "return-2" }
+    ],
+    "createdAt": "2025-01-01T00:00:00Z",
+    "updatedAt": "2025-01-01T00:00:00Z"
+}
