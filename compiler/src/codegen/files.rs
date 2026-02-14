@@ -1,5 +1,5 @@
 //! Generate supporting project files: config.json, secrets.yaml, workflow.yaml,
-//! project.yaml, package.json, tsconfig.json.
+//! project.yaml, package.json, tsconfig.json, .env.
 
 use crate::ir::types::*;
 
@@ -98,7 +98,7 @@ pub fn gen_project_yaml(ir: &WorkflowIR) -> String {
 pub fn gen_package_json(ir: &WorkflowIR) -> String {
     let name = &ir.metadata.id;
     let mut deps = vec![
-        ("@chainlink/cre-sdk", "latest"),
+        ("@chainlink/cre-sdk", "^1.0.10"),
         ("zod", "^3.24"),
     ];
 
@@ -112,17 +112,29 @@ pub fn gen_package_json(ir: &WorkflowIR) -> String {
         .map(|(k, v)| format!("    \"{}\": \"{}\"", k, v))
         .collect();
 
+    let dev_dep_entries = vec![
+        format!("    \"@types/bun\": \"1.2.21\""),
+    ];
+
     format!(
         r#"{{
   "name": "{name}",
   "version": "1.0.0",
+  "main": "dist/main.js",
   "private": true,
+  "scripts": {{
+    "postinstall": "bun x cre-setup"
+  }},
   "dependencies": {{
 {deps}
+  }},
+  "devDependencies": {{
+{dev_deps}
   }}
 }}
 "#,
-        deps = dep_entries.join(",\n")
+        deps = dep_entries.join(",\n"),
+        dev_deps = dev_dep_entries.join(",\n")
     )
 }
 
@@ -143,6 +155,24 @@ pub fn gen_tsconfig_json() -> String {
   "include": ["*.ts"]
 }
 "#.to_string()
+}
+
+/// Generate `.env` content for local CRE simulation.
+pub fn gen_dot_env(ir: &WorkflowIR) -> String {
+    let mut lines = vec![
+        "# Environment variables for CRE simulation".to_string(),
+        "# Fill in real values before running `cre simulate`".to_string(),
+    ];
+    if ir.required_secrets.is_empty() {
+        lines.push("# No secrets required for this workflow".to_string());
+    } else {
+        lines.push(String::new());
+        for secret in &ir.required_secrets {
+            lines.push(format!("{}=<{}>", secret.env_variable, secret.name));
+        }
+    }
+    lines.push(String::new());
+    lines.join("\n")
 }
 
 fn needs_viem(ir: &WorkflowIR) -> bool {
@@ -232,6 +262,69 @@ mod tests {
         assert!(yaml.contains("secretsNames:"));
         assert!(yaml.contains("  API_KEY:"));
         assert!(yaml.contains("    - API_KEY_VAR"));
+    }
+
+    #[test]
+    fn dot_env_with_secrets() {
+        let ir = WorkflowIR {
+            metadata: WorkflowMetadata {
+                id: "test".into(),
+                name: "Test".into(),
+                description: None,
+                version: "1.0.0".into(),
+                is_testnet: true,
+                default_chain_selector: None,
+            },
+            trigger: TriggerDef::Cron(CronTriggerDef {
+                schedule: ValueExpr::string("*"),
+                timezone: None,
+            }),
+            trigger_param: TriggerParam::CronTrigger,
+            config_schema: vec![],
+            required_secrets: vec![
+                SecretDeclaration {
+                    name: "API_KEY".into(),
+                    env_variable: "API_KEY_VAR".into(),
+                },
+                SecretDeclaration {
+                    name: "DB_PASSWORD".into(),
+                    env_variable: "DB_PASSWORD_VAR".into(),
+                },
+            ],
+            evm_chains: vec![],
+            handler_body: Block { steps: vec![] },
+        };
+
+        let env = gen_dot_env(&ir);
+        assert!(env.contains("API_KEY_VAR=<API_KEY>"));
+        assert!(env.contains("DB_PASSWORD_VAR=<DB_PASSWORD>"));
+    }
+
+    #[test]
+    fn dot_env_without_secrets() {
+        let ir = WorkflowIR {
+            metadata: WorkflowMetadata {
+                id: "test".into(),
+                name: "Test".into(),
+                description: None,
+                version: "1.0.0".into(),
+                is_testnet: true,
+                default_chain_selector: None,
+            },
+            trigger: TriggerDef::Cron(CronTriggerDef {
+                schedule: ValueExpr::string("*"),
+                timezone: None,
+            }),
+            trigger_param: TriggerParam::CronTrigger,
+            config_schema: vec![],
+            required_secrets: vec![],
+            evm_chains: vec![],
+            handler_body: Block { steps: vec![] },
+        };
+
+        let env = gen_dot_env(&ir);
+        assert!(env.contains("No secrets required"));
+        assert!(!env.contains("=<"));
     }
 
     #[test]

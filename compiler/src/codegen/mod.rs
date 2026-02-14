@@ -64,6 +64,10 @@ pub fn codegen(ir: &WorkflowIR) -> CodegenOutput {
         path: "tsconfig.json".into(),
         content: files::gen_tsconfig_json(),
     });
+    output_files.push(GeneratedFile {
+        path: ".env".into(),
+        content: files::gen_dot_env(ir),
+    });
 
     CodegenOutput {
         files: output_files,
@@ -152,5 +156,6 @@ mod tests {
         assert!(file_paths.contains(&"project.yaml"));
         assert!(file_paths.contains(&"package.json"));
         assert!(file_paths.contains(&"tsconfig.json"));
+        assert!(file_paths.contains(&".env"));
     }
 }
