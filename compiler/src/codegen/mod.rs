@@ -40,8 +40,9 @@ pub fn codegen(ir: &WorkflowIR) -> CodegenOutput {
     });
 
     // Generate supporting files
+    let env = if ir.metadata.is_testnet { "staging" } else { "production" };
     output_files.push(GeneratedFile {
-        path: "config.json".into(),
+        path: format!("config.{env}.json"),
         content: files::gen_config_json(ir),
     });
     output_files.push(GeneratedFile {
@@ -150,7 +151,7 @@ mod tests {
         let file_paths: Vec<&str> = output.files.iter().map(|f| f.path.as_str()).collect();
 
         assert!(file_paths.contains(&"main.ts"));
-        assert!(file_paths.contains(&"config.json"));
+        assert!(file_paths.contains(&"config.staging.json"));
         assert!(file_paths.contains(&"secrets.yaml"));
         assert!(file_paths.contains(&"workflow.yaml"));
         assert!(file_paths.contains(&"project.yaml"));

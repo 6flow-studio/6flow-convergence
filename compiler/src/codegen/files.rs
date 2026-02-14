@@ -42,20 +42,21 @@ pub fn gen_secrets_yaml(ir: &WorkflowIR) -> String {
 /// Generate `workflow.yaml` content.
 pub fn gen_workflow_yaml(ir: &WorkflowIR) -> String {
     let id = &ir.metadata.id;
+    let env = if ir.metadata.is_testnet { "staging" } else { "production" };
     format!(
         r#"staging-settings:
   user-workflow:
     workflow-name: "{id}-staging"
   workflow-artifacts:
     workflow-path: "./main.ts"
-    config-path: "./config.json"
+    config-path: "./config.{env}.json"
     secrets-path: "../secrets.yaml"
 production-settings:
   user-workflow:
     workflow-name: "{id}-production"
   workflow-artifacts:
     workflow-path: "./main.ts"
-    config-path: "./config.json"
+    config-path: "./config.{env}.json"
     secrets-path: "../secrets.yaml"
 "#
     )
