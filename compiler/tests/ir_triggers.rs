@@ -10,7 +10,6 @@ fn roundtrip(trigger: &TriggerDef) -> TriggerDef {
 fn test_cron_trigger_roundtrip() {
     let trigger = TriggerDef::Cron(CronTriggerDef {
         schedule: ValueExpr::config("schedule"),
-        timezone: Some(ValueExpr::string("America/New_York")),
     });
     let rt = roundtrip(&trigger);
     if let TriggerDef::Cron(cron) = &rt {
@@ -18,11 +17,6 @@ fn test_cron_trigger_roundtrip() {
             assert_eq!(field, "schedule");
         } else {
             panic!("Expected ConfigRef schedule");
-        }
-        if let Some(ValueExpr::Literal(LiteralValue::String { value })) = &cron.timezone {
-            assert_eq!(value, "America/New_York");
-        } else {
-            panic!("Expected timezone literal string");
         }
     } else {
         panic!("Expected Cron trigger");

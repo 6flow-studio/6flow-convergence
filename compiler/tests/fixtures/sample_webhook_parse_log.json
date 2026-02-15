@@ -1,0 +1,108 @@
+{
+    "id": "webhook-parse-log",
+    "name": "Webhook Logger",
+    "description": "Receive webhook data via POST, parse the JSON body, log it, and return",
+    "version": "1.0.0",
+    "globalConfig": {
+        "isTestnet": true,
+        "defaultChainSelector": "ethereum-mainnet",
+        "secrets": [
+            {
+                "name": "WEBHOOK_AUTH_TOKEN",
+                "envVariable": "WEBHOOK_AUTH_TOKEN_VAR"
+            }
+        ],
+        "rpcs": [
+            {
+                "chainName": "ethereum-testnet-sepolia",
+                "url": "https://0xrpc.io/sep"
+            }
+        ]
+    },
+    "nodes": [
+        {
+            "id": "trigger-1",
+            "type": "httpTrigger",
+            "position": {
+                "x": 100,
+                "y": 200
+            },
+            "data": {
+                "label": "Webhook Endpoint",
+                "config": {
+                    "httpMethod": "POST",
+                    "path": "/incoming-data",
+                    "authentication": {
+                        "type": "headerAuth",
+                        "headerName": "X-Auth-Token",
+                        "headerValueSecret": "WEBHOOK_AUTH_TOKEN"
+                    },
+                    "responseMode": "lastNode",
+                    "responseCode": 200
+                }
+            }
+        },
+        {
+            "id": "parse-1",
+            "type": "jsonParse",
+            "position": {
+                "x": 300,
+                "y": 200
+            },
+            "data": {
+                "label": "Parse Body",
+                "config": {
+                    "strict": true
+                }
+            }
+        },
+        {
+            "id": "log-1",
+            "type": "log",
+            "position": {
+                "x": 500,
+                "y": 200
+            },
+            "data": {
+                "label": "Log Payload",
+                "config": {
+                    "level": "info",
+                    "messageTemplate": "Received webhook: {{parse-1.data}}"
+                }
+            }
+        },
+        {
+            "id": "return-1",
+            "type": "return",
+            "position": {
+                "x": 700,
+                "y": 200
+            },
+            "data": {
+                "label": "Return OK",
+                "config": {
+                    "returnExpression": "\"OK\""
+                }
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "e1",
+            "source": "trigger-1",
+            "target": "parse-1"
+        },
+        {
+            "id": "e2",
+            "source": "parse-1",
+            "target": "log-1"
+        },
+        {
+            "id": "e3",
+            "source": "log-1",
+            "target": "return-1"
+        }
+    ],
+    "createdAt": "2026-02-14T00:00:00Z",
+    "updatedAt": "2026-02-14T00:00:00Z"
+}

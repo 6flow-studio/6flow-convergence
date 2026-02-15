@@ -2,6 +2,8 @@
 //!
 //! Expansion happens BEFORE step building. Each convenience node becomes
 //! multiple primitive nodes using the `{nodeId}___sub` ID convention.
+//! SYNC NOTE: Convenience-node mappings here must track node types/configs in
+//! `shared/model/node.ts` and `compiler/src/parse/types.rs`.
 
 use std::collections::HashMap;
 

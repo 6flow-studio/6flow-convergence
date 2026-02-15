@@ -1,4 +1,6 @@
 //! Integration tests for the Parse phase: workflow JSON parsing, round-trips, graph building.
+//! SYNC NOTE: Update node-type assertions/fixtures here when changing
+//! `shared/model/node.ts` or `compiler/src/parse/types.rs`.
 
 use compiler::parse;
 

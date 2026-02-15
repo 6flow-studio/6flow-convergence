@@ -1,0 +1,10 @@
+{
+  "errors": [
+    {
+      "code": "V007",
+      "message": "Workflow must have at least one terminal node (return or error)"
+    }
+  ],
+  "phase": "validate",
+  "status": "error"
+}

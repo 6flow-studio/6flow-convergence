@@ -1,0 +1,187 @@
+{
+    "id": "filter-branching",
+    "name": "Token Holder Monitor",
+    "description": "Fetch token holders, filter active ones, branch on balance threshold",
+    "version": "1.0.0",
+    "globalConfig": {
+        "isTestnet": true,
+        "defaultChainSelector": "ethereum-testnet-sepolia",
+        "secrets": [
+            {
+                "name": "DATA_API_KEY",
+                "envVariable": "DATA_API_KEY_VAR"
+            }
+        ],
+        "rpcs": [
+            {
+                "chainName": "ethereum-testnet-sepolia",
+                "url": "https://rpc.example.com/ethereum-testnet-sepolia"
+            },
+            {
+                "chainName": "base-testnet-sepolia",
+                "url": "https://rpc.example.com/base-testnet-sepolia"
+            }
+        ]
+    },
+    "nodes": [
+        {
+            "id": "trigger-1",
+            "type": "cronTrigger",
+            "position": {
+                "x": 100,
+                "y": 300
+            },
+            "data": {
+                "label": "Every Hour",
+                "config": {
+                    "schedule": "0 0 * * * *",
+                    "timezone": "UTC"
+                }
+            }
+        },
+        {
+            "id": "http-1",
+            "type": "httpRequest",
+            "position": {
+                "x": 300,
+                "y": 300
+            },
+            "data": {
+                "label": "Fetch Holders",
+                "config": {
+                    "method": "GET",
+                    "url": "https://api.example.com/token-holders",
+                    "authentication": {
+                        "type": "bearerToken",
+                        "tokenSecret": "DATA_API_KEY"
+                    },
+                    "responseFormat": "json",
+                    "timeout": 10000
+                }
+            }
+        },
+        {
+            "id": "parse-1",
+            "type": "jsonParse",
+            "position": {
+                "x": 500,
+                "y": 300
+            },
+            "data": {
+                "label": "Parse Response",
+                "config": {
+                    "sourcePath": "$.holders",
+                    "strict": true
+                }
+            }
+        },
+        {
+            "id": "filter-1",
+            "type": "filter",
+            "position": {
+                "x": 700,
+                "y": 300
+            },
+            "data": {
+                "label": "Active Only",
+                "config": {
+                    "conditions": [
+                        {
+                            "field": "input.isActive",
+                            "operator": "equals",
+                            "value": "true"
+                        }
+                    ],
+                    "combineWith": "and"
+                }
+            }
+        },
+        {
+            "id": "if-1",
+            "type": "if",
+            "position": {
+                "x": 900,
+                "y": 300
+            },
+            "data": {
+                "label": "Balance > 1000?",
+                "config": {
+                    "conditions": [
+                        {
+                            "field": "{{filter-1.balance}}",
+                            "operator": "gt",
+                            "value": "1000"
+                        }
+                    ],
+                    "combineWith": "and"
+                }
+            }
+        },
+        {
+            "id": "log-high",
+            "type": "log",
+            "position": {
+                "x": 1100,
+                "y": 200
+            },
+            "data": {
+                "label": "Log High Balance",
+                "config": {
+                    "level": "info",
+                    "messageTemplate": "High balance holder: {{filter-1.address}} with {{filter-1.balance}}"
+                }
+            }
+        },
+        {
+            "id": "log-low",
+            "type": "log",
+            "position": {
+                "x": 1100,
+                "y": 400
+            },
+            "data": {
+                "label": "Log Low Balance",
+                "config": {
+                    "level": "warn",
+                    "messageTemplate": "Low balance holder: {{filter-1.address}} with {{filter-1.balance}}"
+                }
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "e1",
+            "source": "trigger-1",
+            "target": "http-1"
+        },
+        {
+            "id": "e2",
+            "source": "http-1",
+            "target": "parse-1"
+        },
+        {
+            "id": "e3",
+            "source": "parse-1",
+            "target": "filter-1"
+        },
+        {
+            "id": "e4",
+            "source": "filter-1",
+            "target": "if-1"
+        },
+        {
+            "id": "e5",
+            "source": "if-1",
+            "target": "log-high",
+            "sourceHandle": "true"
+        },
+        {
+            "id": "e6",
+            "source": "if-1",
+            "target": "log-low",
+            "sourceHandle": "false"
+        }
+    ],
+    "createdAt": "2026-02-14T00:00:00Z",
+    "updatedAt": "2026-02-14T00:00:00Z"
+}

@@ -9,6 +9,24 @@
  *   - NestJS backend (storage & validation)
  *   - Rust compiler (code generation to CRE TypeScript)
  */
+/**
+ * SYNC NOTE: If you change node types or node config shapes here, also review:
+ * - frontend/src/lib/node-registry.ts
+ * - frontend/src/components/editor/ConfigPanel.tsx
+ * - frontend/src/components/editor/config-renderers/*
+ * - frontend/src/lib/workflow-convert.ts
+ * - compiler/src/parse/types.rs
+ * - compiler/src/ir/types.rs
+ * - compiler/src/validate/node_rules.rs
+ * - compiler/src/lower/mod.rs
+ * - compiler/src/lower/trigger.rs
+ * - compiler/src/lower/builder.rs
+ * - compiler/src/lower/expand.rs
+ * - compiler/src/lower/extract.rs
+ * - compiler/src/codegen/files.rs
+ * - compiler/tests/helpers/mod.rs
+ * - compiler/tests/parse_basic.rs and compiler/tests/fixtures/*
+ */
 
 // =============================================================================
 // BASE TYPES
@@ -56,11 +74,18 @@ export interface WorkflowEdge {
   targetHandle?: string; // Input port name (for multi-input nodes like Merge)
 }
 
+/** A user-defined RPC endpoint for a specific blockchain */
+export interface RpcEntry {
+  chainName: string;   // e.g. "ethereum-testnet-sepolia"
+  url: string;         // e.g. "https://my-rpc.example.com"
+}
+
 /** Global workflow configuration */
 export interface GlobalConfig {
   isTestnet: boolean;
   defaultChainSelector: string;
   secrets: SecretReference[];
+  rpcs: RpcEntry[];
 }
 
 /** Reference to a secret in secrets.yaml */
@@ -752,8 +777,12 @@ export const exampleWorkflow: Workflow = {
   globalConfig: {
     isTestnet: true,
     defaultChainSelector: 'ethereum-testnet-sepolia',
-    secrets: [
-      { name: 'KYC_API_KEY', envVariable: 'KYC_API_KEY_VAR' },
+    secrets: [],
+    rpcs:[
+      {
+        chainName: 'ethereum-testnet-sepolia',
+        url: 'https://0xrpc.io/sep',
+      }
     ],
   },
   nodes: [

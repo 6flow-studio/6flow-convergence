@@ -2,7 +2,15 @@
     "id": "mint-test",
     "name": "Mint",
     "version": "1.0.0",
-    "globalConfig": { "isTestnet": true, "defaultChainSelector": "ethereum-testnet-sepolia", "secrets": [] },
+    "globalConfig": {
+        "isTestnet": true,
+        "defaultChainSelector": "ethereum-testnet-sepolia",
+        "secrets": [],
+        "rpcs": [
+            { "chainName": "ethereum-mainnet", "url": "https://rpc.example.com/ethereum-mainnet" },
+            { "chainName": "ethereum-testnet-sepolia", "url": "https://rpc.example.com/ethereum-testnet-sepolia" }
+        ]
+    },
     "nodes": [
         {
             "id": "t1",

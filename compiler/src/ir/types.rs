@@ -3,6 +3,8 @@
 //! The IR bridges the visual node-edge graph (input) and CRE TypeScript code (output).
 //! A visual DAG of 23+ node types is lowered into a sequential execution plan with
 //! structured branching that maps directly to a CRE handler function body.
+//! SYNC NOTE: Node/config changes in `shared/model/node.ts` can require IR updates
+//! here (new/changed trigger or operation shapes), plus matching lower/codegen/test updates.
 
 use serde::{Deserialize, Serialize};
 
@@ -25,8 +27,17 @@ pub struct WorkflowIR {
     pub required_secrets: Vec<SecretDeclaration>,
     /// Distinct EVM chains used. Each gets its own `EVMClient` instance.
     pub evm_chains: Vec<EvmChainUsage>,
+    /// User-defined RPC endpoints from GlobalConfig.
+    pub user_rpcs: Vec<RpcEntry>,
     /// The handler function body — the core execution plan.
     pub handler_body: Block,
+}
+
+/// A user-defined RPC endpoint for a specific blockchain.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RpcEntry {
+    pub chain_name: String,
+    pub url: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -104,7 +115,6 @@ pub enum TriggerDef {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CronTriggerDef {
     pub schedule: ValueExpr,
-    pub timezone: Option<ValueExpr>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

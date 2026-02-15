@@ -1,6 +1,9 @@
 //! Rust types mirroring `shared/model/node.ts`.
 //!
 //! These types are the serde target for the frontend workflow JSON.
+//! SYNC NOTE: Keep this file aligned with `shared/model/node.ts`.
+//! When NodeType/config shapes change, also review validate/lower modules
+//! and frontend registry/config renderers listed in `shared/model/node.ts`.
 
 use serde::{Deserialize, Serialize};
 
@@ -38,6 +41,14 @@ pub struct GlobalConfig {
     pub is_testnet: bool,
     pub default_chain_selector: String,
     pub secrets: Vec<SecretReference>,
+    pub rpcs: Vec<RpcEntry>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RpcEntry {
+    pub chain_name: String,
+    pub url: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

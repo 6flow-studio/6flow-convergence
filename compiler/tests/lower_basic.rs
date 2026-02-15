@@ -3,6 +3,7 @@
 use compiler::parse;
 use compiler::validate;
 use compiler::lower;
+use compiler::ir::types::Operation;
 
 #[test]
 fn lower_linear_workflow() {
@@ -21,6 +22,22 @@ fn lower_linear_workflow() {
     assert_eq!(ir.handler_body.steps[2].id, "r1");
     assert_eq!(ir.required_secrets.len(), 1);
     assert_eq!(ir.required_secrets[0].name, "API_KEY");
+
+    // Verify JsonParse auto-wired its input from the HttpRequest predecessor
+    let parse_step = &ir.handler_body.steps[1];
+    assert_eq!(parse_step.id, "p1");
+    match &parse_step.operation {
+        Operation::JsonParse(op) => {
+            match &op.input {
+                compiler::ir::types::ValueExpr::Binding(binding) => {
+                    assert_eq!(binding.step_id, "h1");
+                    assert_eq!(binding.field_path, "body");
+                }
+                other => panic!("Expected Binding ValueExpr, got {:?}", other),
+            }
+        }
+        other => panic!("Expected JsonParse operation, got {:?}", other),
+    }
 }
 
 #[test]

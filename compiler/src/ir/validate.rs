@@ -596,7 +596,6 @@ mod tests {
             },
             trigger: TriggerDef::Cron(CronTriggerDef {
                 schedule: ValueExpr::config("schedule"),
-                timezone: None,
             }),
             trigger_param: TriggerParam::CronTrigger,
             config_schema: vec![ConfigField {
@@ -607,6 +606,7 @@ mod tests {
             }],
             required_secrets: vec![],
             evm_chains: vec![],
+            user_rpcs: vec![],
             handler_body: Block {
                 steps: vec![
                     Step {

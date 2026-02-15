@@ -26,8 +26,8 @@ fn kyc_minting_codegen_config_json_snapshot() {
     let config = output
         .files
         .iter()
-        .find(|f| f.path == "config.json")
-        .expect("config.json should be generated");
+        .find(|f| f.path == "config.staging.json")
+        .expect("config.staging.json should be generated");
 
     insta::assert_snapshot!("kyc_minting_config_json", config.content);
 }
@@ -67,13 +67,14 @@ fn kyc_minting_codegen_produces_all_files() {
 
     let paths: Vec<&str> = output.files.iter().map(|f| f.path.as_str()).collect();
     assert!(paths.contains(&"main.ts"));
-    assert!(paths.contains(&"config.json"));
+    assert!(paths.contains(&"config.staging.json"));
     assert!(paths.contains(&"secrets.yaml"));
     assert!(paths.contains(&"workflow.yaml"));
     assert!(paths.contains(&"project.yaml"));
     assert!(paths.contains(&"package.json"));
     assert!(paths.contains(&"tsconfig.json"));
-    assert_eq!(output.files.len(), 7);
+    assert!(paths.contains(&".env"));
+    assert_eq!(output.files.len(), 8);
 }
 
 #[test]

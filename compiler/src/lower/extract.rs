@@ -1,4 +1,6 @@
 //! Extract global resources from the workflow: config_schema, secrets, evm_chains.
+//! SYNC NOTE: Node-to-resource extraction matches must stay aligned with
+//! node types/configs in `shared/model/node.ts`.
 
 use std::collections::HashSet;
 

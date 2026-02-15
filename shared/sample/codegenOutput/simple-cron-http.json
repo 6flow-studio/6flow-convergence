@@ -1,0 +1,38 @@
+{
+  "files": [
+    {
+      "content": "import { cre, ok, consensusIdenticalAggregation, Runner, type Runtime, type HTTPSendRequester, type CronTrigger } from \"@chainlink/cre-sdk\";\nimport { z } from \"zod\";\n\nconst configSchema = z.object({\n  schedule: z.string().default(\"TZ=UTC 0 */5 * * * *\"),\n});\n\ntype Config = z.infer<typeof configSchema>;\n\nconst fetch_http_1 = (sendRequester: HTTPSendRequester, config: Config) => {\n  const req = {\n    url: \"https://fake-json-api.mock.beeceptor.com/users\",\n    method: \"GET\" as const,\n  };\n\n  const resp = sendRequester.sendRequest(req).result();\n\n  if (!ok(resp)) {\n    throw new Error(`HTTP request failed with status: ${resp.statusCode}`);\n  }\n\n  return { statusCode: resp.statusCode, body: resp.body, headers: resp.headers };\n};\n\nconst onCronTrigger = (runtime: Runtime<Config>, triggerData: CronTrigger): string => {\n  const httpClient = new cre.capabilities.HTTPClient();\n\n  // GET Status\n  const step_http_1 = httpClient.sendRequest(runtime, fetch_http_1, consensusIdenticalAggregation())(runtime.config).result();\n  return step_http_1.body;\n};\n\nconst initWorkflow = (config: Config) => {\n  return [\n    cre.handler(\n      new cre.capabilities.CronCapability().trigger({\n        schedule: config.schedule,\n      }),\n      onCronTrigger,\n    ),\n  ];\n};\n\nexport async function main() {\n  const runner = await Runner.newRunner<Config>({ configSchema });\n  await runner.run(initWorkflow);\n}\n\nmain();\n",
+      "path": "main.ts"
+    },
+    {
+      "content": "{\n  \"schedule\": \"TZ=UTC 0 */5 * * * *\"\n}\n",
+      "path": "config.staging.json"
+    },
+    {
+      "content": "secretsNames: {}\n",
+      "path": "secrets.yaml"
+    },
+    {
+      "content": "staging-settings:\n  user-workflow:\n    workflow-name: \"simple-cron-http-staging\"\n  workflow-artifacts:\n    workflow-path: \"./main.ts\"\n    config-path: \"./config.staging.json\"\n    secrets-path: \"../secrets.yaml\"\nproduction-settings:\n  user-workflow:\n    workflow-name: \"simple-cron-http-production\"\n  workflow-artifacts:\n    workflow-path: \"./main.ts\"\n    config-path: \"./config.production.json\"\n    secrets-path: \"../secrets.yaml\"\n",
+      "path": "workflow.yaml"
+    },
+    {
+      "content": "staging-settings:\n  rpcs:\n    - chain-name: ethereum-testnet-sepolia\n      url: https://0xrpc.io/sep\n",
+      "path": "project.yaml"
+    },
+    {
+      "content": "{\n  \"name\": \"simple-cron-http\",\n  \"version\": \"1.0.0\",\n  \"main\": \"dist/main.js\",\n  \"private\": true,\n  \"scripts\": {\n    \"postinstall\": \"bun x cre-setup\"\n  },\n  \"dependencies\": {\n    \"@chainlink/cre-sdk\": \"^1.0.9\",\n    \"zod\": \"^3.24\"\n  },\n  \"devDependencies\": {\n    \"@types/bun\": \"1.2.21\"\n  }\n}\n",
+      "path": "package.json"
+    },
+    {
+      "content": "{\n  \"compilerOptions\": {\n    \"target\": \"ES2022\",\n    \"module\": \"ES2022\",\n    \"moduleResolution\": \"bundler\",\n    \"strict\": true,\n    \"esModuleInterop\": true,\n    \"skipLibCheck\": true,\n    \"forceConsistentCasingInFileNames\": true,\n    \"outDir\": \"./dist\",\n    \"rootDir\": \".\"\n  },\n  \"include\": [\"*.ts\"]\n}\n",
+      "path": "tsconfig.json"
+    },
+    {
+      "content": "# Environment variables for CRE simulation\n# Fill in real values before running `cre simulate`\n# No secrets required for this workflow\n",
+      "path": ".env"
+    }
+  ],
+  "status": "success",
+  "warnings": []
+}

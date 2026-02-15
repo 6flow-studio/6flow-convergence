@@ -38,9 +38,6 @@ fn emit_cron_init(cron: &CronTriggerDef, handler_name: &str, w: &mut CodeWriter)
     w.line("new cre.capabilities.CronCapability().trigger({");
     w.indent();
     w.line(&format!("schedule: {},", emit_value_expr_init(&cron.schedule)));
-    if let Some(ref tz) = cron.timezone {
-        w.line(&format!("timezone: {},", emit_value_expr_init(tz)));
-    }
     w.dedent();
     w.line("}),");
     w.line(&format!("{},", handler_name));
