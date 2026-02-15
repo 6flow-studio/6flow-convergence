@@ -1,0 +1,85 @@
+{
+    "id": "simple-cron-http",
+    "name": "Get Random Number",
+    "description": "Get random number from external API every 5 minutes",
+    "version": "1.0.0",
+    "globalConfig": {
+        "isTestnet": true,
+        "defaultChainSelector": "ethereum-mainnet",
+        "secrets": [],
+        "rpcs": [
+            {
+                "chainName": "ethereum-testnet-sepolia",
+                "url": "https://0xrpc.io/sep"
+            }
+        ]
+    },
+    "nodes": [
+        {
+            "id": "trigger-1",
+            "type": "cronTrigger",
+            "position": {
+                "x": 100,
+                "y": 200
+            },
+            "data": {
+                "label": "Every 5 Minutes",
+                "config": {
+                    "schedule": "0 */5 * * * *",
+                    "timezone": "UTC"
+                }
+            }
+        },
+        {
+            "id": "http-1",
+            "type": "httpRequest",
+            "position": {
+                "x": 300,
+                "y": 200
+            },
+            "data": {
+                "label": "GET Status",
+                "config": {
+                    "method": "GET",
+                    "url": "https://fake-json-api.mock.beeceptor.com/users",
+                    "authentication": {
+                        "type": "none"
+                    },
+                    "responseFormat": "json",
+                    "timeout": 5000,
+                    "expectedStatusCodes": [
+                        200
+                    ]
+                }
+            }
+        },
+        {
+            "id": "return-1",
+            "type": "return",
+            "position": {
+                "x": 500,
+                "y": 200
+            },
+            "data": {
+                "label": "Return Result",
+                "config": {
+                    "returnExpression": "{{http-1.body}}"
+                }
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "e1",
+            "source": "trigger-1",
+            "target": "http-1"
+        },
+        {
+            "id": "e2",
+            "source": "http-1",
+            "target": "return-1"
+        }
+    ],
+    "createdAt": "2026-02-14T00:00:00Z",
+    "updatedAt": "2026-02-14T00:00:00Z"
+}

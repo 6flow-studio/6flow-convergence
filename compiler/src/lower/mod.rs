@@ -1,6 +1,8 @@
 //! Lowering phase: Workflow → WorkflowIR.
 //!
 //! Transforms the parsed visual workflow into the semantic IR consumed by codegen.
+//! SYNC NOTE: When node types/configs change in `shared/model/node.ts`,
+//! re-check this orchestrator and the lower submodules for full coverage.
 
 pub mod topo;
 pub mod trigger;
@@ -69,6 +71,13 @@ pub fn lower(workflow: &Workflow, graph: &WorkflowGraph) -> Result<WorkflowIR, V
         config_schema: config_fields,
         required_secrets: secrets,
         evm_chains,
+        user_rpcs: workflow.global_config.rpcs
+            .iter()
+            .map(|r| RpcEntry {
+                chain_name: r.chain_name.clone(),
+                url: r.url.clone(),
+            })
+            .collect(),
         handler_body,
     };
 

@@ -7,6 +7,10 @@
         "defaultChainSelector": "",
         "secrets": [
             { "name": "API_KEY", "envVariable": "API_KEY_VAR" }
+        ],
+        "rpcs": [
+            { "chainName": "ethereum-mainnet", "url": "https://rpc.example.com/ethereum-mainnet" },
+            { "chainName": "ethereum-testnet-sepolia", "url": "https://rpc.example.com/ethereum-testnet-sepolia" }
         ]
     },
     "nodes": [

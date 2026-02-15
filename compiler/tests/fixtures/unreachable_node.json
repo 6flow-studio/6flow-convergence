@@ -2,7 +2,15 @@
     "id": "test",
     "name": "Test",
     "version": "1.0.0",
-    "globalConfig": { "isTestnet": true, "defaultChainSelector": "", "secrets": [] },
+    "globalConfig": {
+        "isTestnet": true,
+        "defaultChainSelector": "",
+        "secrets": [],
+        "rpcs": [
+            { "chainName": "ethereum-mainnet", "url": "https://rpc.example.com/ethereum-mainnet" },
+            { "chainName": "ethereum-testnet-sepolia", "url": "https://rpc.example.com/ethereum-testnet-sepolia" }
+        ]
+    },
     "nodes": [
         {
             "id": "t1",

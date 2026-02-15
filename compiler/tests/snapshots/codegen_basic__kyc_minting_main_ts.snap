@@ -7,7 +7,7 @@ import { encodeFunctionData, parseAbi } from "viem";
 import { z } from "zod";
 
 const configSchema = z.object({
-  schedule: z.string().default("0 */10 * * * *"),
+  schedule: z.string().default("TZ=UTC 0 */10 * * * *"),
   walletAddress: z.string(),
   tokenContractAddress: z.string(),
   mintAmount: z.string(),
@@ -69,7 +69,6 @@ const initWorkflow = (config: Config) => {
     cre.handler(
       new cre.capabilities.CronCapability().trigger({
         schedule: config.schedule,
-        timezone: "UTC",
       }),
       onCronTrigger,
     ),

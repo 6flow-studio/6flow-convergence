@@ -1,3 +1,6 @@
+//! SYNC NOTE: Test IR builders/helpers in this file should be updated when
+//! node/type changes in `shared/model/node.ts` lead to IR/lowering shape changes.
+
 use compiler::ir::*;
 
 // =============================================================================
@@ -19,14 +22,13 @@ pub fn kyc_minting_ir() -> WorkflowIR {
         },
         trigger: TriggerDef::Cron(CronTriggerDef {
             schedule: ValueExpr::config("schedule"),
-            timezone: Some(ValueExpr::string("UTC")),
         }),
         trigger_param: TriggerParam::CronTrigger,
         config_schema: vec![
             ConfigField {
                 name: "schedule".into(),
                 zod_type: ZodType::String,
-                default_value: Some("0 */10 * * * *".into()),
+                default_value: Some("TZ=UTC 0 */10 * * * *".into()),
                 description: Some("Cron schedule (min 30s interval)".into()),
             },
             ConfigField {
@@ -57,6 +59,7 @@ pub fn kyc_minting_ir() -> WorkflowIR {
             binding_name: "evmClient_eth_sepolia".into(),
             used_for_trigger: false,
         }],
+        user_rpcs: vec![],
         handler_body: Block {
             steps: vec![
                 Step {
@@ -233,7 +236,6 @@ pub fn base_ir() -> WorkflowIR {
         },
         trigger: TriggerDef::Cron(CronTriggerDef {
             schedule: ValueExpr::config("schedule"),
-            timezone: None,
         }),
         trigger_param: TriggerParam::CronTrigger,
         config_schema: vec![ConfigField {
@@ -244,6 +246,7 @@ pub fn base_ir() -> WorkflowIR {
         }],
         required_secrets: vec![],
         evm_chains: vec![],
+        user_rpcs: vec![],
         handler_body: Block {
             steps: vec![Step {
                 id: "return-final".into(),

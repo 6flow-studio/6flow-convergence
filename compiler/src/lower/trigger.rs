@@ -1,4 +1,6 @@
 //! Map trigger node config → IR TriggerDef + TriggerParam.
+//! SYNC NOTE: Trigger variants here must stay aligned with
+//! `shared/model/node.ts` and `compiler/src/parse/types.rs`.
 
 use crate::error::CompilerError;
 use crate::ir::types::*;
@@ -32,19 +34,24 @@ fn lower_cron_trigger(
     config: &CronTriggerConfig,
     config_fields: &mut Vec<ConfigField>,
 ) -> Result<TriggerResult, Vec<CompilerError>> {
+    // Combine timezone into schedule string (CRE expects "TZ=... <cron>")
+    let combined_schedule = match &config.timezone {
+        Some(tz) => format!("TZ={} {}", tz, config.schedule),
+        None => config.schedule.clone(),
+    };
+
     // Add schedule to config_schema
     config_fields.push(ConfigField {
         name: "schedule".into(),
         zod_type: ZodType::String,
-        default_value: Some(config.schedule.clone()),
+        default_value: Some(combined_schedule),
         description: Some("Cron schedule (min 30s interval)".into()),
     });
 
     let schedule = ValueExpr::config("schedule");
-    let timezone = config.timezone.as_ref().map(|tz| ValueExpr::string(tz.as_str()));
 
     Ok(TriggerResult {
-        trigger_def: TriggerDef::Cron(CronTriggerDef { schedule, timezone }),
+        trigger_def: TriggerDef::Cron(CronTriggerDef { schedule }),
         trigger_param: TriggerParam::CronTrigger,
         evm_chain_for_trigger: None,
     })

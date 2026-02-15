@@ -16,11 +16,6 @@ expression: ir
     "schedule": {
       "kind": "ConfigRef",
       "field": "schedule"
-    },
-    "timezone": {
-      "kind": "Literal",
-      "literal_type": "String",
-      "value": "UTC"
     }
   },
   "trigger_param": "CronTrigger",
@@ -28,7 +23,7 @@ expression: ir
     {
       "name": "schedule",
       "zod_type": "String",
-      "default_value": "0 */10 * * * *",
+      "default_value": "TZ=UTC 0 */10 * * * *",
       "description": "Cron schedule (min 30s interval)"
     },
     {
@@ -63,6 +58,7 @@ expression: ir
       "used_for_trigger": false
     }
   ],
+  "user_rpcs": [],
   "handler_body": {
     "steps": [
       {

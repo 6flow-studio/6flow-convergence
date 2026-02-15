@@ -8,6 +8,10 @@
         "defaultChainSelector": "ethereum-testnet-sepolia",
         "secrets": [
             { "name": "KYC_API_KEY", "envVariable": "KYC_API_KEY_VAR" }
+        ],
+        "rpcs": [
+            { "chainName": "ethereum-mainnet", "url": "https://rpc.example.com/ethereum-mainnet" },
+            { "chainName": "ethereum-testnet-sepolia", "url": "https://rpc.example.com/ethereum-testnet-sepolia" }
         ]
     },
     "nodes": [

@@ -1,4 +1,6 @@
 //! Per-node configuration validation.
+//! SYNC NOTE: Match arms here must track `WorkflowNode` in
+//! `compiler/src/parse/types.rs` and `shared/model/node.ts`.
 
 use crate::error::CompilerError;
 use crate::parse::types::*;

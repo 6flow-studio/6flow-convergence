@@ -1,5 +1,7 @@
 //! Step sequence builder: walk topo-sorted nodes, expand convenience nodes,
 //! detect branch/merge patterns, build IR Block/Step structures.
+//! SYNC NOTE: `lower_node` and branch handling matches must be updated when
+//! node types/configs change in `shared/model/node.ts`.
 
 use std::collections::{HashMap, HashSet};
 
@@ -83,7 +85,7 @@ fn build_steps(
                         steps.push(expanded_to_step(es));
                     }
                 } else {
-                    match lower_node(node, id_map) {
+                    match lower_node(node, graph, node_map, id_map) {
                         Ok(step) => steps.push(step),
                         Err(e) => errors.extend(e),
                     }
@@ -307,9 +309,38 @@ fn expanded_to_step(es: ExpandedStep) -> Step {
     }
 }
 
+/// Resolve the input for a node that implicitly consumes its graph predecessor's output.
+/// `http_field` is used when the predecessor is HttpRequest (e.g. "body"),
+/// `default_field` is used for all other predecessor types.
+fn resolve_predecessor_input(
+    node_id: &str,
+    http_field: &str,
+    default_field: &str,
+    graph: &WorkflowGraph,
+    node_map: &HashMap<&str, &WorkflowNode>,
+    id_map: &HashMap<String, String>,
+) -> ValueExpr {
+    let preds = graph.predecessors(node_id);
+    let Some(pred_id) = preds.first() else {
+        return ValueExpr::raw("/* no predecessor */");
+    };
+
+    // Resolve through id_map in case predecessor was a convenience node
+    let step_id = id_map.get(*pred_id).cloned().unwrap_or_else(|| pred_id.to_string());
+
+    let field = match node_map.get(*pred_id).map(|n| n.node_type()) {
+        Some("httpRequest") | Some("ai") => http_field,
+        _ => default_field,
+    };
+
+    ValueExpr::binding(step_id, field)
+}
+
 /// Lower a non-convenience, non-trigger, non-if node to a Step.
 fn lower_node(
     node: &WorkflowNode,
+    graph: &WorkflowGraph,
+    node_map: &HashMap<&str, &WorkflowNode>,
     id_map: &HashMap<String, String>,
 ) -> Result<Step, Vec<CompilerError>> {
     let node_id = node.id();
@@ -321,9 +352,9 @@ fn lower_node(
         WorkflowNode::EvmWrite(n) => lower_evm_write(node_id, &n.data.config, id_map),
         WorkflowNode::GetSecret(n) => lower_get_secret(node_id, &n.data.config),
         WorkflowNode::CodeNode(n) => lower_code_node(node_id, &n.data.config, id_map),
-        WorkflowNode::JsonParse(n) => lower_json_parse(node_id, &n.data.config, id_map),
+        WorkflowNode::JsonParse(n) => lower_json_parse(node_id, &n.data.config, graph, node_map, id_map),
         WorkflowNode::AbiEncode(n) => lower_abi_encode(node_id, &n.data.config, id_map),
-        WorkflowNode::AbiDecode(n) => lower_abi_decode(node_id, &n.data.config, id_map),
+        WorkflowNode::AbiDecode(n) => lower_abi_decode(node_id, &n.data.config, graph, node_map, id_map),
         WorkflowNode::Filter(n) => lower_filter(node_id, &n.data.config, id_map),
         WorkflowNode::Ai(n) => lower_ai(node_id, &n.data.config, id_map),
         WorkflowNode::Log(n) => lower_log(node_id, &n.data.config, id_map),
@@ -592,13 +623,13 @@ fn lower_code_node(
 fn lower_json_parse(
     node_id: &str,
     config: &crate::parse::types::JsonParseConfig,
-    _id_map: &HashMap<String, String>,
+    graph: &WorkflowGraph,
+    node_map: &HashMap<&str, &WorkflowNode>,
+    id_map: &HashMap<String, String>,
 ) -> (Operation, Option<OutputBinding>) {
-    // JsonParse takes its input from the immediately preceding step's body.
-    // The actual input binding is determined by the graph edge (predecessor's output).
-    // For now, we use a placeholder that the builder will resolve.
+    let input = resolve_predecessor_input(node_id, "body", "", graph, node_map, id_map);
     let op = Operation::JsonParse(JsonParseOp {
-        input: ValueExpr::raw("/* input from predecessor */"),
+        input,
         source_path: config.source_path.clone(),
         strict: config.strict.unwrap_or(true),
     });
@@ -645,12 +676,15 @@ fn lower_abi_encode(
 fn lower_abi_decode(
     node_id: &str,
     config: &crate::parse::types::AbiDecodeConfig,
-    _id_map: &HashMap<String, String>,
+    graph: &WorkflowGraph,
+    node_map: &HashMap<&str, &WorkflowNode>,
+    id_map: &HashMap<String, String>,
 ) -> (Operation, Option<OutputBinding>) {
     let abi_params_json = serde_json::to_string(&config.abi_params).unwrap_or_default();
+    let input = resolve_predecessor_input(node_id, "", "", graph, node_map, id_map);
 
     let op = Operation::AbiDecode(AbiDecodeOp {
-        input: ValueExpr::raw("/* input from predecessor */"),
+        input,
         abi_params_json,
         output_names: config.output_names.clone(),
     });

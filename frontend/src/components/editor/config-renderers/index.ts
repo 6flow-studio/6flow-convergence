@@ -1,3 +1,7 @@
+/**
+ * SYNC NOTE: Keep renderer exports aligned with `NodeType` + config interfaces
+ * in `shared/model/node.ts` and `renderNodeConfig` in `ConfigPanel.tsx`.
+ */
 export { CodeNodeConfigRenderer } from "./CodeNodeConfigRenderer";
 export { HttpRequestConfigRenderer } from "./HttpRequestConfigRenderer";
 export { HttpTriggerConfigRenderer } from "./HttpTriggerConfigRenderer";

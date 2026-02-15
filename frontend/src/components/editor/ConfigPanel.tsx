@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * SYNC NOTE: The `renderNodeConfig` switch must stay aligned with
+ * node types/configs in `shared/model/node.ts` (see checklist there).
+ */
 import { useRef, useState, useCallback, useEffect } from "react";
 import { useEditorStore } from "@/lib/editor-store";
 import { getNodeEntry, CATEGORY_COLORS } from "@/lib/node-registry";

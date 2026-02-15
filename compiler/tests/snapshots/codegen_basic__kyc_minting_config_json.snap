@@ -3,7 +3,7 @@ source: tests/codegen_basic.rs
 expression: config.content
 ---
 {
-  "schedule": "0 */10 * * * *",
+  "schedule": "TZ=UTC 0 */10 * * * *",
   "walletAddress": "",
   "tokenContractAddress": "",
   "mintAmount": ""

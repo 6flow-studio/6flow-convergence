@@ -1,3 +1,7 @@
+/**
+ * SYNC NOTE: Keep this registry in sync with node types/configs in
+ * `shared/model/node.ts` (see the checklist comment there).
+ */
 import type { NodeType, NodeCategory } from "@6flow/shared/model/node";
 
 export interface NodeRegistryEntry {

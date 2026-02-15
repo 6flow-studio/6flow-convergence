@@ -1,3 +1,8 @@
+/**
+ * SYNC NOTE: Conversion assumes `node.type` is the shared NodeType from
+ * `shared/model/node.ts` and React Flow `type` is NodeCategory.
+ * Re-check this file when NodeType/NodeCategory changes.
+ */
 import type { NodeType, WorkflowNode as SharedWorkflowNode } from "@6flow/shared/model/node";
 import { getNodeCategory } from "@6flow/shared/model/node";
 import type { WorkflowNode } from "./editor-store";

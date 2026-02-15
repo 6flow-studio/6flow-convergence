@@ -1,0 +1,43 @@
+{
+  "files": [
+    {
+      "content": "import { cre, Runner, type Runtime } from \"@chainlink/cre-sdk\";\n\ntype Config = Record<string, never>;\n\nconst onHttpRequest = (runtime: Runtime<Config>, triggerData: HTTPRequest): string => {\n\n  // Parse Body\n  const step_parse_1 = JSON.parse(Buffer.from(step_trigger_1, \"base64\").toString(\"utf-8\"));\n  runtime.log(`Received webhook: ${step_parse_1.data}`);\n  return \"\\\"OK\\\"\";\n};\n\nconst initWorkflow = (config: Config) => {\n  return [\n    cre.handler(\n      new cre.capabilities.HTTPCapability().trigger({\n        path: \"/incoming-data\",\n        methods: [\"POST\"],\n      }),\n      onHttpRequest,\n    ),\n  ];\n};\n\nexport async function main() {\n  const runner = await Runner.newRunner<Config>();\n  await runner.run(initWorkflow);\n}\n\nmain();\n",
+      "path": "main.ts"
+    },
+    {
+      "content": "{\n\n}\n",
+      "path": "config.staging.json"
+    },
+    {
+      "content": "secretsNames:\n  WEBHOOK_AUTH_TOKEN:\n    - WEBHOOK_AUTH_TOKEN_VAR\n",
+      "path": "secrets.yaml"
+    },
+    {
+      "content": "staging-settings:\n  user-workflow:\n    workflow-name: \"webhook-parse-log-staging\"\n  workflow-artifacts:\n    workflow-path: \"./main.ts\"\n    config-path: \"./config.staging.json\"\n    secrets-path: \"../secrets.yaml\"\nproduction-settings:\n  user-workflow:\n    workflow-name: \"webhook-parse-log-production\"\n  workflow-artifacts:\n    workflow-path: \"./main.ts\"\n    config-path: \"./config.production.json\"\n    secrets-path: \"../secrets.yaml\"\n",
+      "path": "workflow.yaml"
+    },
+    {
+      "content": "staging-settings:\n  rpcs:\n    - chain-name: ethereum-testnet-sepolia\n      url: https://0xrpc.io/sep\n",
+      "path": "project.yaml"
+    },
+    {
+      "content": "{\n  \"name\": \"webhook-parse-log\",\n  \"version\": \"1.0.0\",\n  \"main\": \"dist/main.js\",\n  \"private\": true,\n  \"scripts\": {\n    \"postinstall\": \"bun x cre-setup\"\n  },\n  \"dependencies\": {\n    \"@chainlink/cre-sdk\": \"^1.0.9\",\n    \"zod\": \"^3.24\"\n  },\n  \"devDependencies\": {\n    \"@types/bun\": \"1.2.21\"\n  }\n}\n",
+      "path": "package.json"
+    },
+    {
+      "content": "{\n  \"compilerOptions\": {\n    \"target\": \"ES2022\",\n    \"module\": \"ES2022\",\n    \"moduleResolution\": \"bundler\",\n    \"strict\": true,\n    \"esModuleInterop\": true,\n    \"skipLibCheck\": true,\n    \"forceConsistentCasingInFileNames\": true,\n    \"outDir\": \"./dist\",\n    \"rootDir\": \".\"\n  },\n  \"include\": [\"*.ts\"]\n}\n",
+      "path": "tsconfig.json"
+    },
+    {
+      "content": "# Environment variables for CRE simulation\n# Fill in real values before running `cre simulate`\n\nWEBHOOK_AUTH_TOKEN_VAR=<WEBHOOK_AUTH_TOKEN>\n",
+      "path": ".env"
+    }
+  ],
+  "status": "success",
+  "warnings": [
+    {
+      "code": "E003",
+      "message": "Step 'parse-1' references binding 'trigger-1' which is not in scope (not defined in a prior step or an ancestor block)"
+    }
+  ]
+}
