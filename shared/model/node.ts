@@ -61,6 +61,7 @@ export interface GlobalConfig {
   isTestnet: boolean;
   defaultChainSelector: string;
   secrets: SecretReference[];
+  privateKey?: string; // Workflow signer private key
 }
 
 /** Reference to a secret in secrets.yaml */

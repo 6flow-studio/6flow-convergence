@@ -9,8 +9,9 @@ import {
   applyEdgeChanges,
   addEdge,
 } from "@xyflow/react";
-import type { NodeType } from "@6flow/shared/model/node";
+import type { GlobalConfig, NodeType } from "@6flow/shared/model/node";
 import { getNodeEntry } from "./node-registry";
+import { createDefaultGlobalConfig } from "./workflow-global-config";
 
 export interface WorkflowNodeData {
   label: string;
@@ -28,6 +29,7 @@ interface EditorState {
   selectedNodeId: string | null;
   workflowName: string;
   workflowId: string | null;
+  globalConfig: GlobalConfig;
 
   onNodesChange: OnNodesChange<WorkflowNode>;
   onEdgesChange: OnEdgesChange;
@@ -41,7 +43,8 @@ interface EditorState {
   clearSelection: () => void;
   setWorkflowName: (name: string) => void;
   setWorkflowId: (id: string | null) => void;
-  loadWorkflow: (nodes: WorkflowNode[], edges: WorkflowEdge[]) => void;
+  setGlobalConfig: (patch: Partial<GlobalConfig>) => void;
+  loadWorkflow: (nodes: WorkflowNode[], edges: WorkflowEdge[], globalConfig: GlobalConfig) => void;
 }
 
 let nodeIdCounter = 0;
@@ -56,6 +59,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   selectedNodeId: null,
   workflowName: "Untitled Workflow",
   workflowId: null,
+  globalConfig: createDefaultGlobalConfig(),
 
   onNodesChange: (changes) => {
     set({ nodes: applyNodeChanges(changes, get().nodes) });
@@ -119,8 +123,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   clearSelection: () => set({ selectedNodeId: null }),
   setWorkflowName: (name) => set({ workflowName: name }),
   setWorkflowId: (id) => set({ workflowId: id }),
+  setGlobalConfig: (patch) => {
+    set({
+      globalConfig: {
+        ...get().globalConfig,
+        ...patch,
+      },
+    });
+  },
 
-  loadWorkflow: (nodes, edges) => {
-    set({ nodes, edges, selectedNodeId: null });
+  loadWorkflow: (nodes, edges, globalConfig) => {
+    set({ nodes, edges, globalConfig, selectedNodeId: null });
   },
 }));

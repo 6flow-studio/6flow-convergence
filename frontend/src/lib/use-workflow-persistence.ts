@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useEditorStore } from "./editor-store";
 import { toReactFlowNodes, fromReactFlowNodes } from "./workflow-convert";
+import { createDefaultGlobalConfig, sanitizeGlobalConfig } from "./workflow-global-config";
 import type { Id } from "../../convex/_generated/dataModel";
 
 type SaveStatus = "idle" | "saving" | "saved";
@@ -28,17 +29,28 @@ export function useWorkflowPersistence(workflowId: string) {
     const store = useEditorStore.getState();
     store.setWorkflowName(workflow.name);
     store.setWorkflowId(workflow._id);
+
+    const defaultGlobalConfig = createDefaultGlobalConfig();
+    let parsedGlobalConfig = defaultGlobalConfig;
+    if (workflow.globalConfig) {
+      try {
+        parsedGlobalConfig = sanitizeGlobalConfig(JSON.parse(workflow.globalConfig));
+      } catch {
+        parsedGlobalConfig = defaultGlobalConfig;
+      }
+    }
+
     try {
       const parsedNodes = JSON.parse(workflow.nodes);
       const parsedEdges = JSON.parse(workflow.edges);
-      store.loadWorkflow(toReactFlowNodes(parsedNodes), parsedEdges);
+      store.loadWorkflow(toReactFlowNodes(parsedNodes), parsedEdges, parsedGlobalConfig);
     } catch {
-      // ignore parse errors
+      store.loadWorkflow([], [], parsedGlobalConfig);
     }
   }, [workflow]);
 
   const save = useCallback(async () => {
-    const { workflowName, nodes, edges } = useEditorStore.getState();
+    const { workflowName, nodes, edges, globalConfig } = useEditorStore.getState();
     setSaveStatus("saving");
     try {
       await saveMutation({
@@ -46,6 +58,7 @@ export function useWorkflowPersistence(workflowId: string) {
         name: workflowName,
         nodes: JSON.stringify(fromReactFlowNodes(nodes)),
         edges: JSON.stringify(edges),
+        globalConfig: JSON.stringify(globalConfig),
       });
       setSaveStatus("saved");
     } catch {
