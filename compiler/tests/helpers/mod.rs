@@ -81,7 +81,7 @@ pub fn kyc_minting_ir() -> WorkflowIR {
                         headers: vec![],
                         query_params: vec![],
                         body: None,
-                        authentication: Some(HttpAuth::BearerToken {
+                        authentication: Some(HttpAuth {
                             token_secret: "KYC_API_KEY".into(),
                         }),
                         cache_max_age_seconds: Some(60),
@@ -129,7 +129,8 @@ pub fn kyc_minting_ir() -> WorkflowIR {
                                     source_node_ids: vec!["mint-1".into()],
                                     label: "ABI encode mint call".into(),
                                     operation: Operation::AbiEncode(AbiEncodeOp {
-                                        abi_params_json: r#"[{"name":"to","type":"address"},{"name":"amount","type":"uint256"}]"#.into(),
+                                        function_name: Some("mint".into()),
+                                        abi_json: r#"{"name":"mint","type":"function","inputs":[{"name":"to","type":"address"},{"name":"amount","type":"uint256"}],"outputs":[],"stateMutability":"nonpayable"}"#.into(),
                                         data_mappings: vec![
                                             AbiDataMapping {
                                                 param_name: "to".into(),
@@ -377,7 +378,7 @@ pub fn http_get_with_bearer(url: &str, token_secret: &str) -> Operation {
         headers: vec![],
         query_params: vec![],
         body: None,
-        authentication: Some(HttpAuth::BearerToken {
+        authentication: Some(HttpAuth {
             token_secret: token_secret.into(),
         }),
         cache_max_age_seconds: Some(60),
@@ -388,17 +389,15 @@ pub fn http_get_with_bearer(url: &str, token_secret: &str) -> Operation {
     })
 }
 
-pub fn http_get_with_basic_auth(url: &str, user_secret: &str, pass_secret: &str) -> Operation {
+pub fn http_get_with_basic_auth(url: &str, _user_secret: &str, _pass_secret: &str) -> Operation {
+    // BasicAuth no longer supported — emit as no-auth for backwards compat in tests
     Operation::HttpRequest(HttpRequestOp {
         method: HttpMethod::Get,
         url: ValueExpr::string(url),
         headers: vec![],
         query_params: vec![],
         body: None,
-        authentication: Some(HttpAuth::BasicAuth {
-            username_secret: user_secret.into(),
-            password_secret: pass_secret.into(),
-        }),
+        authentication: None,
         cache_max_age_seconds: None,
         timeout_ms: None,
         expected_status_codes: vec![200],
@@ -472,7 +471,8 @@ pub fn json_parse_op(input: ValueExpr) -> Operation {
 
 pub fn abi_encode_op(params: &str, mappings: Vec<(&str, ValueExpr)>) -> Operation {
     Operation::AbiEncode(AbiEncodeOp {
-        abi_params_json: params.into(),
+        function_name: None,
+        abi_json: params.into(),
         data_mappings: mappings
             .into_iter()
             .map(|(name, val)| AbiDataMapping {
@@ -486,7 +486,7 @@ pub fn abi_encode_op(params: &str, mappings: Vec<(&str, ValueExpr)>) -> Operatio
 pub fn abi_decode_op(input: ValueExpr, params: &str, outputs: Vec<&str>) -> Operation {
     Operation::AbiDecode(AbiDecodeOp {
         input,
-        abi_params_json: params.into(),
+        abi_json: params.into(),
         output_names: outputs.into_iter().map(String::from).collect(),
     })
 }

@@ -131,7 +131,13 @@ fn emit_evm_log_init(evm_log: &EvmLogTriggerDef, ir: &WorkflowIR, handler_name: 
         w.line("],");
     }
 
-    w.line(&format!("confidence: \"{}\",", evm_log.confidence));
+    let confidence_enum = match evm_log.confidence.as_str() {
+        "finalized" => "CONFIDENCE_LEVEL_FINALIZED",
+        "latest" => "CONFIDENCE_LEVEL_LATEST",
+        "safe" => "CONFIDENCE_LEVEL_SAFE",
+        other => other, // pass through if already in enum format
+    };
+    w.line(&format!("confidence: \"{}\",", confidence_enum));
 
     w.dedent();
     w.line("}),");

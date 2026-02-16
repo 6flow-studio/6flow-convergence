@@ -186,12 +186,7 @@ fn validate_http_auth_secrets(
 ) {
     let secret_names: Vec<&str> = match auth {
         HttpAuthConfig::None => vec![],
-        HttpAuthConfig::HeaderAuth { value_secret, .. } => vec![value_secret.as_str()],
-        HttpAuthConfig::BasicAuth { username_secret, password_secret, .. } => {
-            vec![username_secret.as_str(), password_secret.as_str()]
-        }
         HttpAuthConfig::BearerToken { token_secret } => vec![token_secret.as_str()],
-        HttpAuthConfig::QueryAuth { value_secret, .. } => vec![value_secret.as_str()],
     };
 
     for name in secret_names {

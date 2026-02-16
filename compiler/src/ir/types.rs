@@ -386,23 +386,8 @@ pub enum HttpContentType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type")]
-pub enum HttpAuth {
-    HeaderAuth {
-        header_name: String,
-        value_secret: String,
-    },
-    BasicAuth {
-        username_secret: String,
-        password_secret: String,
-    },
-    BearerToken {
-        token_secret: String,
-    },
-    QueryAuth {
-        param_name: String,
-        value_secret: String,
-    },
+pub struct HttpAuth {
+    pub token_secret: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -527,7 +512,10 @@ pub struct JsonParseOp {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AbiEncodeOp {
-    pub abi_params_json: String,
+    /// Function name for `encodeFunctionData`. None for standalone parameter encoding.
+    pub function_name: Option<String>,
+    /// Full ABI JSON — function ABI item (when function_name is Some) or parameter array.
+    pub abi_json: String,
     pub data_mappings: Vec<AbiDataMapping>,
 }
 
@@ -540,7 +528,7 @@ pub struct AbiDataMapping {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AbiDecodeOp {
     pub input: ValueExpr,
-    pub abi_params_json: String,
+    pub abi_json: String,
     pub output_names: Vec<String>,
 }
 

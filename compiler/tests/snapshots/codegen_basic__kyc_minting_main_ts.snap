@@ -3,7 +3,7 @@ source: tests/codegen_basic.rs
 expression: main_ts.content
 ---
 import { cre, ok, consensusIdenticalAggregation, getNetwork, Runner, type Runtime, type HTTPSendRequester, type CronTrigger } from "@chainlink/cre-sdk";
-import { encodeFunctionData, parseAbi } from "viem";
+import { encodeFunctionData } from "viem";
 import { z } from "zod";
 
 const configSchema = z.object({
@@ -15,10 +15,13 @@ const configSchema = z.object({
 
 type Config = z.infer<typeof configSchema>;
 
-const fetch_http_1 = (sendRequester: HTTPSendRequester, config: Config) => {
+const fetch_http_1 = (sendRequester: HTTPSendRequester, config: any) => {
   const req = {
     url: `https://kyc-api.example.com/status/${config.walletAddress}`,
     method: "GET" as const,
+    headers: {
+      "Authorization": `Bearer ${config._authToken}`,
+    },
     cacheSettings: {
       store: true,
       maxAge: { seconds: 60n },
@@ -39,7 +42,12 @@ const onCronTrigger = (runtime: Runtime<Config>, triggerData: CronTrigger): stri
   const evmClient_eth_sepolia = new cre.capabilities.EVMClient(getNetwork({ chainFamily: "evm", chainSelectorName: "ethereum-testnet-sepolia", isTestnet: true })!.chainSelector.selector);
 
   // Fetch KYC status
-  const step_http_1 = httpClient.sendRequest(runtime, fetch_http_1, consensusIdenticalAggregation())(runtime.config).result();
+  const _authSecret_http_1 = runtime.getSecret({ id: "KYC_API_KEY" }).result();
+  const _fetchCfg_http_1 = {
+    ...runtime.config,
+    _authToken: _authSecret_http_1.value,
+  };
+  const step_http_1 = httpClient.sendRequest(runtime, fetch_http_1, consensusIdenticalAggregation())(_fetchCfg_http_1).result();
   // Parse KYC response
   const step_parse_1 = JSON.parse(Buffer.from(step_http_1.body, "base64").toString("utf-8"));
   // Check if KYC approved
@@ -47,7 +55,8 @@ const onCronTrigger = (runtime: Runtime<Config>, triggerData: CronTrigger): stri
     // ABI encode mint call
     const step_mint_1___encode = {
       encoded: encodeFunctionData({
-        abi: [{"name":"to","type":"address"},{"name":"amount","type":"uint256"}],
+        abi: [{"name":"mint","type":"function","inputs":[{"name":"to","type":"address"},{"name":"amount","type":"uint256"}],"outputs":[],"stateMutability":"nonpayable"}],
+        functionName: "mint",
         args: [runtime.config.walletAddress, runtime.config.mintAmount],
       }),
     };

@@ -17,7 +17,7 @@ export const mockupWorkflow: Workflow = {
         url: 'https://0xrpc.io/sep',
       },
       {
-        chainName: 'base-testnet-sepolia',
+        chainName: 'ethereum-testnet-sepolia-base-1',
         url: 'https://base-sepolia.drpc.org',
       },
     ],
@@ -129,7 +129,7 @@ export const mockupWorkflow: Workflow = {
       data: {
         label: 'Mint Tokens',
         config: {
-          chainSelectorName: 'base-testnet-sepolia',
+          chainSelectorName: 'ethereum-testnet-sepolia-base-1',
           tokenContractAddress: '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd',
           tokenAbi: {
             type: 'function',

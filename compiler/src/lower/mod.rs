@@ -30,8 +30,11 @@ pub fn lower(workflow: &Workflow, graph: &WorkflowGraph) -> Result<WorkflowIR, V
         .find(|n| n.is_trigger())
         .ok_or_else(|| vec![CompilerError::lower("L002", "No trigger node found", None)])?;
 
-    // 3. Build id_map for convenience node expansion
-    let id_map = build_id_map(workflow);
+    // 3. Build id_map for convenience node expansion + trigger alias
+    let mut id_map = build_id_map(workflow);
+    // Map trigger node ID (e.g. "trigger-1") → "trigger" so that
+    // {{trigger-1.field}} resolves to TriggerDataRef via parse_single_ref.
+    id_map.insert(trigger_node.id().to_string(), "trigger".to_string());
 
     // 4. Lower trigger
     let mut config_fields = Vec::new();

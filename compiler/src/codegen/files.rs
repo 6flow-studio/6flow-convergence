@@ -468,7 +468,8 @@ mod tests {
                     source_node_ids: vec![],
                     label: "encode".into(),
                     operation: Operation::AbiEncode(AbiEncodeOp {
-                        abi_params_json: "test".into(),
+                        function_name: None,
+                        abi_json: "test".into(),
                         data_mappings: vec![],
                     }),
                     output: None,

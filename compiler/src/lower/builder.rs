@@ -447,30 +447,12 @@ fn lower_http_request(
     });
 
     let authentication = config.authentication.as_ref().and_then(|auth| match auth {
-        crate::parse::types::HttpAuthConfig::None => None,
-        crate::parse::types::HttpAuthConfig::HeaderAuth { header_name, value_secret } => {
-            Some(HttpAuth::HeaderAuth {
-                header_name: header_name.clone(),
-                value_secret: value_secret.clone(),
-            })
-        }
-        crate::parse::types::HttpAuthConfig::BasicAuth { username_secret, password_secret } => {
-            Some(HttpAuth::BasicAuth {
-                username_secret: username_secret.clone(),
-                password_secret: password_secret.clone(),
-            })
-        }
         crate::parse::types::HttpAuthConfig::BearerToken { token_secret } => {
-            Some(HttpAuth::BearerToken {
+            Some(HttpAuth {
                 token_secret: token_secret.clone(),
             })
         }
-        crate::parse::types::HttpAuthConfig::QueryAuth { param_name, value_secret } => {
-            Some(HttpAuth::QueryAuth {
-                param_name: param_name.clone(),
-                value_secret: value_secret.clone(),
-            })
-        }
+        _ => None, // Only BearerToken is supported
     });
 
     let response_format = match config.response_format.as_deref() {
@@ -662,7 +644,7 @@ fn lower_abi_encode(
     config: &crate::parse::types::AbiEncodeConfig,
     id_map: &HashMap<String, String>,
 ) -> (Operation, Option<OutputBinding>) {
-    let abi_params_json = serde_json::to_string(&config.abi_params).unwrap_or_default();
+    let abi_json = serde_json::to_string(&config.abi_params).unwrap_or_default();
 
     let data_mappings: Vec<AbiDataMapping> = config
         .data_mapping
@@ -674,7 +656,8 @@ fn lower_abi_encode(
         .collect();
 
     let op = Operation::AbiEncode(AbiEncodeOp {
-        abi_params_json,
+        function_name: None,
+        abi_json,
         data_mappings,
     });
 
@@ -694,12 +677,12 @@ fn lower_abi_decode(
     node_map: &HashMap<&str, &WorkflowNode>,
     id_map: &HashMap<String, String>,
 ) -> (Operation, Option<OutputBinding>) {
-    let abi_params_json = serde_json::to_string(&config.abi_params).unwrap_or_default();
+    let abi_json = serde_json::to_string(&config.abi_params).unwrap_or_default();
     let input = resolve_predecessor_input(node_id, "", "", graph, node_map, id_map);
 
     let op = Operation::AbiDecode(AbiDecodeOp {
         input,
-        abi_params_json,
+        abi_json,
         output_names: config.output_names.clone(),
     });
 

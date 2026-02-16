@@ -89,13 +89,15 @@ fn gen_main_ts(ir: &WorkflowIR) -> String {
     w.blank();
 
     // 3. FETCH FUNCTIONS (top-level, before handler)
-    let fetch_fns = fetch_fns::collect_fetch_fns(&ir.handler_body);
-    if !fetch_fns.is_empty() {
-        fetch_fns::emit_fetch_fns(&fetch_fns, &mut w);
-    }
+    let fetch_fn_list = fetch_fns::collect_fetch_fns(&ir.handler_body);
+    let fetch_contexts = if !fetch_fn_list.is_empty() {
+        fetch_fns::emit_fetch_fns(&fetch_fn_list, &mut w)
+    } else {
+        std::collections::HashMap::new()
+    };
 
     // 4. HANDLER
-    handler::emit_handler(ir, &mut w);
+    handler::emit_handler(ir, &fetch_contexts, &mut w);
     w.blank();
 
     // 5. INIT WORKFLOW + MAIN

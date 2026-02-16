@@ -22,7 +22,7 @@ fn compile_and_save(fixture_name: &str, output_name: &str) {
     let output_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
-        .join("shared/sample/codegenOutput");
+        .join("shared/sample");
     fs::create_dir_all(&output_dir).unwrap();
     let output_path = output_dir.join(format!("{output_name}.json"));
 

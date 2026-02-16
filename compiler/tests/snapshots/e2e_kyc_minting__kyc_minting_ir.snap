@@ -90,7 +90,6 @@ expression: ir
           "query_params": [],
           "body": null,
           "authentication": {
-            "type": "BearerToken",
             "token_secret": "KYC_API_KEY"
           },
           "cache_max_age_seconds": 60,
@@ -165,7 +164,8 @@ expression: ir
                 "label": "ABI encode mint call",
                 "operation": {
                   "type": "AbiEncode",
-                  "abi_params_json": "[{\"name\":\"to\",\"type\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\"}]",
+                  "function_name": "mint",
+                  "abi_json": "{\"name\":\"mint\",\"type\":\"function\",\"inputs\":[{\"name\":\"to\",\"type\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"}",
                   "data_mappings": [
                     {
                       "param_name": "to",

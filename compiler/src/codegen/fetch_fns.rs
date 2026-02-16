@@ -2,15 +2,24 @@
 //!
 //! CRE requires `httpClient.sendRequest(runtime, fetchFn, consensus)(config).result()`
 //! where `fetchFn` is a top-level function: `(sendRequester: HTTPSendRequester, config: Config) => T`.
+//!
+//! **Scope challenge:** Fetch functions only receive `(sendRequester, config)`.
+//! Handler-scoped data (trigger data, step bindings, secrets) must be passed through
+//! an augmented config object. See `DynamicRef` and `FetchContext`.
+
+use std::collections::HashMap;
 
 use crate::ir::types::*;
-use super::value_expr::emit_value_expr_init;
+use super::value_expr::{emit_value_expr, emit_value_expr_init};
 use super::writer::CodeWriter;
+
+// =============================================================================
+// PUBLIC TYPES
+// =============================================================================
 
 /// Info about a fetch function to emit.
 pub struct FetchFnInfo {
     pub fn_name: String,
-    #[allow(dead_code)]
     pub step_id: String,
     pub kind: FetchFnKind,
 }
@@ -19,6 +28,25 @@ pub enum FetchFnKind {
     Http(HttpRequestOp),
     Ai(AiCallOp),
 }
+
+/// A handler-scoped value that must be passed through the augmented config.
+#[derive(Clone)]
+pub struct DynamicRef {
+    /// Key in the augmented config, e.g. `_dyn0`.
+    pub config_key: String,
+    /// The original handler-scoped expression (for the handler-side spread).
+    pub handler_expr: ValueExpr,
+}
+
+/// Context for a single fetch function: dynamic refs + auth info.
+pub struct FetchContext {
+    pub dynamic_refs: Vec<DynamicRef>,
+    pub has_auth: bool,
+}
+
+// =============================================================================
+// COLLECT
+// =============================================================================
 
 /// Collect all HttpRequest and AiCall steps from the IR (including inside branches).
 pub fn collect_fetch_fns(block: &Block) -> Vec<FetchFnInfo> {
@@ -53,18 +81,122 @@ fn collect_from_block(block: &Block, fns: &mut Vec<FetchFnInfo>) {
     }
 }
 
-/// Emit all top-level fetch functions.
-pub fn emit_fetch_fns(fetch_fns: &[FetchFnInfo], w: &mut CodeWriter) {
-    for f in fetch_fns {
-        match &f.kind {
-            FetchFnKind::Http(op) => emit_http_fetch_fn(&f.fn_name, op, w),
-            FetchFnKind::Ai(op) => emit_ai_fetch_fn(&f.fn_name, op, w),
-        }
-        w.blank();
+// =============================================================================
+// DYNAMIC REF ANALYSIS
+// =============================================================================
+
+/// Build the FetchContext for an HTTP fetch function.
+/// Scans for handler-scoped ValueExprs (Binding, TriggerDataRef) and collects them.
+pub fn build_fetch_context(op: &HttpRequestOp) -> FetchContext {
+    let mut refs: Vec<DynamicRef> = Vec::new();
+    let mut seen: HashMap<String, String> = HashMap::new();
+    let mut counter = 0;
+
+    scan_expr(&op.url, &mut refs, &mut seen, &mut counter);
+    for (_, v) in &op.headers {
+        scan_expr(v, &mut refs, &mut seen, &mut counter);
+    }
+    if let Some(ref body) = op.body {
+        scan_expr(&body.data, &mut refs, &mut seen, &mut counter);
+    }
+
+    FetchContext {
+        dynamic_refs: refs,
+        has_auth: op.authentication.is_some(),
     }
 }
 
-fn emit_http_fetch_fn(fn_name: &str, op: &HttpRequestOp, w: &mut CodeWriter) {
+fn scan_expr(
+    expr: &ValueExpr,
+    refs: &mut Vec<DynamicRef>,
+    seen: &mut HashMap<String, String>,
+    counter: &mut usize,
+) {
+    match expr {
+        ValueExpr::Binding(_) | ValueExpr::TriggerDataRef { .. } => {
+            let key_str = emit_value_expr(expr);
+            if !seen.contains_key(&key_str) {
+                let config_key = format!("_dyn{}", *counter);
+                seen.insert(key_str, config_key.clone());
+                refs.push(DynamicRef {
+                    config_key,
+                    handler_expr: expr.clone(),
+                });
+                *counter += 1;
+            }
+        }
+        ValueExpr::Template { parts } => {
+            for part in parts {
+                if let TemplatePart::Expr { value } = part {
+                    scan_expr(value, refs, seen, counter);
+                }
+            }
+        }
+        _ => {} // Literal, ConfigRef, RawExpr are fine in fetch scope
+    }
+}
+
+/// Substitute handler-scoped refs in a ValueExpr with `config._dynN` references.
+fn subst_expr(expr: &ValueExpr, mapping: &HashMap<String, String>) -> ValueExpr {
+    match expr {
+        ValueExpr::Binding(_) | ValueExpr::TriggerDataRef { .. } => {
+            let key = emit_value_expr(expr);
+            if let Some(config_key) = mapping.get(&key) {
+                ValueExpr::RawExpr {
+                    expr: format!("config.{}", config_key),
+                }
+            } else {
+                expr.clone()
+            }
+        }
+        ValueExpr::Template { parts } => {
+            let new_parts: Vec<TemplatePart> = parts
+                .iter()
+                .map(|p| match p {
+                    TemplatePart::Expr { value } => TemplatePart::Expr {
+                        value: subst_expr(value, mapping),
+                    },
+                    lit => lit.clone(),
+                })
+                .collect();
+            ValueExpr::Template { parts: new_parts }
+        }
+        _ => expr.clone(),
+    }
+}
+
+/// Build the substitution mapping from handler expr → config key.
+fn build_subst_map(ctx: &FetchContext) -> HashMap<String, String> {
+    ctx.dynamic_refs
+        .iter()
+        .map(|r| (emit_value_expr(&r.handler_expr), r.config_key.clone()))
+        .collect()
+}
+
+// =============================================================================
+// EMIT
+// =============================================================================
+
+/// Emit all top-level fetch functions. Returns a map from step_id → FetchContext.
+pub fn emit_fetch_fns(fetch_fns: &[FetchFnInfo], w: &mut CodeWriter) -> HashMap<String, FetchContext> {
+    let mut contexts = HashMap::new();
+    for f in fetch_fns {
+        match &f.kind {
+            FetchFnKind::Http(op) => {
+                let ctx = build_fetch_context(op);
+                emit_http_fetch_fn(&f.fn_name, op, &ctx, w);
+                contexts.insert(f.step_id.clone(), ctx);
+            }
+            FetchFnKind::Ai(op) => {
+                emit_ai_fetch_fn(&f.fn_name, op, w);
+            }
+        }
+        w.blank();
+    }
+    contexts
+}
+
+fn emit_http_fetch_fn(fn_name: &str, op: &HttpRequestOp, ctx: &FetchContext, w: &mut CodeWriter) {
     let method = match op.method {
         HttpMethod::Get => "GET",
         HttpMethod::Post => "POST",
@@ -74,21 +206,33 @@ fn emit_http_fetch_fn(fn_name: &str, op: &HttpRequestOp, w: &mut CodeWriter) {
         HttpMethod::Head => "HEAD",
     };
 
+    let needs_any = !ctx.dynamic_refs.is_empty() || ctx.has_auth;
+    let config_type = if needs_any { "any" } else { "Config" };
+
     w.block_open(&format!(
-        "const {} = (sendRequester: HTTPSendRequester, config: Config) =>",
-        fn_name
+        "const {} = (sendRequester: HTTPSendRequester, config: {}) =>",
+        fn_name, config_type
     ));
+
+    let subst = build_subst_map(ctx);
 
     // Build request object
     w.block_open("const req =");
-    w.line(&format!("url: {},", emit_value_expr_init(&op.url)));
+    let url_expr = subst_expr(&op.url, &subst);
+    w.line(&format!("url: {},", emit_value_expr_init(&url_expr)));
     w.line(&format!("method: \"{}\" as const,", method));
 
-    // Headers
-    if !op.headers.is_empty() {
+    // Headers (user-defined + auth)
+    let has_user_headers = !op.headers.is_empty();
+    let has_auth = op.authentication.is_some();
+    if has_user_headers || has_auth {
         w.block_open("headers:");
         for (key, value) in &op.headers {
-            w.line(&format!("\"{}\": {},", key, emit_value_expr_init(value)));
+            let v = subst_expr(value, &subst);
+            w.line(&format!("\"{}\": {},", key, emit_value_expr_init(&v)));
+        }
+        if has_auth {
+            w.line("\"Authorization\": `Bearer ${config._authToken}`,");
         }
         w.dedent();
         w.line("},");
@@ -96,16 +240,17 @@ fn emit_http_fetch_fn(fn_name: &str, op: &HttpRequestOp, w: &mut CodeWriter) {
 
     // Body
     if let Some(ref body) = op.body {
-        let data_expr = emit_value_expr_init(&body.data);
+        let data_expr = subst_expr(&body.data, &subst);
+        let data_str = emit_value_expr_init(&data_expr);
         match body.content_type {
             HttpContentType::Json => {
                 w.line(&format!(
                     "body: Buffer.from(new TextEncoder().encode(JSON.stringify({}))).toString(\"base64\"),",
-                    data_expr
+                    data_str
                 ));
             }
             _ => {
-                w.line(&format!("body: {},", data_expr));
+                w.line(&format!("body: {},", data_str));
             }
         }
     }

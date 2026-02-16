@@ -376,24 +376,7 @@ fn collect_secret_refs_from_step(step: &Step) -> Vec<String> {
         Operation::GetSecret(o) => secrets.push(o.secret_name.clone()),
         Operation::HttpRequest(o) => {
             if let Some(auth) = &o.authentication {
-                match auth {
-                    HttpAuth::HeaderAuth { value_secret, .. } => {
-                        secrets.push(value_secret.clone());
-                    }
-                    HttpAuth::BasicAuth {
-                        username_secret,
-                        password_secret,
-                    } => {
-                        secrets.push(username_secret.clone());
-                        secrets.push(password_secret.clone());
-                    }
-                    HttpAuth::BearerToken { token_secret } => {
-                        secrets.push(token_secret.clone());
-                    }
-                    HttpAuth::QueryAuth { value_secret, .. } => {
-                        secrets.push(value_secret.clone());
-                    }
-                }
+                secrets.push(auth.token_secret.clone());
             }
         }
         Operation::AiCall(o) => secrets.push(o.api_key_secret.clone()),

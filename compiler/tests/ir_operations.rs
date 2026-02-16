@@ -32,7 +32,7 @@ fn test_http_request_get() {
     if let Operation::HttpRequest(op) = &rt.handler_body.steps[0].operation {
         assert!(matches!(op.method, HttpMethod::Get));
         assert_eq!(op.cache_max_age_seconds, Some(60));
-        assert!(matches!(&op.authentication, Some(HttpAuth::BearerToken { .. })));
+        assert!(op.authentication.is_some());
     } else {
         panic!("Expected HttpRequest");
     }

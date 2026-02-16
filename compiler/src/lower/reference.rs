@@ -44,11 +44,16 @@ fn parse_single_ref(inner: &str, id_map: &HashMap<String, String>) -> ValueExpr 
         return ValueExpr::trigger_data(field_path);
     }
 
-    // Resolve through id_map for expanded convenience nodes
+    // Resolve through id_map for expanded convenience nodes and trigger aliases
     let step_id = id_map
         .get(node_id)
         .cloned()
         .unwrap_or_else(|| node_id.to_string());
+
+    // Re-check after id_map resolution (e.g. "trigger-1" → "trigger")
+    if step_id == "trigger" {
+        return ValueExpr::trigger_data(field_path);
+    }
 
     ValueExpr::binding(step_id, field_path)
 }

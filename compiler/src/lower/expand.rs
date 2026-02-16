@@ -64,14 +64,15 @@ fn expand_mint_token(
     let write_id = format!("{}___write", node_id);
     let binding_name = make_evm_binding_name(&config.chain_selector_name);
 
-    let abi_params_json = serde_json::to_string(&config.token_abi.inputs).unwrap_or_default();
+    let abi_json = serde_json::to_string(&config.token_abi).unwrap_or_default();
 
     let encode = ExpandedStep {
         id: encode_id.clone(),
         source_node_id: node_id.to_string(),
         label: format!("ABI encode mint call"),
         operation: Operation::AbiEncode(AbiEncodeOp {
-            abi_params_json,
+            function_name: Some(config.token_abi.name.clone()),
+            abi_json,
             data_mappings: vec![
                 AbiDataMapping {
                     param_name: config.token_abi.inputs.first().map(|i| i.name.clone()).unwrap_or("to".into()),
@@ -126,14 +127,15 @@ fn expand_burn_token(
     let write_id = format!("{}___write", node_id);
     let binding_name = make_evm_binding_name(&config.chain_selector_name);
 
-    let abi_params_json = serde_json::to_string(&config.token_abi.inputs).unwrap_or_default();
+    let abi_json = serde_json::to_string(&config.token_abi).unwrap_or_default();
 
     let encode = ExpandedStep {
         id: encode_id.clone(),
         source_node_id: node_id.to_string(),
         label: "ABI encode burn call".into(),
         operation: Operation::AbiEncode(AbiEncodeOp {
-            abi_params_json,
+            function_name: Some(config.token_abi.name.clone()),
+            abi_json,
             data_mappings: vec![
                 AbiDataMapping {
                     param_name: config.token_abi.inputs.first().map(|i| i.name.clone()).unwrap_or("from".into()),
@@ -188,14 +190,15 @@ fn expand_transfer_token(
     let write_id = format!("{}___write", node_id);
     let binding_name = make_evm_binding_name(&config.chain_selector_name);
 
-    let abi_params_json = serde_json::to_string(&config.token_abi.inputs).unwrap_or_default();
+    let abi_json = serde_json::to_string(&config.token_abi).unwrap_or_default();
 
     let encode = ExpandedStep {
         id: encode_id.clone(),
         source_node_id: node_id.to_string(),
         label: "ABI encode transfer call".into(),
         operation: Operation::AbiEncode(AbiEncodeOp {
-            abi_params_json,
+            function_name: Some(config.token_abi.name.clone()),
+            abi_json,
             data_mappings: vec![
                 AbiDataMapping {
                     param_name: config.token_abi.inputs.first().map(|i| i.name.clone()).unwrap_or("to".into()),
@@ -284,7 +287,7 @@ fn expand_check_kyc(
             headers: vec![],
             query_params: vec![],
             body: None,
-            authentication: Some(HttpAuth::BearerToken {
+            authentication: Some(HttpAuth {
                 token_secret: config.api_key_secret_name.clone(),
             }),
             cache_max_age_seconds: Some(60),

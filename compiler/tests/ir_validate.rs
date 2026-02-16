@@ -243,18 +243,17 @@ fn test_e006_reconverge_at_non_merge() {
 // =============================================================================
 
 #[test]
-fn test_e007_secret_in_http_basic_auth() {
+fn test_e007_secret_in_http_bearer_auth() {
     let ir = ir_with_steps(vec![make_step_with_output(
         "http-1",
-        http_get_with_basic_auth("https://example.com", "MY_USER", "MY_PASS"),
+        http_get_with_bearer("https://example.com", "UNDECLARED_TOKEN"),
         "any",
     )]);
-    // required_secrets is empty — both secrets undeclared
+    // required_secrets is empty — bearer token secret undeclared
     let errors = validate_ir(&ir);
     assert_has_error(&errors, "E007");
-    // Should have 2 E007 errors (one per secret)
     let e007_count = errors.iter().filter(|e| e.code == "E007").count();
-    assert_eq!(e007_count, 2, "Expected 2 E007 errors for undeclared username + password");
+    assert_eq!(e007_count, 1, "Expected 1 E007 error for undeclared bearer token");
 }
 
 #[test]

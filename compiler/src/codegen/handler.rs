@@ -3,13 +3,20 @@
 //! Iterates over a Block's steps and emits TypeScript for each operation,
 //! with special handling for Branch/Merge diamond patterns and Filter/Skip wrapping.
 
+use std::collections::HashMap;
+
 use crate::ir::types::*;
+use super::fetch_fns::FetchContext;
 use super::operations;
 use super::value_expr::emit_condition;
 use super::writer::CodeWriter;
 
 /// Emit the handler function signature and body.
-pub fn emit_handler(ir: &WorkflowIR, w: &mut CodeWriter) {
+pub fn emit_handler(
+    ir: &WorkflowIR,
+    fetch_contexts: &HashMap<String, FetchContext>,
+    w: &mut CodeWriter,
+) {
     let (handler_name, trigger_type, trigger_param) = match &ir.trigger_param {
         TriggerParam::CronTrigger => ("onCronTrigger", "CronTrigger", "triggerData"),
         TriggerParam::HttpRequest => ("onHttpRequest", "HTTPPayload", "triggerData"),
@@ -34,7 +41,7 @@ pub fn emit_handler(ir: &WorkflowIR, w: &mut CodeWriter) {
     w.blank();
 
     // Emit the block
-    emit_block(&ir.handler_body, w);
+    emit_block(&ir.handler_body, fetch_contexts, w);
 
     w.block_close_semi();
 }
@@ -45,16 +52,14 @@ fn emit_capability_instantiations(ir: &WorkflowIR, w: &mut CodeWriter) {
         w.line("const httpClient = new cre.capabilities.HTTPClient();");
     }
 
-    // EVM clients
+    // EVM clients — emit for ALL chains (trigger chain is also needed if handler reads/writes on it)
     for chain in &ir.evm_chains {
-        if !chain.used_for_trigger {
-            w.line(&format!(
-                "const {} = new cre.capabilities.EVMClient(getNetwork({{ chainFamily: \"evm\", chainSelectorName: \"{}\", isTestnet: {} }})!.chainSelector.selector);",
-                chain.binding_name,
-                chain.chain_selector_name,
-                ir.metadata.is_testnet,
-            ));
-        }
+        w.line(&format!(
+            "const {} = new cre.capabilities.EVMClient(getNetwork({{ chainFamily: \"evm\", chainSelectorName: \"{}\", isTestnet: {} }})!.chainSelector.selector);",
+            chain.binding_name,
+            chain.chain_selector_name,
+            ir.metadata.is_testnet,
+        ));
     }
 }
 
@@ -69,7 +74,11 @@ fn has_http_steps(block: &Block) -> bool {
 }
 
 /// Emit a block of steps. Handles Branch/Merge coupling and Filter/Skip wrapping.
-pub fn emit_block(block: &Block, w: &mut CodeWriter) {
+pub fn emit_block(
+    block: &Block,
+    fetch_contexts: &HashMap<String, FetchContext>,
+    w: &mut CodeWriter,
+) {
     let steps = &block.steps;
     let mut i = 0;
 
@@ -78,7 +87,7 @@ pub fn emit_block(block: &Block, w: &mut CodeWriter) {
 
         match &step.operation {
             Operation::Branch(branch) => {
-                emit_branch(step, branch, w);
+                emit_branch(step, branch, fetch_contexts, w);
                 // If there's a reconverge_at, skip the next Merge step
                 if branch.reconverge_at.is_some() && i + 1 < steps.len() {
                     if let Operation::Merge(_) = &steps[i + 1].operation {
@@ -99,7 +108,7 @@ pub fn emit_block(block: &Block, w: &mut CodeWriter) {
                         let remaining = Block {
                             steps: steps[i + 1..].to_vec(),
                         };
-                        emit_block(&remaining, w);
+                        emit_block(&remaining, fetch_contexts, w);
                         w.block_close();
                         return; // We've consumed all remaining steps
                     }
@@ -110,7 +119,7 @@ pub fn emit_block(block: &Block, w: &mut CodeWriter) {
                 // Skip — already handled by Branch emitter
             }
             Operation::HttpRequest(op) => {
-                operations::emit_http_request(step, op, w);
+                operations::emit_http_request(step, op, fetch_contexts, w);
             }
             Operation::EvmRead(op) => {
                 operations::emit_evm_read(step, op, w);
@@ -151,7 +160,12 @@ pub fn emit_block(block: &Block, w: &mut CodeWriter) {
     }
 }
 
-fn emit_branch(step: &Step, branch: &BranchOp, w: &mut CodeWriter) {
+fn emit_branch(
+    step: &Step,
+    branch: &BranchOp,
+    fetch_contexts: &HashMap<String, FetchContext>,
+    w: &mut CodeWriter,
+) {
     let cond = emit_condition(&branch.conditions, &branch.combine_with);
 
     w.line(&format!("// {}", step.label));
@@ -164,10 +178,10 @@ fn emit_branch(step: &Step, branch: &BranchOp, w: &mut CodeWriter) {
     }
 
     w.block_open(&format!("if ({})", cond));
-    emit_block(&branch.true_branch, w);
+    emit_block(&branch.true_branch, fetch_contexts, w);
 
     w.block_else();
-    emit_block(&branch.false_branch, w);
+    emit_block(&branch.false_branch, fetch_contexts, w);
 
     w.block_close();
 }

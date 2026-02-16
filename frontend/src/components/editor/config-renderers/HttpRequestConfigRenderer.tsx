@@ -28,9 +28,6 @@ const METHOD_OPTIONS = [
 const AUTH_TYPE_OPTIONS = [
   { value: "none", label: "None" },
   { value: "bearerToken", label: "Bearer Token" },
-  { value: "basicAuth", label: "Basic Auth" },
-  { value: "headerAuth", label: "Header Auth" },
-  { value: "queryAuth", label: "Query Auth" },
 ];
 
 const CONTENT_TYPE_OPTIONS = [
@@ -65,33 +62,6 @@ export function HttpRequestConfigRenderer({ config, onChange }: Props) {
         break;
       case "bearerToken":
         onChange({ authentication: { type: "bearerToken", tokenSecret: "" } });
-        break;
-      case "basicAuth":
-        onChange({
-          authentication: {
-            type: "basicAuth",
-            usernameSecret: "",
-            passwordSecret: "",
-          },
-        });
-        break;
-      case "headerAuth":
-        onChange({
-          authentication: {
-            type: "headerAuth",
-            headerName: "",
-            valueSecret: "",
-          },
-        });
-        break;
-      case "queryAuth":
-        onChange({
-          authentication: {
-            type: "queryAuth",
-            paramName: "",
-            valueSecret: "",
-          },
-        });
         break;
     }
   }
@@ -130,58 +100,6 @@ export function HttpRequestConfigRenderer({ config, onChange }: Props) {
             placeholder="SECRET_NAME"
             mono
           />
-        )}
-        {authType === "basicAuth" && (
-          <>
-            <TextField
-              label="Username Secret"
-              value={(auth?.usernameSecret as string) ?? ""}
-              onChange={(v) => updateAuth({ usernameSecret: v })}
-              placeholder="USERNAME_SECRET"
-              mono
-            />
-            <TextField
-              label="Password Secret"
-              value={(auth?.passwordSecret as string) ?? ""}
-              onChange={(v) => updateAuth({ passwordSecret: v })}
-              placeholder="PASSWORD_SECRET"
-              mono
-            />
-          </>
-        )}
-        {authType === "headerAuth" && (
-          <>
-            <TextField
-              label="Header Name"
-              value={(auth?.headerName as string) ?? ""}
-              onChange={(v) => updateAuth({ headerName: v })}
-              placeholder="X-API-Key"
-            />
-            <TextField
-              label="Value Secret"
-              value={(auth?.valueSecret as string) ?? ""}
-              onChange={(v) => updateAuth({ valueSecret: v })}
-              placeholder="API_KEY_SECRET"
-              mono
-            />
-          </>
-        )}
-        {authType === "queryAuth" && (
-          <>
-            <TextField
-              label="Parameter Name"
-              value={(auth?.paramName as string) ?? ""}
-              onChange={(v) => updateAuth({ paramName: v })}
-              placeholder="api_key"
-            />
-            <TextField
-              label="Value Secret"
-              value={(auth?.valueSecret as string) ?? ""}
-              onChange={(v) => updateAuth({ valueSecret: v })}
-              placeholder="API_KEY_SECRET"
-              mono
-            />
-          </>
         )}
       </CollapsibleSection>
 
