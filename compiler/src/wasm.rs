@@ -78,7 +78,9 @@ fn compile_workflow_inner(json: &str) -> CompileResult {
     let workflow = match crate::parse::parse(json) {
         Ok(w) => w,
         Err(errors) => {
-            return CompileResult::Errors(errors.into_iter().map(ErrorDto::from).collect());
+            return CompileResult::Errors {
+                errors: errors.into_iter().map(ErrorDto::from).collect(),
+            };
         }
     };
 
@@ -86,21 +88,27 @@ fn compile_workflow_inner(json: &str) -> CompileResult {
     let graph = match crate::parse::WorkflowGraph::build(&workflow) {
         Ok(g) => g,
         Err(errors) => {
-            return CompileResult::Errors(errors.into_iter().map(ErrorDto::from).collect());
+            return CompileResult::Errors {
+                errors: errors.into_iter().map(ErrorDto::from).collect(),
+            };
         }
     };
 
     // 3. Graph validation
     let validation_errors = crate::validate::validate_graph(&workflow, &graph);
     if !validation_errors.is_empty() {
-        return CompileResult::Errors(validation_errors.into_iter().map(ErrorDto::from).collect());
+        return CompileResult::Errors {
+            errors: validation_errors.into_iter().map(ErrorDto::from).collect(),
+        };
     }
 
     // 4. Lower to IR
     let ir = match crate::lower::lower(&workflow, &graph) {
         Ok(ir) => ir,
         Err(errors) => {
-            return CompileResult::Errors(errors.into_iter().map(ErrorDto::from).collect());
+            return CompileResult::Errors {
+                errors: errors.into_iter().map(ErrorDto::from).collect(),
+            };
         }
     };
 
@@ -111,14 +119,14 @@ fn compile_workflow_inner(json: &str) -> CompileResult {
             .into_iter()
             .map(|e| ErrorDto::from(CompilerError::from(e)))
             .collect();
-        return CompileResult::Errors(errors);
+        return CompileResult::Errors { errors };
     }
 
     // 6. Codegen
     let output = codegen::codegen(&ir);
 
-    CompileResult::Success(
-        output
+    CompileResult::Success {
+        files: output
             .files
             .into_iter()
             .map(|f| FileDto {
@@ -126,7 +134,7 @@ fn compile_workflow_inner(json: &str) -> CompileResult {
                 content: f.content,
             })
             .collect(),
-    )
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -162,7 +170,7 @@ struct FileDto {
 #[serde(tag = "status")]
 enum CompileResult {
     #[serde(rename = "success")]
-    Success(Vec<FileDto>),
+    Success { files: Vec<FileDto> },
     #[serde(rename = "errors")]
-    Errors(Vec<ErrorDto>),
+    Errors { errors: Vec<ErrorDto> },
 }

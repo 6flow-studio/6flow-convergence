@@ -67,3 +67,47 @@ export const remove = mutation({
     await ctx.db.delete(args.id);
   },
 });
+
+export const generateCompileUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const saveCompiledArtifact = mutation({
+  args: {
+    id: v.id("workflows"),
+    storageId: v.id("_storage"),
+    fileName: v.string(),
+    fileSize: v.number(),
+    fileCount: v.number(),
+    compiledAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const workflow = await ctx.db.get(args.id);
+    if (!workflow || workflow.userId !== userId) {
+      throw new Error("Workflow not found");
+    }
+
+    if (workflow.compiledArtifactStorageId) {
+      await ctx.storage.delete(workflow.compiledArtifactStorageId);
+    }
+
+    await ctx.db.patch(args.id, {
+      compiledArtifactStorageId: args.storageId,
+      compiledArtifactFileName: args.fileName,
+      compiledArtifactFileSize: args.fileSize,
+      compiledArtifactFileCount: args.fileCount,
+      compiledArtifactUpdatedAt: args.compiledAt,
+      updatedAt: Date.now(),
+    });
+
+    return args.storageId;
+  },
+});

@@ -5,13 +5,15 @@
   "packageManager": "npm@11.8.0",
   "workspaces": [
     "frontend",
-    "shared"
+    "shared",
+    "tools/tui"
   ],
   "scripts": {
     "dev": "turbo run dev --filter=frontend",
     "build": "turbo run build --filter=frontend",
     "lint": "turbo run lint",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "tui:dev": "npm run dev --workspace=@6flow/tui"
   },
   "devDependencies": {
     "turbo": "^2.3.3"

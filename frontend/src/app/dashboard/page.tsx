@@ -7,6 +7,7 @@ import { useEffect } from "react";
 import { api } from "../../../convex/_generated/api";
 import { Plus, Trash2, LogOut, Workflow } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DEFAULT_WORKFLOW_GLOBAL_CONFIG } from "@/lib/workflow-defaults";
 import type { Id } from "../../../convex/_generated/dataModel";
 
 export default function DashboardPage() {
@@ -32,6 +33,7 @@ export default function DashboardPage() {
       name: "Untitled Workflow",
       nodes: "[]",
       edges: "[]",
+      globalConfig: JSON.stringify(DEFAULT_WORKFLOW_GLOBAL_CONFIG),
     });
     router.push(`/editor/${id}`);
   }

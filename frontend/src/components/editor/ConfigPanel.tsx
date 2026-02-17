@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { X, Trash2, Settings2 } from "lucide-react";
+import { X, Trash2, Settings2, AlertTriangle } from "lucide-react";
 import type { NodeType } from "@6flow/shared/model/node";
 import {
   CodeNodeConfigRenderer,
@@ -105,6 +105,7 @@ export function ConfigPanel() {
   const updateNodeLabel = useEditorStore((s) => s.updateNodeLabel);
   const removeNode = useEditorStore((s) => s.removeNode);
   const selectNode = useEditorStore((s) => s.selectNode);
+  const liveNodeErrorsByNodeId = useEditorStore((s) => s.liveNodeErrorsByNodeId);
 
   const [width, setWidth] = useState(MIN_WIDTH);
   const isResizing = useRef(false);
@@ -147,6 +148,7 @@ export function ConfigPanel() {
 
   const color = CATEGORY_COLORS[entry.category];
   const config = node.data.config;
+  const nodeErrors = liveNodeErrorsByNodeId[node.id] ?? [];
 
   return (
     <div
@@ -203,6 +205,21 @@ export function ConfigPanel() {
             </Badge>
             <span className="text-[11px] text-zinc-600">{entry.label}</span>
           </div>
+
+          {nodeErrors.length > 0 && (
+            <div className="rounded-md border border-red-500/25 bg-red-500/10 px-2.5 py-2 space-y-1">
+              <div className="flex items-center gap-1.5 text-red-300 text-[11px] font-semibold">
+                <AlertTriangle size={12} />
+                <span>{nodeErrors.length} validation issue(s)</span>
+              </div>
+              {nodeErrors.map((error, index) => (
+                <div key={`${error.code}-${index}`} className="text-[11px] text-zinc-300 leading-relaxed">
+                  <span className="text-red-300">[{error.phase}:{error.code}]</span>{" "}
+                  {error.message}
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Config fields */}
           <div className="space-y-3">

@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "build:compiler": "wasm-pack build ../compiler --target web --out-dir ../frontend/public/compiler --out-name sixflow_compiler --release",
+    "build:compiler:dev": "wasm-pack build ../compiler --target web --out-dir ../frontend/public/compiler --out-name sixflow_compiler --dev",
+    "predev": "npm run build:compiler:dev",
+    "prebuild": "npm run build:compiler",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -26,6 +30,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "convex": "^1.31.7",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.563.0",
     "next": "16.1.6",
     "radix-ui": "^1.4.3",

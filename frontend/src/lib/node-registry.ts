@@ -3,6 +3,7 @@
  * `shared/model/node.ts` (see the checklist comment there).
  */
 import type { NodeType, NodeCategory } from "@6flow/shared/model/node";
+export type { NodeCategory } from "@6flow/shared/model/node";
 
 export interface NodeRegistryEntry {
   type: NodeType;

@@ -1,6 +1,8 @@
 node_modules/
 .turbo/
 .DS_Store
+.claude/
 
 # Convex generated
 frontend/convex/_generated/
+.env.local
