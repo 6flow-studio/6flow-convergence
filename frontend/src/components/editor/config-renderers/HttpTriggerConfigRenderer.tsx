@@ -27,8 +27,6 @@ const METHOD_OPTIONS = [
 const AUTH_TYPE_OPTIONS = [
   { value: "none", label: "None" },
   { value: "evmSignature", label: "EVM Signature" },
-  { value: "headerAuth", label: "Header Auth" },
-  { value: "basicAuth", label: "Basic Auth" },
 ];
 
 const RESPONSE_MODE_OPTIONS = [
@@ -53,24 +51,6 @@ export function HttpTriggerConfigRenderer({ config, onChange }: Props) {
       case "evmSignature":
         onChange({
           authentication: { type: "evmSignature", authorizedAddresses: [] },
-        });
-        break;
-      case "headerAuth":
-        onChange({
-          authentication: {
-            type: "headerAuth",
-            headerName: "",
-            headerValueSecret: "",
-          },
-        });
-        break;
-      case "basicAuth":
-        onChange({
-          authentication: {
-            type: "basicAuth",
-            usernameSecret: "",
-            passwordSecret: "",
-          },
         });
         break;
     }
@@ -116,41 +96,6 @@ export function HttpTriggerConfigRenderer({ config, onChange }: Props) {
             onChange={(v) => updateAuth({ authorizedAddresses: v })}
             placeholder="0x..."
           />
-        )}
-        {authType === "headerAuth" && (
-          <>
-            <TextField
-              label="Header Name"
-              value={(auth?.headerName as string) ?? ""}
-              onChange={(v) => updateAuth({ headerName: v })}
-              placeholder="X-Webhook-Secret"
-            />
-            <TextField
-              label="Header Value Secret"
-              value={(auth?.headerValueSecret as string) ?? ""}
-              onChange={(v) => updateAuth({ headerValueSecret: v })}
-              placeholder="WEBHOOK_SECRET"
-              mono
-            />
-          </>
-        )}
-        {authType === "basicAuth" && (
-          <>
-            <TextField
-              label="Username Secret"
-              value={(auth?.usernameSecret as string) ?? ""}
-              onChange={(v) => updateAuth({ usernameSecret: v })}
-              placeholder="USERNAME_SECRET"
-              mono
-            />
-            <TextField
-              label="Password Secret"
-              value={(auth?.passwordSecret as string) ?? ""}
-              onChange={(v) => updateAuth({ passwordSecret: v })}
-              placeholder="PASSWORD_SECRET"
-              mono
-            />
-          </>
         )}
       </CollapsibleSection>
 
