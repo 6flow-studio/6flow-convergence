@@ -1,4 +1,5 @@
 import GitHub from "@auth/core/providers/github";
+import { Password } from "@convex-dev/auth/providers/Password";
 import { convexAuth } from "@convex-dev/auth/server";
 
 const githubProvider = GitHub({
@@ -13,5 +14,5 @@ const githubProvider = GitHub({
 });
 
 export const { auth, signIn, signOut, store } = convexAuth({
-  providers: [githubProvider],
+  providers: [githubProvider, Password],
 });
