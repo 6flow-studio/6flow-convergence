@@ -2,22 +2,11 @@
   "name": "@6flow/tui",
   "version": "0.0.1",
   "private": true,
-  "type": "module",
   "bin": {
-    "6flow-tui": "dist/index.js"
+    "6flow-tui": "dist/6flow-tui"
   },
   "scripts": {
-    "dev": "tsx src/index.tsx",
-    "build": "tsc -p tsconfig.json"
-  },
-  "dependencies": {
-    "ink": "^6.7.0",
-    "react": "^19.2.3"
-  },
-  "devDependencies": {
-    "@types/node": "^20.17.0",
-    "@types/react": "^19.1.8",
-    "tsx": "^4.19.1",
-    "typescript": "^5.7.3"
+    "dev": "go run ./cmd/tui",
+    "build": "mkdir -p dist && go build -o dist/6flow-tui ./cmd/tui"
   }
 }
