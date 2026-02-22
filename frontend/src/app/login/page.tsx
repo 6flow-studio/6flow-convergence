@@ -5,6 +5,7 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -58,9 +59,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm p-8 bg-surface-1 border border-edge-dim rounded-xl shadow-2xl">
         <div className="flex flex-col items-center gap-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-accent-blue/10 flex items-center justify-center">
-              <span className="text-accent-blue text-xl font-bold">六</span>
-            </div>
+            <Image src="/logo/6flow_white.png" alt="6FLOW" width={40} height={40} />
             <span className="text-xl font-bold text-zinc-100 tracking-tight">
               6FLOW Studio
             </span>

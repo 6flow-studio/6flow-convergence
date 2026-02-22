@@ -5,6 +5,7 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { api } from "../../../convex/_generated/api";
+import Image from "next/image";
 import { Plus, Trash2, LogOut, Workflow } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DEFAULT_WORKFLOW_GLOBAL_CONFIG } from "@/lib/workflow-defaults";
@@ -47,9 +48,7 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="h-14 bg-surface-1 border-b border-edge-dim flex items-center px-6 justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-md bg-accent-blue/10 flex items-center justify-center">
-            <span className="text-accent-blue text-sm font-bold">六</span>
-          </div>
+          <Image src="/logo/6flow_white.png" alt="6FLOW" width={28} height={28} />
           <span className="text-[13px] font-bold text-zinc-100 tracking-tight">
             6FLOW Studio
           </span>
