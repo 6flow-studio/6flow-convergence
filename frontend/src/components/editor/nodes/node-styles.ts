@@ -88,6 +88,6 @@ export const HANDLE_STYLE = {
 
 export const HANDLE_STYLE_CONNECTED = {
   ...HANDLE_STYLE,
-  background: "#3b82f6",
-  border: "2px solid #1e3a5f",
+  background: "#3A9AFF",
+  border: "2px solid #1C0770",
 };
