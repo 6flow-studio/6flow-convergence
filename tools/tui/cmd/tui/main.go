@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -129,6 +130,12 @@ type syncLocalFinishedMsg struct {
 	err  error
 }
 
+type secretsCmdFinishedMsg struct {
+	logs  []string
+	label string
+	err   error
+}
+
 type model struct {
 	phase     appPhase
 	authState authState
@@ -145,9 +152,27 @@ type model struct {
 
 	workflowList list.Model
 	actionList   list.Model
+	secretsMenu  list.Model
 	console      viewport.Model
 	help         help.Model
 	spinner      spinner.Model
+
+	secretsMenuOpen         bool
+	secretsWorkflowID       string
+	secretsWorkflowName     string
+	secretsTargets          []string
+	secretsTargetIndex      int
+	setupSecretsPromptOpen  bool
+	setupPrivateKeyInput    textinput.Model
+	setupRPCURLInput        textinput.Model
+	setupPromptActiveField  int
+	setupSecretsPromptError string
+	secretFormOpen          bool
+	secretFormMode          string
+	secretIDInput           textinput.Model
+	secretValueInput        textinput.Model
+	secretFormActiveField   int
+	secretFormError         string
 
 	logs []string
 }
@@ -190,28 +215,68 @@ func initialModel() model {
 		actionItem{id: "sync-local", title: "Sync to local", description: "Download compiled zip to ~/.6flow/workflows"},
 		actionItem{id: "simulate", title: "Simulate", description: "Mock run for selected workflow"},
 		actionItem{id: "deploy", title: "Deploy", description: "Placeholder deploy flow"},
-		actionItem{id: "secrets", title: "Manage secrets", description: "Placeholder secret flow"},
+		actionItem{id: "secrets", title: "Secrets", description: "Open secrets submenu (setup/read/create/update/delete)"},
+	}
+	secretsActions := []list.Item{
+		actionItem{id: "setup-secrets-env", title: "Setup secrets env", description: "Set private key + RPC URL locally"},
+		actionItem{id: "read", title: "Read", description: "Inspect local secrets from secrets.yaml + .env"},
+		actionItem{id: "create", title: "Create", description: "Create secret in secrets.yaml + .env"},
+		actionItem{id: "update", title: "Update", description: "Update secret value in .env"},
+		actionItem{id: "delete", title: "Delete", description: "Delete secret from secrets.yaml + .env"},
+		actionItem{id: "back", title: "Back", description: "Close secrets submenu"},
 	}
 
 	sp := spinner.New()
 	sp.Spinner = spinner.Line
+
+	keyInput := textinput.New()
+	keyInput.Placeholder = "0x... or 64-hex private key"
+	keyInput.Prompt = "private key> "
+	keyInput.EchoMode = textinput.EchoPassword
+	keyInput.EchoCharacter = '•'
+	keyInput.CharLimit = 80
+	keyInput.Width = 70
+
+	rpcInput := textinput.New()
+	rpcInput.Placeholder = "https://..."
+	rpcInput.Prompt = "rpc url> "
+	rpcInput.CharLimit = 256
+	rpcInput.Width = 70
+
+	secretIDInput := textinput.New()
+	secretIDInput.Placeholder = "API_KEY"
+	secretIDInput.Prompt = "secret id> "
+	secretIDInput.CharLimit = 120
+	secretIDInput.Width = 70
+
+	secretValueInput := textinput.New()
+	secretValueInput.Placeholder = "secret value"
+	secretValueInput.Prompt = "secret value> "
+	secretValueInput.CharLimit = 512
+	secretValueInput.Width = 70
 
 	v := viewport.New(40, 10)
 	v.SetContent(withTimestamp(fmt.Sprintf("Frontend API mode enabled (%s).", base)) + "\n" + withTimestamp("Checking local authentication session..."))
 	v.GotoBottom()
 
 	return model{
-		phase:        phaseCheckingAuth,
-		authState:    authDisconnected,
-		lastSyncAt:   "never",
-		user:         user,
-		webBaseURL:   base,
-		focus:        focusWorkflows,
-		workflowList: newList("Workflows", []list.Item{}),
-		actionList:   newList("Actions", actions),
-		console:      v,
-		help:         help.New(),
-		spinner:      sp,
+		phase:                phaseCheckingAuth,
+		authState:            authDisconnected,
+		lastSyncAt:           "never",
+		user:                 user,
+		webBaseURL:           base,
+		focus:                focusWorkflows,
+		workflowList:         newList("Workflows", []list.Item{}),
+		actionList:           newList("Actions", actions),
+		secretsMenu:          newList("Secrets submenu", secretsActions),
+		secretsTargets:       []string{"staging-settings"},
+		setupPrivateKeyInput: keyInput,
+		setupRPCURLInput:     rpcInput,
+		secretIDInput:        secretIDInput,
+		secretValueInput:     secretValueInput,
+		console:              v,
+		help:                 help.New(),
+		spinner:              sp,
 		logs: []string{
 			withTimestamp(fmt.Sprintf("Frontend API mode enabled (%s).", base)),
 			withTimestamp("Checking local authentication session..."),
@@ -259,11 +324,6 @@ func actionCmd(actionID, workflowID string) tea.Cmd {
 			logs = append(logs, "Deploy flow is placeholder-only in this iteration.")
 			time.Sleep(250 * time.Millisecond)
 			logs = append(logs, "Next phase: hook this action to CRE deploy API.")
-		case "secrets":
-			time.Sleep(300 * time.Millisecond)
-			logs = append(logs, "Secret manager flow is placeholder-only in this iteration.")
-			time.Sleep(250 * time.Millisecond)
-			logs = append(logs, "Next phase: attach to frontend secret APIs.")
 		}
 		return actionFinishedMsg{logs: logs}
 	}
@@ -282,14 +342,106 @@ func syncLocalCmd(baseURL, token, workflowID, workflowName string) tea.Cmd {
 	}
 }
 
+func secretsCommandCmd(actionID, workflowID, workflowName, target, secretID, secretValue string) tea.Cmd {
+	return func() tea.Msg {
+		var (
+			result *core.SecretsCommandResult
+			err    error
+			label  string
+		)
+
+		switch actionID {
+		case "read":
+			label = "Secrets read"
+			result, err = core.InspectLocalSecrets(workflowID, workflowName, target)
+		case "create":
+			label = "Secrets create"
+			result, err = core.CreateLocalSecret(workflowID, workflowName, target, secretID, secretValue)
+		case "update":
+			label = "Secrets update"
+			result, err = core.UpdateLocalSecret(workflowID, workflowName, target, secretID, secretValue)
+		case "delete":
+			label = "Secrets delete"
+			result, err = core.DeleteLocalSecret(workflowID, workflowName, target, secretID)
+		default:
+			return secretsCmdFinishedMsg{
+				label: "Secrets",
+				err:   fmt.Errorf("unsupported secrets action %q", actionID),
+			}
+		}
+
+		if err != nil {
+			if result != nil && len(result.Logs) > 0 {
+				return secretsCmdFinishedMsg{logs: result.Logs, label: label, err: err}
+			}
+			return secretsCmdFinishedMsg{label: label, err: err}
+		}
+		return secretsCmdFinishedMsg{logs: result.Logs, label: label, err: nil}
+	}
+}
+
+func saveSecretsSetupCmd(workflowID, workflowName, target, privateKey, rpcURL string) tea.Cmd {
+	return func() tea.Msg {
+		result, err := core.SaveWorkflowSecretsSetup(
+			workflowID,
+			workflowName,
+			target,
+			privateKey,
+			rpcURL,
+		)
+		label := "Setup secrets env"
+		if err != nil {
+			if result != nil && len(result.Logs) > 0 {
+				return secretsCmdFinishedMsg{logs: result.Logs, label: label, err: err}
+			}
+			return secretsCmdFinishedMsg{label: label, err: err}
+		}
+		return secretsCmdFinishedMsg{logs: result.Logs, label: label, err: nil}
+	}
+}
+
 func (m model) Init() tea.Cmd {
 	return tea.Batch(m.spinner.Tick, initSessionCmd())
+}
+
+func wrapLine(input string, width int) []string {
+	if width <= 1 {
+		return []string{input}
+	}
+
+	runes := []rune(input)
+	if len(runes) <= width {
+		return []string{input}
+	}
+
+	out := make([]string, 0, (len(runes)/width)+1)
+	for len(runes) > width {
+		out = append(out, string(runes[:width]))
+		runes = runes[width:]
+	}
+	if len(runes) > 0 {
+		out = append(out, string(runes))
+	}
+	return out
+}
+
+func (m *model) refreshConsoleContent() {
+	width := m.console.Width
+	if width <= 0 {
+		width = 80
+	}
+
+	wrapped := make([]string, 0, len(m.logs))
+	for _, line := range m.logs {
+		wrapped = append(wrapped, wrapLine(line, width)...)
+	}
+	m.console.SetContent(strings.Join(wrapped, "\n"))
 }
 
 func (m *model) appendLog(line string) {
 	atBottom := m.console.AtBottom()
 	m.logs = append(m.logs, withTimestamp(line))
-	m.console.SetContent(strings.Join(m.logs, "\n"))
+	m.refreshConsoleContent()
 	if atBottom {
 		m.console.GotoBottom()
 	}
@@ -368,8 +520,27 @@ func (m *model) resize() {
 
 	m.workflowList.SetSize(leftW-4, wfH-2)
 	m.actionList.SetSize(leftW-4, actionH-2)
+	m.secretsMenu.SetSize(leftW-4, actionH-2)
 	m.console.Width = rightW - 2
 	m.console.Height = mainH - 2
+	m.refreshConsoleContent()
+}
+
+func (m model) currentSecretsTarget() string {
+	if len(m.secretsTargets) == 0 {
+		return "staging-settings"
+	}
+	if m.secretsTargetIndex < 0 || m.secretsTargetIndex >= len(m.secretsTargets) {
+		return m.secretsTargets[0]
+	}
+	return m.secretsTargets[m.secretsTargetIndex]
+}
+
+func (m *model) nextSecretsTarget() {
+	if len(m.secretsTargets) == 0 {
+		return
+	}
+	m.secretsTargetIndex = (m.secretsTargetIndex + 1) % len(m.secretsTargets)
 }
 
 func (m model) selectedWorkflow() *workflowItem {
@@ -507,6 +678,39 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.busy = false
 		return m, nil
 
+	case secretsCmdFinishedMsg:
+		for _, line := range msg.logs {
+			m.appendLog(line)
+		}
+		if msg.err != nil {
+			if msg.label == "Setup secrets env" {
+				m.setupSecretsPromptError = msg.err.Error()
+				m.setupSecretsPromptOpen = true
+			} else if strings.HasPrefix(msg.label, "Secrets ") {
+				m.secretFormError = msg.err.Error()
+				m.secretFormOpen = m.secretFormMode != ""
+			}
+			m.appendLog(msg.label + " failed: " + msg.err.Error())
+			m.busy = false
+			return m, nil
+		}
+		if msg.label == "Setup secrets env" {
+			m.setupSecretsPromptOpen = false
+			m.setupSecretsPromptError = ""
+			m.setupPrivateKeyInput.SetValue("")
+			m.setupRPCURLInput.SetValue("")
+		}
+		if strings.HasPrefix(msg.label, "Secrets ") {
+			m.secretFormOpen = false
+			m.secretFormMode = ""
+			m.secretFormError = ""
+			m.secretIDInput.SetValue("")
+			m.secretValueInput.SetValue("")
+		}
+		m.appendLog("Action \"" + msg.label + "\" completed.")
+		m.busy = false
+		return m, nil
+
 	case tea.KeyMsg:
 		if key.Matches(msg, keys.Quit) {
 			return m, tea.Quit
@@ -529,6 +733,189 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if m.phase != phaseReady {
 			return m, nil
+		}
+
+		if m.setupSecretsPromptOpen {
+			switch msg.String() {
+			case "esc":
+				m.setupSecretsPromptOpen = false
+				m.setupSecretsPromptError = ""
+				m.setupPrivateKeyInput.SetValue("")
+				m.setupRPCURLInput.SetValue("")
+				m.appendLog("Setup secrets env canceled.")
+				return m, nil
+			case "enter":
+				if m.busy {
+					return m, nil
+				}
+				if m.setupPromptActiveField == 0 {
+					m.setupPromptActiveField = 1
+					return m, nil
+				}
+				privateKey := strings.TrimSpace(m.setupPrivateKeyInput.Value())
+				rpcURL := strings.TrimSpace(m.setupRPCURLInput.Value())
+				if privateKey == "" || rpcURL == "" {
+					m.setupSecretsPromptError = "Private key and RPC URL are required."
+					return m, nil
+				}
+				m.busy = true
+				m.setupSecretsPromptError = ""
+				m.appendLog("Saving local secrets environment (.env + project.yaml) ...")
+				return m, saveSecretsSetupCmd(
+					m.secretsWorkflowID,
+					m.secretsWorkflowName,
+					m.currentSecretsTarget(),
+					privateKey,
+					rpcURL,
+				)
+			case "tab", "shift+tab", "up", "down":
+				if m.setupPromptActiveField == 0 {
+					m.setupPromptActiveField = 1
+					m.setupPrivateKeyInput.Blur()
+					m.setupRPCURLInput.Focus()
+				} else {
+					m.setupPromptActiveField = 0
+					m.setupRPCURLInput.Blur()
+					m.setupPrivateKeyInput.Focus()
+				}
+				return m, nil
+			}
+
+			var cmd tea.Cmd
+			if m.setupPromptActiveField == 0 {
+				m.setupPrivateKeyInput, cmd = m.setupPrivateKeyInput.Update(msg)
+			} else {
+				m.setupRPCURLInput, cmd = m.setupRPCURLInput.Update(msg)
+			}
+			return m, cmd
+		}
+		if m.secretFormOpen {
+			switch msg.String() {
+			case "esc":
+				m.secretFormOpen = false
+				m.secretFormMode = ""
+				m.secretFormError = ""
+				m.secretIDInput.SetValue("")
+				m.secretValueInput.SetValue("")
+				m.appendLog("Secrets form canceled.")
+				return m, nil
+			case "enter":
+				if m.busy {
+					return m, nil
+				}
+				id := strings.TrimSpace(m.secretIDInput.Value())
+				value := strings.TrimSpace(m.secretValueInput.Value())
+				if id == "" {
+					m.secretFormError = "Secret ID is required."
+					return m, nil
+				}
+				if m.secretFormMode != "delete" && m.secretFormActiveField == 0 {
+					m.secretFormActiveField = 1
+					m.secretIDInput.Blur()
+					m.secretValueInput.Focus()
+					return m, nil
+				}
+				if m.secretFormMode != "delete" && value == "" {
+					m.secretFormError = "Secret value is required."
+					return m, nil
+				}
+				m.busy = true
+				m.secretFormError = ""
+				m.appendLog(fmt.Sprintf("Applying secrets %s for %s...", m.secretFormMode, m.secretsWorkflowName))
+				return m, secretsCommandCmd(
+					m.secretFormMode,
+					m.secretsWorkflowID,
+					m.secretsWorkflowName,
+					m.currentSecretsTarget(),
+					id,
+					value,
+				)
+			case "tab", "shift+tab", "up", "down":
+				if m.secretFormMode == "delete" {
+					return m, nil
+				}
+				if m.secretFormActiveField == 0 {
+					m.secretFormActiveField = 1
+					m.secretIDInput.Blur()
+					m.secretValueInput.Focus()
+				} else {
+					m.secretFormActiveField = 0
+					m.secretValueInput.Blur()
+					m.secretIDInput.Focus()
+				}
+				return m, nil
+			}
+
+			var cmd tea.Cmd
+			if m.secretFormMode == "delete" || m.secretFormActiveField == 0 {
+				m.secretIDInput, cmd = m.secretIDInput.Update(msg)
+			} else {
+				m.secretValueInput, cmd = m.secretValueInput.Update(msg)
+			}
+			return m, cmd
+		}
+
+		if m.secretsMenuOpen {
+			if msg.String() == "esc" || msg.String() == "backspace" || msg.String() == "b" {
+				m.secretsMenuOpen = false
+				m.secretsWorkflowID = ""
+				m.secretsWorkflowName = ""
+				m.appendLog("Closed secrets submenu.")
+				return m, nil
+			}
+
+			if key.Matches(msg, keys.Run) {
+				if m.busy {
+					return m, nil
+				}
+				selected, ok := m.secretsMenu.SelectedItem().(actionItem)
+				if !ok {
+					return m, nil
+				}
+				if selected.id == "back" {
+					m.secretsMenuOpen = false
+					m.secretsWorkflowID = ""
+					m.secretsWorkflowName = ""
+					m.appendLog("Closed secrets submenu.")
+					return m, nil
+				}
+				if selected.id == "setup-secrets-env" {
+					m.setupSecretsPromptOpen = true
+					m.setupSecretsPromptError = ""
+					m.setupPromptActiveField = 0
+					m.setupPrivateKeyInput.SetValue("")
+					defaultRPC, err := core.GetWorkflowSecretsSetupDefaults(m.secretsWorkflowID, m.secretsWorkflowName, m.currentSecretsTarget())
+					if err == nil {
+						m.setupRPCURLInput.SetValue(defaultRPC)
+					} else {
+						m.setupRPCURLInput.SetValue("")
+					}
+					m.setupPrivateKeyInput.Focus()
+					m.setupRPCURLInput.Blur()
+					m.appendLog("Setup secrets env opened. Values are stored locally only.")
+					return m, nil
+				}
+				if selected.id == "create" || selected.id == "update" || selected.id == "delete" {
+					m.secretFormOpen = true
+					m.secretFormMode = selected.id
+					m.secretFormError = ""
+					m.secretFormActiveField = 0
+					m.secretIDInput.SetValue("")
+					m.secretValueInput.SetValue("")
+					m.secretIDInput.Focus()
+					m.secretValueInput.Blur()
+					m.appendLog(fmt.Sprintf("Opened secrets %s form for %s.", selected.id, m.secretsWorkflowName))
+					return m, nil
+				}
+
+				m.busy = true
+				m.appendLog(fmt.Sprintf("Starting %s for %s...", selected.title, m.secretsWorkflowName))
+				return m, secretsCommandCmd(selected.id, m.secretsWorkflowID, m.secretsWorkflowName, m.currentSecretsTarget(), "", "")
+			}
+
+			var cmd tea.Cmd
+			m.secretsMenu, cmd = m.secretsMenu.Update(msg)
+			return m, cmd
 		}
 
 		switch {
@@ -558,7 +945,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.console.GotoBottom()
 			case "c":
 				m.logs = []string{withTimestamp("Console cleared.")}
-				m.console.SetContent(strings.Join(m.logs, "\n"))
+				m.refreshConsoleContent()
 				m.console.GotoBottom()
 			}
 			return m, nil
@@ -614,6 +1001,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, syncLocalCmd(m.webBaseURL, m.token, workflow.id, workflow.title)
 				}
 
+				if action.id == "secrets" {
+					workflow := m.selectedWorkflow()
+					if workflow == nil {
+						m.appendLog("Select a workflow first.")
+						return m, nil
+					}
+					m.secretsMenuOpen = true
+					m.secretsWorkflowID = workflow.id
+					m.secretsWorkflowName = workflow.title
+					m.focus = focusActions
+					m.appendLog(fmt.Sprintf("Opened secrets submenu for %s. Press esc to go back.", workflow.title))
+					return m, nil
+				}
+
 				workflow := m.selectedWorkflow()
 				if workflow == nil {
 					m.appendLog("Select a workflow first.")
@@ -650,7 +1051,7 @@ func (m model) headerView() string {
 	}
 	head := lipgloss.NewStyle().Bold(true).Render("6FLOW TUI")
 	sub := lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render(
-		fmt.Sprintf("user=%s  mode=frontend-api  auth=%s  workflows=%d  last_sync=%s", m.user, state, len(m.workflowList.Items()), m.lastSyncAt),
+		fmt.Sprintf("user=%s  mode=frontend-api  auth=%s  workflows=%d  secrets_mode=staging-only (%s)  last_sync=%s", m.user, state, len(m.workflowList.Items()), m.currentSecretsTarget(), m.lastSyncAt),
 	)
 	return lipgloss.JoinVertical(lipgloss.Left, head, sub)
 }
@@ -682,6 +1083,96 @@ func max(a, b int) int {
 	return b
 }
 
+func (m model) renderSetupSecretsPrompt() string {
+	title := lipgloss.NewStyle().Bold(true).Render("Setup secrets environment")
+	notice := lipgloss.NewStyle().Foreground(lipgloss.Color("11")).Render(
+		"Values are stored locally (.env + project.yaml). Nothing is sent to 6flow servers.",
+	)
+	target := lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render(
+		fmt.Sprintf("workflow: %s | target: %s", m.secretsWorkflowName, m.currentSecretsTarget()),
+	)
+	hints := lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render("Tab to switch fields. Enter on RPC field saves. Esc cancels.")
+	errorLine := ""
+	if strings.TrimSpace(m.setupSecretsPromptError) != "" {
+		errorLine = lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Render(m.setupSecretsPromptError)
+	}
+
+	privateKeyLabel := "Private key"
+	rpcLabel := "RPC URL"
+	if m.setupPromptActiveField == 0 {
+		privateKeyLabel = lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Render(privateKeyLabel)
+	} else {
+		rpcLabel = lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Render(rpcLabel)
+	}
+
+	lines := []string{
+		title,
+		notice,
+		target,
+		"",
+		privateKeyLabel,
+		m.setupPrivateKeyInput.View(),
+		"",
+		rpcLabel,
+		m.setupRPCURLInput.View(),
+		hints,
+	}
+	if errorLine != "" {
+		lines = append(lines, errorLine)
+	}
+
+	panel := paneStyle(true).Padding(1, 2).Width(max(70, m.width-2))
+	return panel.Render(strings.Join(lines, "\n"))
+}
+
+func (m model) renderSecretFormPrompt() string {
+	modeTitle := strings.ToUpper(m.secretFormMode)
+	title := lipgloss.NewStyle().Bold(true).Render("Secrets " + modeTitle)
+	notice := lipgloss.NewStyle().Foreground(lipgloss.Color("11")).Render(
+		"Local simulation mode: updates only secrets.yaml and workflow .env.",
+	)
+	target := lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render(
+		fmt.Sprintf("workflow: %s | target: %s", m.secretsWorkflowName, m.currentSecretsTarget()),
+	)
+	hints := "Enter submits. Esc cancels."
+	if m.secretFormMode != "delete" {
+		hints = "Tab to switch fields. Enter on value submits. Esc cancels."
+	}
+	hintsView := lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render(hints)
+
+	secretIDLabel := "Secret ID"
+	secretValueLabel := "Secret value"
+	if m.secretFormMode != "delete" {
+		if m.secretFormActiveField == 0 {
+			secretIDLabel = lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Render(secretIDLabel)
+		} else {
+			secretValueLabel = lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Render(secretValueLabel)
+		}
+	} else {
+		secretIDLabel = lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Render(secretIDLabel)
+	}
+
+	lines := []string{
+		title,
+		notice,
+		target,
+		"",
+		secretIDLabel,
+		m.secretIDInput.View(),
+	}
+	if m.secretFormMode != "delete" {
+		lines = append(lines, "", secretValueLabel, m.secretValueInput.View())
+	}
+	lines = append(lines, hintsView)
+
+	if strings.TrimSpace(m.secretFormError) != "" {
+		lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Render(m.secretFormError))
+	}
+
+	panel := paneStyle(true).Padding(1, 2).Width(max(70, m.width-2))
+	return panel.Render(strings.Join(lines, "\n"))
+}
+
 func (m model) View() string {
 	if m.width == 0 || m.height == 0 {
 		return "Loading..."
@@ -695,7 +1186,14 @@ func (m model) View() string {
 	rightW := m.console.Width + 2
 
 	wf := paneStyle(m.focus == focusWorkflows).Width(leftW).Render(m.workflowList.View())
-	ac := paneStyle(m.focus == focusActions).Width(leftW).Render(m.actionList.View())
+	actionsPane := m.actionList.View()
+	if m.secretsMenuOpen {
+		m.secretsMenu.Title = fmt.Sprintf("Secrets submenu (staging-only): %s | target=%s (esc back)", m.secretsWorkflowName, m.currentSecretsTarget())
+		actionsPane = m.secretsMenu.View()
+	} else {
+		m.actionList.Title = "Actions"
+	}
+	ac := paneStyle(m.focus == focusActions).Width(leftW).Render(actionsPane)
 	leftCol := lipgloss.JoinVertical(lipgloss.Left, wf, ac)
 
 	consoleHeader := "Console"
@@ -710,7 +1208,15 @@ func (m model) View() string {
 
 	body := lipgloss.JoinHorizontal(lipgloss.Top, leftCol, rightCol)
 	footer := m.help.View(keys)
-	return lipgloss.JoinVertical(lipgloss.Left, m.headerView(), body, footer)
+	sections := []string{m.headerView(), body}
+	if m.setupSecretsPromptOpen {
+		sections = append(sections, m.renderSetupSecretsPrompt())
+	}
+	if m.secretFormOpen {
+		sections = append(sections, m.renderSecretFormPrompt())
+	}
+	sections = append(sections, footer)
+	return lipgloss.JoinVertical(lipgloss.Left, sections...)
 }
 
 func main() {
