@@ -23,6 +23,10 @@ type CREWhoAmIResult struct {
 	Raw      string
 }
 
+type SimulateCommandResult struct {
+	Logs []string
+}
+
 const (
 	stagingChainName  = "ethereum-testnet-sepolia"
 	mainnetChainName  = "ethereum-mainnet"
@@ -90,6 +94,37 @@ func GetCREWhoAmI() (*CREWhoAmIResult, error) {
 		Identity: identity,
 		Raw:      raw,
 	}, nil
+}
+
+func splitOutputLines(raw string) []string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return nil
+	}
+	lines := strings.Split(trimmed, "\n")
+	out := make([]string, 0, len(lines))
+	for _, line := range lines {
+		clean := strings.TrimSpace(line)
+		if clean == "" {
+			continue
+		}
+		out = append(out, clean)
+	}
+	return out
+}
+
+func runCommand(cwd string, name string, args ...string) ([]string, error) {
+	cmd := exec.Command(name, args...)
+	cmd.Dir = cwd
+	out, err := cmd.CombinedOutput()
+	lines := splitOutputLines(string(out))
+	if err != nil {
+		if len(lines) == 0 {
+			lines = []string{err.Error()}
+		}
+		return lines, err
+	}
+	return lines, nil
 }
 
 func localWorkflowProjectRoot(workflowID, workflowName string) string {
@@ -583,4 +618,69 @@ func DeleteLocalSecret(workflowID, workflowName, target, secretID string) (*Secr
 
 	appendLog(fmt.Sprintf("Deleted secret %s from secrets.yaml and removed mapped env vars from .env", id))
 	return &SecretsCommandResult{Logs: logs}, nil
+}
+
+func RunWorkflowSimulateLocal(workflowID, workflowName, target string) (*SimulateCommandResult, error) {
+	logs := []string{}
+	appendLog := func(msg string) { logs = append(logs, msg) }
+
+	projectRoot := localWorkflowProjectRoot(workflowID, workflowName)
+	workflowDirName := slugify(workflowName)
+	workflowDir := filepath.Join(projectRoot, workflowDirName)
+	workflowYamlPath := filepath.Join(workflowDir, "workflow.yaml")
+	dotEnvPath := filepath.Join(workflowDir, ".env")
+	packageJSONPath := filepath.Join(workflowDir, "package.json")
+
+	if _, err := os.Stat(projectRoot); err != nil {
+		if os.IsNotExist(err) {
+			return &SimulateCommandResult{Logs: logs}, errors.New("local workflow project not found. Run sync to local first")
+		}
+		return &SimulateCommandResult{Logs: logs}, err
+	}
+	if _, err := os.Stat(workflowDir); err != nil {
+		return &SimulateCommandResult{Logs: logs}, errors.New("workflow directory not found in local sync. Run sync to local again")
+	}
+	if _, err := os.Stat(packageJSONPath); err != nil {
+		return &SimulateCommandResult{Logs: logs}, errors.New("missing workflow package.json. Run sync to local again")
+	}
+
+	hasTarget, err := workflowHasTarget(workflowYamlPath, target)
+	if err != nil {
+		return &SimulateCommandResult{Logs: logs}, err
+	}
+	if !hasTarget {
+		return &SimulateCommandResult{Logs: logs}, fmt.Errorf("workflow.yaml does not define target %q", target)
+	}
+
+	appendLog("project: " + projectRoot)
+	appendLog("workflow: " + workflowDirName)
+	appendLog("target: " + target)
+
+	if ok, msg, _ := ensurePrivateKeyConfigured(dotEnvPath); ok {
+		appendLog(msg)
+	} else {
+		appendLog(msg)
+	}
+
+	appendLog("Running dependency setup: bun install")
+	installLines, installErr := runCommand(workflowDir, "bun", "install")
+	for _, line := range installLines {
+		appendLog("[bun] " + line)
+	}
+	if installErr != nil {
+		return &SimulateCommandResult{Logs: logs}, fmt.Errorf("bun install failed: %w", installErr)
+	}
+
+	envArg := filepath.ToSlash(filepath.Join(workflowDirName, ".env"))
+	appendLog("Running simulation: cre workflow simulate " + workflowDirName + " --target " + target + " -e " + envArg)
+	simulateLines, simulateErr := runCommand(projectRoot, "cre", "workflow", "simulate", workflowDirName, "--target", target, "-e", envArg)
+	for _, line := range simulateLines {
+		appendLog("[cre] " + line)
+	}
+	if simulateErr != nil {
+		return &SimulateCommandResult{Logs: logs}, fmt.Errorf("simulate failed: %w", simulateErr)
+	}
+
+	appendLog("Simulation completed.")
+	return &SimulateCommandResult{Logs: logs}, nil
 }

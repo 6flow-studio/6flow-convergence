@@ -125,6 +125,7 @@ type loginFinishedMsg struct {
 
 type actionFinishedMsg struct {
 	logs []string
+	err  error
 }
 
 type syncLocalFinishedMsg struct {
@@ -222,9 +223,9 @@ func initialModel() model {
 	}
 
 	actions := []list.Item{
-		actionItem{id: "simulate", title: "Simulate", description: "Mock run for selected workflow"},
-		actionItem{id: "secrets", title: "Secrets", description: "Open secrets submenu (setup/read/create/update/delete)"},
-		actionItem{id: "deploy", title: "Deploy (CI unavailable)", description: "Not available in current CI version"},
+		actionItem{id: "simulate", title: "Simulate", description: "Run local simulation of the workflow (using local secrets)"},
+		actionItem{id: "secrets", title: "Secrets", description: "Manage secrets in local environment"},
+		actionItem{id: "deploy", title: "Deploy (Unavailable)", description: "Not available in current CLI version"},
 	}
 	secretsActions := []list.Item{
 		actionItem{id: "setup-secrets-env", title: "Setup secrets env", description: "Set private key + RPC URL locally"},
@@ -318,24 +319,24 @@ func loginCmd(baseURL string) tea.Cmd {
 	}
 }
 
-func actionCmd(actionID, workflowID string) tea.Cmd {
+func actionCmd(actionID, workflowID, workflowName string) tea.Cmd {
 	return func() tea.Msg {
 		var logs []string
+		var err error
 		switch actionID {
 		case "simulate":
-			time.Sleep(300 * time.Millisecond)
-			logs = append(logs, fmt.Sprintf("Mock: building run plan for %q...", workflowID))
-			time.Sleep(450 * time.Millisecond)
-			logs = append(logs, "Mock: cre workflow simulate --config ./tmp/config.json")
-			time.Sleep(550 * time.Millisecond)
-			logs = append(logs, "Simulation finished (placeholder): no process was executed.")
+			result, runErr := core.RunWorkflowSimulateLocal(workflowID, workflowName, "staging-settings")
+			if result != nil {
+				logs = append(logs, result.Logs...)
+			}
+			err = runErr
 		case "deploy":
 			time.Sleep(300 * time.Millisecond)
 			logs = append(logs, "Deploy is not available in the current CI version.")
 			time.Sleep(250 * time.Millisecond)
 			logs = append(logs, "Use local simulation/sync flows for now.")
 		}
-		return actionFinishedMsg{logs: logs}
+		return actionFinishedMsg{logs: logs, err: err}
 	}
 }
 
@@ -728,6 +729,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		for _, line := range msg.logs {
 			m.appendLog(line)
 		}
+		if msg.err != nil {
+			m.appendLog("Action failed: " + msg.err.Error())
+			m.busy = false
+			return m, nil
+		}
 		if action := m.selectedAction(); action != nil {
 			m.appendLog(fmt.Sprintf("Action %q completed.", action.title))
 		}
@@ -1098,7 +1104,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				m.busy = true
 				m.appendLog(fmt.Sprintf("Action %q started for %s.", action.title, workflow.title))
-				return m, actionCmd(action.id, workflow.id)
+				return m, actionCmd(action.id, workflow.id, workflow.title)
 			}
 
 			var cmd tea.Cmd
@@ -1128,15 +1134,12 @@ func (m model) headerView() string {
 	if m.creLoggedIn {
 		creState = "connected:" + m.creIdentity
 	}
-	head := lipgloss.NewStyle().Bold(true).Render("6FLOW TUI")
+	head := lipgloss.NewStyle().Bold(true).Render("六 6FLOW")
 	subText := fmt.Sprintf(
-		"user=%s  mode=frontend-api  auth=%s  cre=%s  workflows=%d  secrets_mode=staging-only (%s)  last_sync=%s",
+		"user=%s  cre=%s  workflows=%d",
 		m.user,
-		state,
 		creState,
 		m.workflowCount,
-		m.currentSecretsTarget(),
-		m.lastSyncAt,
 	)
 	wrapWidth := m.width - 2
 	if wrapWidth < 40 {
