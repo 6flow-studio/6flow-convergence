@@ -16,7 +16,6 @@ pub fn extract_secrets(global: &GlobalConfig) -> Vec<SecretDeclaration> {
         .iter()
         .map(|s| SecretDeclaration {
             name: s.name.clone(),
-            env_variable: s.env_variable.clone(),
         })
         .collect()
 }

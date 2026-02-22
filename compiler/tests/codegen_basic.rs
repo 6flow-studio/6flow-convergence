@@ -73,8 +73,7 @@ fn kyc_minting_codegen_produces_all_files() {
     assert!(paths.contains(&"project.yaml"));
     assert!(paths.contains(&"package.json"));
     assert!(paths.contains(&"tsconfig.json"));
-    assert!(paths.contains(&".env"));
-    assert_eq!(output.files.len(), 8);
+    assert_eq!(output.files.len(), 7);
 }
 
 #[test]

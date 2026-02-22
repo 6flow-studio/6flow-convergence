@@ -343,7 +343,7 @@ fn test_e009_ai_counts_as_http() {
             // 6th — exceeds budget
             make_step_with_output("ai-2", ai_call_op("openai", "KEY"), "any"),
         ],
-        vec![("KEY", "KEY_VAR")],
+        vec!["KEY"],
         vec![],
     );
     let errors = validate_ir(&ir);

@@ -47,8 +47,7 @@ expression: ir
   ],
   "required_secrets": [
     {
-      "name": "KYC_API_KEY",
-      "env_variable": "KYC_API_KEY_VAR"
+      "name": "KYC_API_KEY"
     }
   ],
   "evm_chains": [
