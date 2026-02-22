@@ -27,6 +27,17 @@ type SimulateCommandResult struct {
 	Logs []string
 }
 
+type LocalSecretEntry struct {
+	ID       string
+	EnvVar   string
+	HasValue bool
+}
+
+type LocalSecretsListResult struct {
+	Logs    []string
+	Entries []LocalSecretEntry
+}
+
 const (
 	stagingChainName  = "ethereum-testnet-sepolia"
 	mainnetChainName  = "ethereum-mainnet"
@@ -434,6 +445,15 @@ func SaveWorkflowSecretsSetup(workflowID, workflowName, target, privateKey, rpcU
 	return &SecretsCommandResult{Logs: logs}, nil
 }
 
+func IsWorkflowSecretsSetupReady(workflowID, workflowName, target string) (bool, error) {
+	dotEnvPath := filepath.Join(localWorkflowDir(workflowID, workflowName), ".env")
+	privateKeyConfigured, _, err := ensurePrivateKeyConfigured(dotEnvPath)
+	if err != nil {
+		return false, err
+	}
+	return privateKeyConfigured, nil
+}
+
 func loadSecretsManifest(secretsYamlPath string) (*secretsManifest, error) {
 	raw, err := os.ReadFile(secretsYamlPath)
 	if err != nil {
@@ -474,7 +494,54 @@ func defaultEnvVarForSecret(secretID string) string {
 	if normalized == "" {
 		normalized = "SECRET"
 	}
-	return normalized + "_ALL"
+	return normalized
+}
+
+func listLocalSecretEntries(manifest *secretsManifest, dotEnvPath string) []LocalSecretEntry {
+	ids := make([]string, 0, len(manifest.SecretsNames))
+	for id := range manifest.SecretsNames {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+
+	entries := make([]LocalSecretEntry, 0, len(ids))
+	for _, id := range ids {
+		envVar := ""
+		if envVars := manifest.SecretsNames[id]; len(envVars) > 0 {
+			envVar = strings.TrimSpace(envVars[0])
+		}
+		value := ""
+		if envVar != "" {
+			value, _ = readDotEnvValue(dotEnvPath, envVar)
+		}
+		entries = append(entries, LocalSecretEntry{
+			ID:       id,
+			EnvVar:   envVar,
+			HasValue: strings.TrimSpace(value) != "",
+		})
+	}
+	return entries
+}
+
+func ListLocalSecrets(workflowID, workflowName, target string) (*LocalSecretsListResult, error) {
+	logs := []string{}
+	appendLog := func(msg string) { logs = append(logs, msg) }
+
+	_, secretsYamlPath, dotEnvPath, preflightLogs, err := preflightWorkflowSecrets(workflowID, workflowName, target)
+	if err != nil {
+		return nil, err
+	}
+	for _, l := range preflightLogs {
+		appendLog(l)
+	}
+
+	manifest, err := loadSecretsManifest(secretsYamlPath)
+	if err != nil {
+		return &LocalSecretsListResult{Logs: logs}, err
+	}
+
+	entries := listLocalSecretEntries(manifest, dotEnvPath)
+	return &LocalSecretsListResult{Logs: logs, Entries: entries}, nil
 }
 
 func InspectLocalSecrets(workflowID, workflowName, target string) (*SecretsCommandResult, error) {
@@ -557,7 +624,7 @@ func upsertLocalSecret(workflowID, workflowName, target, secretID, secretValue s
 		return &SecretsCommandResult{Logs: logs}, err
 	}
 
-	_, exists := manifest.SecretsNames[id]
+	envVars, exists := manifest.SecretsNames[id]
 	if mustExist && !exists {
 		return &SecretsCommandResult{Logs: logs}, fmt.Errorf("secret %q does not exist", id)
 	}
@@ -565,17 +632,23 @@ func upsertLocalSecret(workflowID, workflowName, target, secretID, secretValue s
 		return &SecretsCommandResult{Logs: logs}, fmt.Errorf("secret %q already exists", id)
 	}
 
-	envVar := defaultEnvVarForSecret(id)
-	manifest.SecretsNames[id] = []string{envVar}
-	if err := saveSecretsManifest(secretsYamlPath, manifest); err != nil {
-		return &SecretsCommandResult{Logs: logs}, err
+	envVar := ""
+	if len(envVars) > 0 {
+		envVar = strings.TrimSpace(envVars[0])
+	}
+	if envVar == "" {
+		envVar = defaultEnvVarForSecret(id)
+		manifest.SecretsNames[id] = []string{envVar}
+		if err := saveSecretsManifest(secretsYamlPath, manifest); err != nil {
+			return &SecretsCommandResult{Logs: logs}, err
+		}
 	}
 	if err := setDotEnvValue(dotEnvPath, envVar, strings.TrimSpace(secretValue)); err != nil {
 		return &SecretsCommandResult{Logs: logs}, err
 	}
 
 	if mustExist {
-		appendLog(fmt.Sprintf("Updated secret %s in secrets.yaml and .env", id))
+		appendLog(fmt.Sprintf("Updated secret value for %s in .env", id))
 	} else {
 		appendLog(fmt.Sprintf("Created secret %s in secrets.yaml and .env", id))
 	}
@@ -608,15 +681,13 @@ func DeleteLocalSecret(workflowID, workflowName, target, secretID string) (*Secr
 		return &SecretsCommandResult{Logs: logs}, fmt.Errorf("secret %q does not exist", id)
 	}
 
-	delete(manifest.SecretsNames, id)
-	if err := saveSecretsManifest(secretsYamlPath, manifest); err != nil {
-		return &SecretsCommandResult{Logs: logs}, err
-	}
 	for _, envVar := range envVars {
-		_ = removeDotEnvValue(dotEnvPath, envVar)
+		if err := setDotEnvValue(dotEnvPath, envVar, ""); err != nil {
+			return &SecretsCommandResult{Logs: logs}, err
+		}
 	}
 
-	appendLog(fmt.Sprintf("Deleted secret %s from secrets.yaml and removed mapped env vars from .env", id))
+	appendLog(fmt.Sprintf("Cleared secret value for %s in .env (declaration kept in secrets.yaml)", id))
 	return &SecretsCommandResult{Logs: logs}, nil
 }
 
@@ -628,6 +699,7 @@ func RunWorkflowSimulateLocal(workflowID, workflowName, target string) (*Simulat
 	workflowDirName := slugify(workflowName)
 	workflowDir := filepath.Join(projectRoot, workflowDirName)
 	workflowYamlPath := filepath.Join(workflowDir, "workflow.yaml")
+	secretsYamlPath := filepath.Join(projectRoot, "secrets.yaml")
 	dotEnvPath := filepath.Join(workflowDir, ".env")
 	packageJSONPath := filepath.Join(workflowDir, "package.json")
 
@@ -643,6 +715,9 @@ func RunWorkflowSimulateLocal(workflowID, workflowName, target string) (*Simulat
 	if _, err := os.Stat(packageJSONPath); err != nil {
 		return &SimulateCommandResult{Logs: logs}, errors.New("missing workflow package.json. Run sync to local again")
 	}
+	if _, err := os.Stat(secretsYamlPath); err != nil {
+		return &SimulateCommandResult{Logs: logs}, errors.New("missing secrets.yaml in local workflow project. Run sync to local again")
+	}
 
 	hasTarget, err := workflowHasTarget(workflowYamlPath, target)
 	if err != nil {
@@ -655,12 +730,36 @@ func RunWorkflowSimulateLocal(workflowID, workflowName, target string) (*Simulat
 	appendLog("project: " + projectRoot)
 	appendLog("workflow: " + workflowDirName)
 	appendLog("target: " + target)
+	appendLog("Validating local secrets before simulation...")
 
-	if ok, msg, _ := ensurePrivateKeyConfigured(dotEnvPath); ok {
-		appendLog(msg)
-	} else {
-		appendLog(msg)
+	privateKeyReady, privateKeyMsg, _ := ensurePrivateKeyConfigured(dotEnvPath)
+	appendLog(privateKeyMsg)
+	manifest, err := loadSecretsManifest(secretsYamlPath)
+	if err != nil {
+		return &SimulateCommandResult{Logs: logs}, err
 	}
+	entries := listLocalSecretEntries(manifest, dotEnvPath)
+	missing := make([]LocalSecretEntry, 0)
+	for _, entry := range entries {
+		if !entry.HasValue {
+			missing = append(missing, entry)
+		}
+	}
+	if !privateKeyReady || len(missing) > 0 {
+		appendLog("Simulation blocked. Missing required local secret setup:")
+		if !privateKeyReady {
+			appendLog("- CRE_ETH_PRIVATE_KEY is missing. Open Secrets -> Setup secrets env.")
+		}
+		for _, entry := range missing {
+			if entry.EnvVar == "" {
+				appendLog(fmt.Sprintf("- %s has no env var mapping in secrets.yaml", entry.ID))
+				continue
+			}
+			appendLog(fmt.Sprintf("- %s (%s) is missing in .env", entry.ID, entry.EnvVar))
+		}
+		return &SimulateCommandResult{Logs: logs}, errors.New("cannot simulate until all secrets are configured")
+	}
+	appendLog("All required secrets are configured.")
 
 	appendLog("Running dependency setup: bun install")
 	installLines, installErr := runCommand(workflowDir, "bun", "install")
