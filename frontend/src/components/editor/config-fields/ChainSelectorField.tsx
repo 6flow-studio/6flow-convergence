@@ -6,22 +6,12 @@ interface ChainSelectorFieldProps {
   description?: string;
   value: string;
   onChange: (value: string) => void;
-}
-
-function formatChainLabel(chain: string): string {
-  return chain
-    .split("-")
-    .map((part) => {
-      if (part === "testnet") return "";
-      return part.charAt(0).toUpperCase() + part.slice(1);
-    })
-    .filter(Boolean)
-    .join(" ");
+  isTestnet?: boolean;
 }
 
 const CHAIN_OPTIONS = SUPPORTED_CHAINS.map((chain) => ({
-  value: chain,
-  label: formatChainLabel(chain),
+  value: chain.chainSelectorName,
+  label: chain.name,
 }));
 
 export function ChainSelectorField({
@@ -29,14 +19,22 @@ export function ChainSelectorField({
   description,
   value,
   onChange,
+  isTestnet,
 }: ChainSelectorFieldProps) {
+  const options =
+    isTestnet !== undefined
+      ? SUPPORTED_CHAINS
+          .filter((chain) => chain.isTestnet === isTestnet)
+          .map((chain) => ({ value: chain.chainSelectorName, label: chain.name }))
+      : CHAIN_OPTIONS;
+
   return (
     <SelectField
       label={label}
       description={description}
       value={value}
       onChange={onChange}
-      options={CHAIN_OPTIONS}
+      options={options}
       placeholder="Select chain..."
     />
   );

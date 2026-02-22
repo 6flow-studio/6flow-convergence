@@ -731,23 +731,33 @@ export const CRON_REGEX = /^(\d+|\*|\*\/\d+)\s+(\d+|\*|\*\/\d+)\s+(\d+|\*|\*\/\d
 /** Ethereum address validation */
 export const ETH_ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
 
-/** Supported chain selectors for CRE */
-export const SUPPORTED_CHAINS = [
-  'ethereum-mainnet',
-  'ethereum-testnet-sepolia',
-  'polygon-mainnet',
-  'polygon-testnet-amoy',
-  'arbitrum-mainnet',
-  'arbitrum-testnet-sepolia',
-  'optimism-mainnet',
-  'optimism-testnet-sepolia',
-  'avalanche-mainnet',
-  'avalanche-testnet-fuji',
-  'base-mainnet',
-  'base-testnet-sepolia',
-] as const;
+/** Supported chain entry for CRE */
+export interface SupportedChain {
+  name: string;
+  chainSelectorName: string;
+  numericId: string;
+  isTestnet: boolean;
+}
 
-export type ChainSelectorName = typeof SUPPORTED_CHAINS[number];
+/** Supported chain selectors for CRE */
+export const SUPPORTED_CHAINS: SupportedChain[] = [
+  { name: 'Ethereum Mainnet',  chainSelectorName: 'ethereum-mainnet',                    numericId: '5009297550715157269',  isTestnet: false },
+  { name: 'Ethereum Sepolia',  chainSelectorName: 'ethereum-testnet-sepolia',             numericId: '16015286601757825753', isTestnet: true },
+  { name: 'Polygon Mainnet',   chainSelectorName: 'polygon-mainnet',                      numericId: '4051577828743386545',  isTestnet: false },
+  { name: 'Polygon Amoy',      chainSelectorName: 'polygon-testnet-amoy',                 numericId: '16281711391670634445', isTestnet: true },
+  { name: 'Arbitrum One',      chainSelectorName: 'ethereum-mainnet-arbitrum-1',           numericId: '4949039107694359620',  isTestnet: false },
+  { name: 'Arbitrum Sepolia',  chainSelectorName: 'ethereum-testnet-sepolia-arbitrum-1',   numericId: '3478487238524512106',  isTestnet: true },
+  { name: 'OP Mainnet',        chainSelectorName: 'ethereum-mainnet-optimism-1',           numericId: '3734403246176062136',  isTestnet: false },
+  { name: 'OP Sepolia',        chainSelectorName: 'ethereum-testnet-sepolia-optimism-1',   numericId: '5224473277236331295',  isTestnet: true },
+  { name: 'Avalanche Mainnet', chainSelectorName: 'avalanche-mainnet',                    numericId: '6433500567565415381',  isTestnet: false },
+  { name: 'Avalanche Fuji',    chainSelectorName: 'avalanche-testnet-fuji',               numericId: '14767482510784806043', isTestnet: true },
+  { name: 'Base Mainnet',      chainSelectorName: 'ethereum-mainnet-base-1',               numericId: '15971525489660198786', isTestnet: false },
+  { name: 'Base Sepolia',      chainSelectorName: 'ethereum-testnet-sepolia-base-1',       numericId: '10344971235874465080', isTestnet: true },
+  { name: 'BNB Chain Mainnet', chainSelectorName: 'binance_smart_chain-mainnet',           numericId: '11344663589394136015', isTestnet: false },
+  { name: 'BNB Chain Testnet', chainSelectorName: 'binance_smart_chain-testnet',           numericId: '5142893604156789321',  isTestnet: true },
+];
+
+export type ChainSelectorName = SupportedChain['chainSelectorName'];
 
 // =============================================================================
 // EXAMPLE WORKFLOW
