@@ -111,3 +111,36 @@ export const saveCompiledArtifact = mutation({
     return args.storageId;
   },
 });
+
+export const getCompiledArtifactForTui = query({
+  args: {
+    id: v.id("workflows"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const workflow = await ctx.db.get(args.id);
+    if (!workflow || workflow.userId !== userId) {
+      throw new Error("Workflow not found");
+    }
+
+    if (!workflow.compiledArtifactStorageId) {
+      return null;
+    }
+
+    const downloadUrl = await ctx.storage.getUrl(workflow.compiledArtifactStorageId);
+    if (!downloadUrl) {
+      return null;
+    }
+
+    return {
+      downloadUrl,
+      fileName:
+        workflow.compiledArtifactFileName ??
+        `${workflow.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "workflow"}-cre-bundle.zip`,
+      workflowName: workflow.name,
+      updatedAt: workflow.updatedAt,
+    };
+  },
+});
