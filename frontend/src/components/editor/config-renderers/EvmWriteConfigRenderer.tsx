@@ -9,14 +9,16 @@ import type { EvmWriteConfig } from "@6flow/shared/model/node";
 interface Props {
   config: EvmWriteConfig;
   onChange: (patch: Record<string, unknown>) => void;
+  isTestnet?: boolean;
 }
 
-export function EvmWriteConfigRenderer({ config, onChange }: Props) {
+export function EvmWriteConfigRenderer({ config, onChange, isTestnet }: Props) {
   return (
     <div className="space-y-3">
       <ChainSelectorField
         value={config.chainSelectorName}
         onChange={(chainSelectorName) => onChange({ chainSelectorName })}
+        isTestnet={isTestnet}
       />
 
       <TextField

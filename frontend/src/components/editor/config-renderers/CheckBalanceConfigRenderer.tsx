@@ -7,14 +7,16 @@ import type { CheckBalanceConfig } from "@6flow/shared/model/node";
 interface Props {
   config: CheckBalanceConfig;
   onChange: (patch: Record<string, unknown>) => void;
+  isTestnet?: boolean;
 }
 
-export function CheckBalanceConfigRenderer({ config, onChange }: Props) {
+export function CheckBalanceConfigRenderer({ config, onChange, isTestnet }: Props) {
   return (
     <div className="space-y-3">
       <ChainSelectorField
         value={config.chainSelectorName}
         onChange={(chainSelectorName) => onChange({ chainSelectorName })}
+        isTestnet={isTestnet}
       />
 
       <TextField

@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, Plus, RotateCcw, Trash2 } from "lucide-react";
 import type {
   GlobalConfig,
   RpcEntry,
   SecretReference,
 } from "@6flow/shared/model/node";
+import { SUPPORTED_CHAINS } from "@6flow/shared/supportedChain";
 import {
   Sheet,
   SheetContent,
@@ -18,9 +19,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  BooleanField,
-  ChainSelectorField,
   FieldLabel,
+  SelectField,
 } from "@/components/editor/config-fields";
 
 interface WorkflowSettingsSheetProps {
@@ -44,6 +44,22 @@ function cloneRpcs(rpcs: RpcEntry[]): RpcEntry[] {
   }));
 }
 
+function getFilteredChains(isTestnet: boolean) {
+  return SUPPORTED_CHAINS.filter((chain) => chain.isTestnet === isTestnet);
+}
+
+function getDefaultUrl(chainSelectorName: string): string {
+  return (
+    SUPPORTED_CHAINS.find((c) => c.chainSelectorName === chainSelectorName)
+      ?.defaultRPCUrl ?? ""
+  );
+}
+
+function getEffectiveUrl(chainSelectorName: string, rpcs: RpcEntry[]): string {
+  const override = rpcs.find((r) => r.chainName === chainSelectorName);
+  return override?.url ?? getDefaultUrl(chainSelectorName);
+}
+
 export function WorkflowSettingsSheet({
   open,
   onOpenChange,
@@ -59,7 +75,6 @@ export function WorkflowSettingsSheet({
 
     setDraft({
       isTestnet: value.isTestnet,
-      defaultChainSelector: value.defaultChainSelector,
       secrets: cloneSecrets(value.secrets),
       rpcs: cloneRpcs(value.rpcs),
     });
@@ -97,6 +112,37 @@ export function WorkflowSettingsSheet({
     }));
   }
 
+  function updateRpcUrl(chainSelectorName: string, url: string) {
+    setDraft((previous) => {
+      const exists = previous.rpcs.some(
+        (r) => r.chainName === chainSelectorName
+      );
+      const nextRpcs = exists
+        ? previous.rpcs.map((r) =>
+            r.chainName === chainSelectorName ? { ...r, url } : r
+          )
+        : [...previous.rpcs, { chainName: chainSelectorName, url }];
+      return { ...previous, rpcs: nextRpcs };
+    });
+  }
+
+  function resetRpcUrl(chainSelectorName: string) {
+    setDraft((previous) => ({
+      ...previous,
+      rpcs: previous.rpcs.filter((r) => r.chainName !== chainSelectorName),
+    }));
+  }
+
+  const filteredChains = getFilteredChains(draft.isTestnet);
+
+  const secretNameConflicts = draft.secrets.map(
+    (secret) =>
+      secret.name.trim().length > 0 &&
+      secret.envVariable.trim().length > 0 &&
+      secret.name.trim() === secret.envVariable.trim()
+  );
+  const hasSecretConflicts = secretNameConflicts.some(Boolean);
+
   function handleSave() {
     const normalizedSecrets = draft.secrets
       .map((secret) => ({
@@ -105,11 +151,17 @@ export function WorkflowSettingsSheet({
       }))
       .filter((secret) => secret.name.length > 0 && secret.envVariable.length > 0);
 
+    const normalizedRpcs = draft.rpcs
+      .map((rpc) => ({ chainName: rpc.chainName, url: rpc.url.trim() }))
+      .filter(
+        (rpc) =>
+          rpc.url.length > 0 && rpc.url !== getDefaultUrl(rpc.chainName)
+      );
+
     onSave({
       isTestnet: draft.isTestnet,
-      defaultChainSelector: draft.defaultChainSelector,
       secrets: normalizedSecrets,
-      rpcs: cloneRpcs(draft.rpcs),
+      rpcs: normalizedRpcs,
     });
 
     onOpenChange(false);
@@ -129,63 +181,59 @@ export function WorkflowSettingsSheet({
         </SheetHeader>
 
         <div className="px-4 py-4 space-y-4 overflow-auto">
-          <BooleanField
-            label="Testnet"
-            description="Toggle whether generated config assumes testnet environment"
-            value={draft.isTestnet}
-            onChange={(value) => setDraft((previous) => ({ ...previous, isTestnet: value }))}
-          />
-
-          <ChainSelectorField
-            label="Default Chain"
-            description="Fallback chain selector for nodes that rely on global defaults"
-            value={draft.defaultChainSelector}
+          <SelectField
+            label="Environment"
+            description="Target environment for the generated compiler config"
+            value={draft.isTestnet ? "testnet" : "production"}
             onChange={(value) =>
-              setDraft((previous) => ({
-                ...previous,
-                defaultChainSelector: value,
-              }))
+              setDraft((previous) => ({ ...previous, isTestnet: value === "testnet" }))
             }
+            options={[
+              { value: "testnet", label: "Testnet" },
+              { value: "production", label: "Production" },
+            ]}
           />
 
           <div className="space-y-2">
             <FieldLabel
               label="Secrets"
-              description="Secrets used by compiler validation and generated secrets.yaml"
+              description="Used in secrets.yaml as a key value to map between your CRE workflow and env key"
             />
             <div className="space-y-2">
-              {draft.secrets.length === 0 && (
-                <div className="text-[11px] text-zinc-600 border border-edge-dim rounded-md px-2.5 py-2">
-                  No secrets configured.
-                </div>
-              )}
-
               {draft.secrets.map((secret, index) => (
-                <div key={`secret-${index}`} className="flex items-center gap-2">
-                  <Input
-                    value={secret.name}
-                    onChange={(event) =>
-                      updateSecret(index, "name", event.target.value)
-                    }
-                    placeholder="Secret name"
-                    className="h-8 bg-surface-2 border-edge-dim text-zinc-300 text-[12px]"
-                  />
-                  <Input
-                    value={secret.envVariable}
-                    onChange={(event) =>
-                      updateSecret(index, "envVariable", event.target.value)
-                    }
-                    placeholder="Env variable"
-                    className="h-8 bg-surface-2 border-edge-dim text-zinc-300 text-[12px]"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-zinc-500 hover:text-red-400"
-                    onClick={() => removeSecret(index)}
-                  >
-                    <Trash2 size={13} />
-                  </Button>
+                <div key={`secret-${index}`} className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={secret.name}
+                      onChange={(event) =>
+                        updateSecret(index, "name", event.target.value)
+                      }
+                      placeholder="Secret name"
+                      className={`h-8 bg-surface-2 text-zinc-300 text-[12px] ${secretNameConflicts[index] ? "border-amber-500/60" : "border-edge-dim"}`}
+                    />
+                    <Input
+                      value={secret.envVariable}
+                      onChange={(event) =>
+                        updateSecret(index, "envVariable", event.target.value)
+                      }
+                      placeholder="Env variable"
+                      className={`h-8 bg-surface-2 text-zinc-300 text-[12px] ${secretNameConflicts[index] ? "border-amber-500/60" : "border-edge-dim"}`}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-zinc-500 hover:text-red-400"
+                      onClick={() => removeSecret(index)}
+                    >
+                      <Trash2 size={13} />
+                    </Button>
+                  </div>
+                  {secretNameConflicts[index] && (
+                    <div className="flex items-center gap-1.5 text-amber-400 text-[11px] pl-0.5">
+                      <AlertTriangle size={11} />
+                      Secret name and env variable must be different — CRE does not allow identical values.
+                    </div>
+                  )}
                 </div>
               ))}
 
@@ -198,6 +246,58 @@ export function WorkflowSettingsSheet({
                 <Plus size={12} className="mr-1.5" />
                 Add Secret
               </Button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <FieldLabel
+              label="RPC URLs"
+              description="Override default public RPC endpoints per chain"
+            />
+            <div className="space-y-2">
+              {filteredChains.map((chain) => {
+                const effectiveUrl = getEffectiveUrl(
+                  chain.chainSelectorName,
+                  draft.rpcs
+                );
+                const isOverridden = effectiveUrl !== chain.defaultRPCUrl;
+                return (
+                  <div
+                    key={chain.chainSelectorName}
+                    className="space-y-1"
+                  >
+                    <span className="text-[11px] text-zinc-400">
+                      {chain.name}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        value={effectiveUrl}
+                        onChange={(event) =>
+                          updateRpcUrl(
+                            chain.chainSelectorName,
+                            event.target.value
+                          )
+                        }
+                        placeholder={chain.defaultRPCUrl}
+                        className={`h-8 bg-surface-2 text-zinc-300 text-[12px] font-mono border-edge-dim ${isOverridden ? "border-accent-blue/40" : ""}`}
+                      />
+                      {isOverridden && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 shrink-0 text-zinc-500 hover:text-zinc-200"
+                          onClick={() =>
+                            resetRpcUrl(chain.chainSelectorName)
+                          }
+                          title="Reset to default"
+                        >
+                          <RotateCcw size={12} />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -215,6 +315,7 @@ export function WorkflowSettingsSheet({
             size="sm"
             className="h-8 text-xs bg-accent-blue hover:bg-blue-500"
             onClick={handleSave}
+            disabled={hasSecretConflicts}
           >
             Save Settings
           </Button>

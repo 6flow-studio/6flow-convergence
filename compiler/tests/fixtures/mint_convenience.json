@@ -4,7 +4,6 @@
     "version": "1.0.0",
     "globalConfig": {
         "isTestnet": true,
-        "defaultChainSelector": "ethereum-testnet-sepolia",
         "secrets": [],
         "rpcs": [
             { "chainName": "ethereum-mainnet", "url": "https://rpc.example.com/ethereum-mainnet" },

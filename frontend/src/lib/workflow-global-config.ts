@@ -4,8 +4,6 @@ import type {
   SecretReference,
 } from "@6flow/shared/model/node";
 
-const DEFAULT_CHAIN_SELECTOR = "ethereum-testnet-sepolia";
-
 function isSecretReference(value: unknown): value is SecretReference {
   if (!value || typeof value !== "object") return false;
 
@@ -23,7 +21,6 @@ function isRpcEntry(value: unknown): value is RpcEntry {
 export function createDefaultGlobalConfig(): GlobalConfig {
   return {
     isTestnet: true,
-    defaultChainSelector: DEFAULT_CHAIN_SELECTOR,
     secrets: [],
     rpcs: [],
   };
@@ -58,10 +55,6 @@ export function sanitizeGlobalConfig(value: unknown): GlobalConfig {
 
   return {
     isTestnet: typeof incoming.isTestnet === "boolean" ? incoming.isTestnet : defaults.isTestnet,
-    defaultChainSelector:
-      typeof incoming.defaultChainSelector === "string" && incoming.defaultChainSelector.trim().length > 0
-        ? incoming.defaultChainSelector
-        : defaults.defaultChainSelector,
     secrets,
     rpcs,
   };

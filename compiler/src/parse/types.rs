@@ -39,7 +39,6 @@ pub struct WorkflowEdge {
 #[serde(rename_all = "camelCase")]
 pub struct GlobalConfig {
     pub is_testnet: bool,
-    pub default_chain_selector: String,
     pub secrets: Vec<SecretReference>,
     pub rpcs: Vec<RpcEntry>,
 }

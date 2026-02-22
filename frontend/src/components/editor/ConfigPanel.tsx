@@ -41,7 +41,8 @@ import {
 function renderNodeConfig(
   nodeType: NodeType,
   config: Record<string, unknown>,
-  onChange: (patch: Record<string, unknown>) => void
+  onChange: (patch: Record<string, unknown>) => void,
+  isTestnet?: boolean
 ) {
   switch (nodeType) {
     case "codeNode":
@@ -59,11 +60,11 @@ function renderNodeConfig(
     case "cronTrigger":
       return <CronTriggerConfigRenderer config={config as any} onChange={onChange} />;
     case "evmLogTrigger":
-      return <EvmLogTriggerConfigRenderer config={config as any} onChange={onChange} />;
+      return <EvmLogTriggerConfigRenderer config={config as any} onChange={onChange} isTestnet={isTestnet} />;
     case "evmRead":
-      return <EvmReadConfigRenderer config={config as any} onChange={onChange} />;
+      return <EvmReadConfigRenderer config={config as any} onChange={onChange} isTestnet={isTestnet} />;
     case "evmWrite":
-      return <EvmWriteConfigRenderer config={config as any} onChange={onChange} />;
+      return <EvmWriteConfigRenderer config={config as any} onChange={onChange} isTestnet={isTestnet} />;
     case "getSecret":
       return <GetSecretConfigRenderer config={config as any} onChange={onChange} />;
     case "jsonParse":
@@ -81,15 +82,15 @@ function renderNodeConfig(
     case "error":
       return <ErrorConfigRenderer config={config as any} onChange={onChange} />;
     case "mintToken":
-      return <TokenNodeConfigRenderer variant="mint" config={config as any} onChange={onChange} />;
+      return <TokenNodeConfigRenderer variant="mint" config={config as any} onChange={onChange} isTestnet={isTestnet} />;
     case "burnToken":
-      return <TokenNodeConfigRenderer variant="burn" config={config as any} onChange={onChange} />;
+      return <TokenNodeConfigRenderer variant="burn" config={config as any} onChange={onChange} isTestnet={isTestnet} />;
     case "transferToken":
-      return <TokenNodeConfigRenderer variant="transfer" config={config as any} onChange={onChange} />;
+      return <TokenNodeConfigRenderer variant="transfer" config={config as any} onChange={onChange} isTestnet={isTestnet} />;
     case "checkKyc":
       return <CheckKycConfigRenderer config={config as any} onChange={onChange} />;
     case "checkBalance":
-      return <CheckBalanceConfigRenderer config={config as any} onChange={onChange} />;
+      return <CheckBalanceConfigRenderer config={config as any} onChange={onChange} isTestnet={isTestnet} />;
     default:
       return <GenericConfigRenderer config={config} onChange={onChange} />;
   }
@@ -106,6 +107,7 @@ export function ConfigPanel() {
   const removeNode = useEditorStore((s) => s.removeNode);
   const selectNode = useEditorStore((s) => s.selectNode);
   const liveNodeErrorsByNodeId = useEditorStore((s) => s.liveNodeErrorsByNodeId);
+  const workflowGlobalConfig = useEditorStore((s) => s.workflowGlobalConfig);
 
   const [width, setWidth] = useState(MIN_WIDTH);
   const isResizing = useRef(false);
@@ -233,7 +235,8 @@ export function ConfigPanel() {
             {renderNodeConfig(
               node.data.nodeType,
               config,
-              (patch) => updateNodeConfig(node.id, patch)
+              (patch) => updateNodeConfig(node.id, patch),
+              workflowGlobalConfig.isTestnet
             )}
           </div>
 

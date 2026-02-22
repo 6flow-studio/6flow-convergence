@@ -6,7 +6,6 @@ import type {
 } from "@6flow/shared/model/node";
 import {
   ArrowLeft,
-  CheckCircle,
   Cloud,
   CloudOff,
   Download,
@@ -14,6 +13,7 @@ import {
   Play,
   SlidersHorizontal,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,9 +51,7 @@ export function Toolbar({
   const workflowGlobalConfig = useEditorStore((s) => s.workflowGlobalConfig);
   const setWorkflowName = useEditorStore((s) => s.setWorkflowName);
   const isBusy = validationStatus === "running" || compileStatus === "running";
-  const validateLabel =
-    validationStatus === "running" ? "Validating..." : "Validate";
-  const compileLabel = compileStatus === "running" ? "Compiling..." : "Compile";
+const compileLabel = compileStatus === "running" ? "Compiling..." : "Compile";
   const compilerHint = compileMessage ?? validationMessage;
 
   const handleDownloadJson = () => {
@@ -104,9 +102,7 @@ export function Toolbar({
       </Link>
 
       <div className="flex items-center gap-2.5">
-        <div className="w-7 h-7 rounded-md bg-accent-blue/10 flex items-center justify-center">
-          <span className="text-accent-blue text-sm font-bold">六</span>
-        </div>
+        <Image src="/logo/6flow_white.png" alt="6FLOW" width={28} height={28} />
         <span className="text-[13px] font-bold text-zinc-100 tracking-tight">6FLOW</span>
       </div>
 
@@ -164,23 +160,8 @@ export function Toolbar({
           className="text-zinc-400 hover:text-zinc-200 hover:bg-surface-2 h-8 px-3 text-xs"
           onClick={onOpenSettings}
         >
-          <SlidersHorizontal size={13} className="mr-1.5" />
-          Workflow Settings
-        </Button>
-
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-zinc-400 hover:text-zinc-200 hover:bg-surface-2 h-8 px-3 text-xs"
-          disabled={!canRunCompiler || isBusy}
-          onClick={onValidate}
-        >
-          {validationStatus === "running" ? (
-            <Loader2 size={13} className="mr-1.5 animate-spin" />
-          ) : (
-            <CheckCircle size={13} className="mr-1.5" />
-          )}
-          {validateLabel}
+        <SlidersHorizontal size={13} className="mr-1.5" />
+          Settings
         </Button>
 
         <Button

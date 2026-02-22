@@ -14,6 +14,7 @@ interface Props {
   variant: "mint" | "burn" | "transfer";
   config: TokenConfig;
   onChange: (patch: Record<string, unknown>) => void;
+  isTestnet?: boolean;
 }
 
 const VARIANT_FIELD: Record<string, { label: string; key: string }> = {
@@ -27,7 +28,7 @@ function getAddressSource(config: TokenConfig, variant: string): string {
   return (config as unknown as Record<string, unknown>)[key] as string ?? "";
 }
 
-export function TokenNodeConfigRenderer({ variant, config, onChange }: Props) {
+export function TokenNodeConfigRenderer({ variant, config, onChange, isTestnet }: Props) {
   const field = VARIANT_FIELD[variant];
 
   return (
@@ -35,6 +36,7 @@ export function TokenNodeConfigRenderer({ variant, config, onChange }: Props) {
       <ChainSelectorField
         value={config.chainSelectorName}
         onChange={(chainSelectorName) => onChange({ chainSelectorName })}
+        isTestnet={isTestnet}
       />
 
       <TextField

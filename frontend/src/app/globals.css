@@ -55,6 +55,7 @@
   --color-edge-bright: var(--edge-bright);
   --color-accent-blue: var(--accent-blue);
   --color-accent-blue-dim: var(--accent-blue-dim);
+  --color-accent-yellow: var(--accent-yellow);
 }
 
 :root {
@@ -97,8 +98,9 @@
   --surface-3: #222225;
   --edge-dim: #2a2a2e;
   --edge-bright: #3f3f46;
-  --accent-blue: #3b82f6;
-  --accent-blue-dim: #1e3a5f;
+  --accent-blue: #3A9AFF;
+  --accent-blue-dim: #1C0770;
+  --accent-yellow: #F1FF5E;
 }
 
 .dark {
@@ -108,10 +110,10 @@
   --card-foreground: oklch(0.92 0 0);
   --popover: #18181b;
   --popover-foreground: oklch(0.92 0 0);
-  --primary: #3b82f6;
+  --primary: #261CC1;
   --primary-foreground: #ffffff;
-  --secondary: #18181b;
-  --secondary-foreground: oklch(0.85 0 0);
+  --secondary: #1C0770;
+  --secondary-foreground: oklch(0.92 0 0);
   --muted: #18181b;
   --muted-foreground: oklch(0.55 0 0);
   --accent: #222225;
@@ -119,7 +121,7 @@
   --destructive: oklch(0.65 0.2 25);
   --border: #2a2a2e;
   --input: #222225;
-  --ring: #3b82f6;
+  --ring: #3A9AFF;
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -127,12 +129,12 @@
   --chart-5: oklch(0.645 0.246 16.439);
   --sidebar: #111113;
   --sidebar-foreground: oklch(0.92 0 0);
-  --sidebar-primary: #3b82f6;
+  --sidebar-primary: #261CC1;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #222225;
   --sidebar-accent-foreground: oklch(0.92 0 0);
   --sidebar-border: #2a2a2e;
-  --sidebar-ring: #3b82f6;
+  --sidebar-ring: #3A9AFF;
 
   --surface-0: #0a0a0b;
   --surface-1: #111113;
@@ -140,8 +142,9 @@
   --surface-3: #222225;
   --edge-dim: #2a2a2e;
   --edge-bright: #3f3f46;
-  --accent-blue: #3b82f6;
-  --accent-blue-dim: #1e3a5f;
+  --accent-blue: #3A9AFF;
+  --accent-blue-dim: #1C0770;
+  --accent-yellow: #F1FF5E;
 }
 
 @layer base {
@@ -175,7 +178,7 @@
 .react-flow__edge.selected .react-flow__edge-path,
 .react-flow__edge:hover .react-flow__edge-path {
   stroke: var(--accent-blue);
-  filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.3));
+  filter: drop-shadow(0 0 4px rgba(58, 154, 255, 0.3));
 }
 
 .react-flow__handle {
@@ -184,7 +187,7 @@
 
 .react-flow__handle:hover {
   transform: scale(1.3);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+  box-shadow: 0 0 0 3px rgba(58, 154, 255, 0.25);
 }
 
 .react-flow__controls {
@@ -241,7 +244,7 @@
 
 /* ─── Selection + focus overrides ─── */
 ::selection {
-  background: rgba(59, 130, 246, 0.3);
+  background: rgba(58, 154, 255, 0.3);
   color: inherit;
 }
 
@@ -249,7 +252,7 @@ input:focus,
 textarea:focus,
 select:focus {
   outline: none;
-  box-shadow: 0 0 0 1px var(--accent-blue), 0 0 0 3px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 0 0 1px var(--accent-blue), 0 0 0 3px rgba(58, 154, 255, 0.15);
 }
 
 /* ─── Utility animations ─── */
@@ -264,8 +267,8 @@ select:focus {
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
-  50% { box-shadow: 0 0 8px 2px rgba(59, 130, 246, 0.15); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(58, 154, 255, 0); }
+  50% { box-shadow: 0 0 8px 2px rgba(58, 154, 255, 0.15); }
 }
 
 .animate-fade-in {

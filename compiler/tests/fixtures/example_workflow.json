@@ -5,7 +5,6 @@
     "version": "1.0.0",
     "globalConfig": {
         "isTestnet": true,
-        "defaultChainSelector": "ethereum-testnet-sepolia",
         "secrets": [
             { "name": "KYC_API_KEY", "envVariable": "KYC_API_KEY_VAR" }
         ],

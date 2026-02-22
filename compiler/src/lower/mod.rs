@@ -63,11 +63,7 @@ pub fn lower(workflow: &Workflow, graph: &WorkflowGraph) -> Result<WorkflowIR, V
             description: workflow.description.clone(),
             version: workflow.version.clone(),
             is_testnet: workflow.global_config.is_testnet,
-            default_chain_selector: if workflow.global_config.default_chain_selector.is_empty() {
-                None
-            } else {
-                Some(workflow.global_config.default_chain_selector.clone())
-            },
+            default_chain_selector: None,
         },
         trigger: trigger_result.trigger_def,
         trigger_param: trigger_result.trigger_param,

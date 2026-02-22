@@ -13,6 +13,7 @@ import type { EvmLogTriggerConfig, AbiParameter } from "@6flow/shared/model/node
 interface Props {
   config: EvmLogTriggerConfig;
   onChange: (patch: Record<string, unknown>) => void;
+  isTestnet?: boolean;
 }
 
 const BLOCK_CONFIRMATION_OPTIONS = [
@@ -20,7 +21,7 @@ const BLOCK_CONFIRMATION_OPTIONS = [
   { value: "finalized", label: "Finalized" },
 ];
 
-export function EvmLogTriggerConfigRenderer({ config, onChange }: Props) {
+export function EvmLogTriggerConfigRenderer({ config, onChange, isTestnet }: Props) {
   const eventAbi = config.eventAbi ?? { type: "event" as const, name: "", inputs: [] };
   const topicFilters = config.topicFilters ?? {};
 
@@ -29,6 +30,7 @@ export function EvmLogTriggerConfigRenderer({ config, onChange }: Props) {
       <ChainSelectorField
         value={config.chainSelectorName}
         onChange={(chainSelectorName) => onChange({ chainSelectorName })}
+        isTestnet={isTestnet}
       />
 
       <TagInput

@@ -13,6 +13,7 @@ import type { EvmReadConfig } from "@6flow/shared/model/node";
 interface Props {
   config: EvmReadConfig;
   onChange: (patch: Record<string, unknown>) => void;
+  isTestnet?: boolean;
 }
 
 const BLOCK_OPTIONS = [
@@ -21,7 +22,7 @@ const BLOCK_OPTIONS = [
   { value: "custom", label: "Custom" },
 ];
 
-export function EvmReadConfigRenderer({ config, onChange }: Props) {
+export function EvmReadConfigRenderer({ config, onChange, isTestnet }: Props) {
   const blockMode =
     config.blockNumber === "latest" || config.blockNumber === "finalized"
       ? config.blockNumber
@@ -34,6 +35,7 @@ export function EvmReadConfigRenderer({ config, onChange }: Props) {
       <ChainSelectorField
         value={config.chainSelectorName}
         onChange={(chainSelectorName) => onChange({ chainSelectorName })}
+        isTestnet={isTestnet}
       />
 
       <TextField

@@ -7,7 +7,6 @@ export const mockupWorkflow: Workflow = {
   version: '1.0.0',
   globalConfig: {
     isTestnet: true,
-    defaultChainSelector: '',
     secrets: [
       {
         name: 'OPENAI_API_KEY',

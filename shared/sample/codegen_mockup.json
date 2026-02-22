@@ -29,7 +29,8 @@
       "path": "tsconfig.json"
     },
     {
-      "content": "# Environment variables for CRE simulation\n# Fill in real values before running `cre simulate`\n\nOPENAI_API_KEY=<OPENAI_API_KEY>"
+      "content": "# Environment variables for CRE simulation\n# Fill in real values before running `cre simulate`\n\nOPENAI_API_KEY=<OPENAI_API_KEY>\n",
+      "path": ".env"
     }
   ],
   "status": "success",
