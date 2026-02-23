@@ -30,12 +30,11 @@ The only solution for now is on cloud (but we will provide on-premise later)
 
 ## Backend
 
-- NestJS for services
 - Rust for compiler (inspired from SWC Speedy Web Compiler)
 
 ## Database
 
-- PostgreSQL
+- Convex
 
 ## Deployment
 
@@ -46,43 +45,12 @@ The only solution for now is on cloud (but we will provide on-premise later)
 
 - Chainlink Runtime Environment
 
-## Testing
-
-- Jest
-
 # Project Structure
 
 ```bash
 .
-├── backend/    # NestJS backend services
 ├── compiler/   # Rust-based compiler for CRE
 ├── frontend/   # NextJS frontend application
 ├── shared/     # Shared helper functions and data models across codebase
-```
-
-# Diagram
-
-```mermaid
-graph LR
-    A["Frontend<br/>(ReactFlow)"]
-    B[Node-Edge object<br/>from backend]
-    C["Transpiler<br/>(Rust)"]
-    D["CRE code<br/>(TypeScript)"]
-    E[cre workflow<br/>simulate]
-    F[Download CRE.zip]
-
-    A -->|REST API| B
-    B --> C
-    C --> D
-    D --> E
-    E --> F
-    E -- "Fail, Error message, Response" --> A
-
-    %% Styling to match the original chart's appearance
-    style A fill:#ffcccc,stroke:#ff4d00,stroke-width:2px
-    style B fill:#ffcccc,stroke:#ff4d00,stroke-width:2px
-    style C fill:#ffcccc,stroke:#ff4d00,stroke-width:2px
-    style D fill:#ffcccc,stroke:#ff4d00,stroke-width:2px
-    style E fill:#ffcccc,stroke:#ff4d00,stroke-width:2px
-    style F fill:#ffcccc,stroke:#ff4d00,stroke-width:2px
+├── tools/      # TUI tooling for local secrets/simulation workflows
 ```
