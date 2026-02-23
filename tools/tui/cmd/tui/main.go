@@ -80,20 +80,18 @@ func (i secretPickItem) Description() string { return i.description }
 func (i secretPickItem) FilterValue() string { return i.id }
 
 type keyMap struct {
-	Pane1   key.Binding
-	Pane2   key.Binding
-	Pane3   key.Binding
-	Next    key.Binding
-	Up      key.Binding
-	Down    key.Binding
-	Run     key.Binding
-	Top     key.Binding
-	Bottom  key.Binding
-	Clear   key.Binding
-	Copy    key.Binding
-	CopyAll key.Binding
-	Login   key.Binding
-	Quit    key.Binding
+	Pane1  key.Binding
+	Pane2  key.Binding
+	Pane3  key.Binding
+	Next   key.Binding
+	Up     key.Binding
+	Down   key.Binding
+	Run    key.Binding
+	Top    key.Binding
+	Bottom key.Binding
+	Clear  key.Binding
+	Login  key.Binding
+	Quit   key.Binding
 }
 
 func (k keyMap) ShortHelp() []key.Binding {
@@ -109,20 +107,18 @@ func (k keyMap) FullHelp() [][]key.Binding {
 }
 
 var keys = keyMap{
-	Pane1:   key.NewBinding(key.WithKeys("1"), key.WithHelp("1", "workflows")),
-	Pane2:   key.NewBinding(key.WithKeys("2"), key.WithHelp("2", "actions")),
-	Pane3:   key.NewBinding(key.WithKeys("3"), key.WithHelp("3", "console")),
-	Next:    key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next pane")),
-	Up:      key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
-	Down:    key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
-	Run:     key.NewBinding(key.WithKeys("enter", "space"), key.WithHelp("enter", "run/select")),
-	Top:     key.NewBinding(key.WithKeys("g"), key.WithHelp("g", "console top")),
-	Bottom:  key.NewBinding(key.WithKeys("G"), key.WithHelp("G", "console bottom")),
-	Clear:   key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "clear console")),
-	Copy:    key.NewBinding(key.WithKeys("y"), key.WithHelp("y", "copy last line")),
-	CopyAll: key.NewBinding(key.WithKeys("Y"), key.WithHelp("Y", "copy all logs")),
-	Login:   key.NewBinding(key.WithKeys("y", "n"), key.WithHelp("y/n", "login or quit")),
-	Quit:    key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit")),
+	Pane1:  key.NewBinding(key.WithKeys("1"), key.WithHelp("1", "workflows")),
+	Pane2:  key.NewBinding(key.WithKeys("2"), key.WithHelp("2", "actions")),
+	Pane3:  key.NewBinding(key.WithKeys("3"), key.WithHelp("3", "console")),
+	Next:   key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next pane")),
+	Up:     key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
+	Down:   key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
+	Run:    key.NewBinding(key.WithKeys("enter", "space"), key.WithHelp("enter", "run/select")),
+	Top:    key.NewBinding(key.WithKeys("g"), key.WithHelp("g", "console top")),
+	Bottom: key.NewBinding(key.WithKeys("G"), key.WithHelp("G", "console bottom")),
+	Clear:  key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "copy selected line")),
+	Login:  key.NewBinding(key.WithKeys("y", "n"), key.WithHelp("y/n", "login or quit")),
+	Quit:   key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit")),
 }
 
 type loadedSessionMsg struct {
@@ -174,6 +170,10 @@ type secretOptionsLoadedMsg struct {
 	err      error
 }
 
+type copyNoticeClearedMsg struct {
+	id int
+}
+
 type model struct {
 	phase     appPhase
 	authState authState
@@ -220,6 +220,10 @@ type model struct {
 	secretFormError         string
 	secretIDLocked          bool
 	secretRemoveFromConvex  bool
+	consoleLines            []string
+	consoleSelected         int
+	copyNotice              string
+	copyNoticeID            int
 
 	logs []string
 }
@@ -575,22 +579,72 @@ func (m *model) refreshConsoleContent() {
 		width = 80
 	}
 
-	styled := make([]string, 0, len(m.logs))
+	type renderedLine struct {
+		text  string
+		color lipgloss.Color
+	}
+
+	rendered := make([]renderedLine, 0, len(m.logs))
 	for _, line := range m.logs {
+		color := classifyLogColor(line)
 		for _, segment := range wrapLine(line, width) {
-			content := lipgloss.NewStyle().Foreground(classifyLogColor(line)).Render(segment)
-			styled = append(styled, content)
+			rendered = append(rendered, renderedLine{text: segment, color: color})
 		}
 	}
+
+	if len(rendered) == 0 {
+		rendered = append(rendered, renderedLine{text: "", color: lipgloss.Color("7")})
+	}
+	if m.consoleSelected < 0 {
+		m.consoleSelected = 0
+	}
+	if m.consoleSelected >= len(rendered) {
+		m.consoleSelected = len(rendered) - 1
+	}
+
+	m.consoleLines = m.consoleLines[:0]
+	styled := make([]string, 0, len(rendered))
+	for idx, line := range rendered {
+		m.consoleLines = append(m.consoleLines, line.text)
+		if idx == m.consoleSelected {
+			styled = append(styled, lipgloss.NewStyle().Foreground(lipgloss.Color("0")).Background(lipgloss.Color("11")).Render(line.text))
+			continue
+		}
+		styled = append(styled, lipgloss.NewStyle().Foreground(line.color).Render(line.text))
+	}
 	m.console.SetContent(strings.Join(styled, "\n"))
+	m.ensureConsoleSelectionVisible()
 }
 
 func (m *model) appendLog(line string) {
-	atBottom := m.console.AtBottom()
+	atBottom := m.console.AtBottom() || len(m.consoleLines) == 0 || m.consoleSelected >= len(m.consoleLines)-1
 	m.logs = append(m.logs, withTimestamp(line))
+	if atBottom {
+		m.consoleSelected = len(m.consoleLines)
+	}
 	m.refreshConsoleContent()
 	if atBottom {
 		m.console.GotoBottom()
+	}
+}
+
+func (m *model) ensureConsoleSelectionVisible() {
+	if len(m.consoleLines) == 0 {
+		return
+	}
+	if m.consoleSelected < m.console.YOffset {
+		diff := m.console.YOffset - m.consoleSelected
+		if diff > 0 {
+			m.console.LineUp(diff)
+		}
+		return
+	}
+	bottom := m.console.YOffset + m.console.Height - 1
+	if m.consoleSelected > bottom {
+		diff := m.consoleSelected - bottom
+		if diff > 0 {
+			m.console.LineDown(diff)
+		}
 	}
 }
 
@@ -620,6 +674,12 @@ func copyToClipboard(value string) error {
 	}
 	cmd.Stdin = strings.NewReader(text)
 	return cmd.Run()
+}
+
+func clearCopyNoticeCmd(id int) tea.Cmd {
+	return tea.Tick(1400*time.Millisecond, func(_ time.Time) tea.Msg {
+		return copyNoticeClearedMsg{id: id}
+	})
 }
 
 func (m *model) setWorkflows(items []core.FrontendWorkflow) {
@@ -1013,6 +1073,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.appendLog("Pick a secret from the list and press Enter.")
 		return m, nil
 
+	case copyNoticeClearedMsg:
+		if msg.id == m.copyNoticeID {
+			m.copyNotice = ""
+		}
+		return m, nil
+
 	case tea.KeyMsg:
 		if key.Matches(msg, keys.Quit) {
 			return m, tea.Quit
@@ -1327,28 +1393,36 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.focus == focusConsole {
 			switch msg.String() {
 			case "up", "k":
-				m.console.LineUp(1)
-			case "down", "j":
-				m.console.LineDown(1)
-			case "g":
-				m.console.GotoTop()
-			case "G":
-				m.console.GotoBottom()
-			case "c":
-				m.logs = []string{withTimestamp("Console cleared.")}
+				if m.consoleSelected > 0 {
+					m.consoleSelected--
+				}
 				m.refreshConsoleContent()
-				m.console.GotoBottom()
-			case "y":
-				if len(m.logs) == 0 {
+			case "down", "j":
+				if m.consoleSelected < len(m.consoleLines)-1 {
+					m.consoleSelected++
+				}
+				m.refreshConsoleContent()
+			case "g":
+				m.consoleSelected = 0
+				m.refreshConsoleContent()
+			case "G":
+				if len(m.consoleLines) > 0 {
+					m.consoleSelected = len(m.consoleLines) - 1
+				}
+				m.refreshConsoleContent()
+			case "c":
+				if len(m.consoleLines) == 0 {
 					m.appendLog("No logs to copy.")
 					return m, nil
 				}
-				last := m.logs[len(m.logs)-1]
-				if err := copyToClipboard(last); err != nil {
+				selected := m.consoleLines[m.consoleSelected]
+				if err := copyToClipboard(selected); err != nil {
 					m.appendLog("Copy failed: " + err.Error())
 					return m, nil
 				}
-				m.appendLog("Copied last log line to clipboard.")
+				m.copyNoticeID++
+				m.copyNotice = "Copied to clipboard"
+				return m, clearCopyNoticeCmd(m.copyNoticeID)
 			case "Y":
 				if len(m.logs) == 0 {
 					m.appendLog("No logs to copy.")
@@ -1635,7 +1709,7 @@ func (m model) View() string {
 	}
 
 	leftW := m.workflowList.Width() + 4
-	rightW := m.console.Width + 2
+	rightW := m.console.Width
 
 	wf := paneStyle(m.focus == focusWorkflows).Width(leftW).Render(m.workflowList.View())
 	actionsPane := m.actionList.View()
@@ -1661,10 +1735,26 @@ func (m model) View() string {
 		lipgloss.NewStyle().Bold(true).Render(consoleHeader),
 		m.console.View(),
 	)
-	rightCol := paneStyle(m.focus == focusConsole).Width(rightW).Render(consoleBody)
-
+	buildRightCol := func(width int) string {
+		if width < 10 {
+			width = 10
+		}
+		return paneStyle(m.focus == focusConsole).Width(width).Render(consoleBody)
+	}
+	rightCol := buildRightCol(rightW)
 	body := lipgloss.JoinHorizontal(lipgloss.Top, leftCol, rightCol)
+	for lipgloss.Width(body) > m.width && rightW > 10 {
+		rightW--
+		rightCol = buildRightCol(rightW)
+		body = lipgloss.JoinHorizontal(lipgloss.Top, leftCol, rightCol)
+	}
 	footer := m.help.View(keys)
+	if m.focus == focusConsole {
+		footer += lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render(" • c copy selected line")
+	}
+	if strings.TrimSpace(m.copyNotice) != "" {
+		footer += " " + lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Render("· "+m.copyNotice)
+	}
 	sections := []string{m.headerView(), body}
 	if m.setupSecretsPromptOpen {
 		sections = append(sections, m.renderSetupSecretsPrompt())
