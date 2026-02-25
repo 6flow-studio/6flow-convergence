@@ -60,29 +60,27 @@ The only solution for now is on cloud (but we will provide on-premise later)
 ├── shared/     # Shared helper functions and data models across codebase
 ```
 
-# Diagram
+# Run Locally
 
-```mermaid
-graph LR
-    A["Frontend<br/>(ReactFlow)"]
-    B[Node-Edge object<br/>from backend]
-    C["Transpiler<br/>(Rust)"]
-    D["CRE code<br/>(TypeScript)"]
-    E[cre workflow<br/>simulate]
-    F[Download CRE.zip]
+Use separate terminals for each process.
 
-    A -->|REST API| B
-    B --> C
-    C --> D
-    D --> E
-    E --> F
-    E -- "Fail, Error message, Response" --> A
+## Frontend (Next.js)
 
-    %% Styling to match the original chart's appearance
-    style A fill:#ffcccc,stroke:#ff4d00,stroke-width:2px
-    style B fill:#ffcccc,stroke:#ff4d00,stroke-width:2px
-    style C fill:#ffcccc,stroke:#ff4d00,stroke-width:2px
-    style D fill:#ffcccc,stroke:#ff4d00,stroke-width:2px
-    style E fill:#ffcccc,stroke:#ff4d00,stroke-width:2px
-    style F fill:#ffcccc,stroke:#ff4d00,stroke-width:2px
+```bash
+cd frontend
+npm run dev
+```
+
+## Convex
+
+```bash
+cd frontend
+npx convex dev
+```
+
+## TUI (`main.go`)
+
+```bash
+cd tools/tui
+go run ./cmd/tui/main.go
 ```
