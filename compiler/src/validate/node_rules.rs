@@ -135,7 +135,12 @@ pub fn validate_node_config(node: &WorkflowNode, global: &GlobalConfig) -> Vec<C
         }
         WorkflowNode::Error(n) => {
             if n.data.config.error_message.trim().is_empty() {
-                errors.push(CompilerError::validate("N016", "Error message must not be empty", node_id));
+                errors.push(CompilerError::validate("N016", "Error message must not be empty", node_id.clone()));
+            }
+        }
+        WorkflowNode::StopAndError(n) => {
+            if n.data.config.error_message.trim().is_empty() {
+                errors.push(CompilerError::validate("N022", "Stop and Error message must not be empty", node_id.clone()));
             }
         }
         WorkflowNode::MintToken(n) => {
@@ -170,7 +175,20 @@ pub fn validate_node_config(node: &WorkflowNode, global: &GlobalConfig) -> Vec<C
         }
         WorkflowNode::CheckBalance(n) => {
             if n.data.config.token_contract_address.trim().is_empty() {
-                errors.push(CompilerError::validate("N021", "Check balance token contract address must not be empty", node_id));
+                errors.push(CompilerError::validate("N021", "Check balance token contract address must not be empty", node_id.clone()));
+            }
+        }
+    }
+
+    // Validate NodeSettings.log when present
+    if let Some(settings) = node.settings() {
+        if let Some(log) = &settings.log {
+            if log.message_template.trim().is_empty() {
+                errors.push(CompilerError::validate(
+                    "N023",
+                    "Node settings log message template must not be empty",
+                    Some(node.id().to_string()),
+                ));
             }
         }
     }

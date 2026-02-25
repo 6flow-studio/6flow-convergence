@@ -8,6 +8,7 @@ use compiler::ir::*;
 // =============================================================================
 
 /// KYC-Gated Token Minting workflow IR (canonical example).
+/// Updated: uses auto-return on leaf nodes and StopAndError instead of separate return/log nodes.
 pub fn kyc_minting_ir() -> WorkflowIR {
     WorkflowIR {
         metadata: WorkflowMetadata {
@@ -165,10 +166,11 @@ pub fn kyc_minting_ir() -> WorkflowIR {
                                         destructure_fields: None,
                                     }),
                                 },
+                                // Auto-return with settings.returnExpression
                                 Step {
-                                    id: "return-1".into(),
-                                    source_node_ids: vec!["return-1".into()],
-                                    label: "Return mint success".into(),
+                                    id: "mint-1___write___auto_return".into(),
+                                    source_node_ids: vec!["mint-1___write".into()],
+                                    label: "Auto return".into(),
                                     operation: Operation::Return(ReturnOp {
                                         expression: ValueExpr::string("Minted successfully"),
                                     }),
@@ -179,33 +181,11 @@ pub fn kyc_minting_ir() -> WorkflowIR {
                         false_branch: Block {
                             steps: vec![
                                 Step {
-                                    id: "log-1".into(),
-                                    source_node_ids: vec!["log-1".into()],
-                                    label: "Log KYC rejection".into(),
-                                    operation: Operation::Log(LogOp {
-                                        level: LogLevel::Warn,
-                                        message: ValueExpr::Template {
-                                            parts: vec![
-                                                TemplatePart::Lit {
-                                                    value: "User ".into(),
-                                                },
-                                                TemplatePart::Expr {
-                                                    value: ValueExpr::config("walletAddress"),
-                                                },
-                                                TemplatePart::Lit {
-                                                    value: " not KYC approved".into(),
-                                                },
-                                            ],
-                                        },
-                                    }),
-                                    output: None,
-                                },
-                                Step {
-                                    id: "return-2".into(),
-                                    source_node_ids: vec!["return-2".into()],
-                                    label: "Return rejection".into(),
-                                    operation: Operation::Return(ReturnOp {
-                                        expression: ValueExpr::string("KYC not approved"),
+                                    id: "error-1".into(),
+                                    source_node_ids: vec!["error-1".into()],
+                                    label: "KYC Not Approved".into(),
+                                    operation: Operation::ErrorThrow(ErrorThrowOp {
+                                        message: ValueExpr::string("KYC not approved"),
                                     }),
                                     output: None,
                                 },

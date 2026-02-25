@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { X, Trash2, Settings2, AlertTriangle } from "lucide-react";
+import { X, Trash2, Settings2, AlertTriangle, Sliders } from "lucide-react";
 import type { NodeType } from "@6flow/shared/model/node";
 import {
   CodeNodeConfigRenderer,
@@ -24,9 +24,8 @@ import {
   CronTriggerConfigRenderer,
   GetSecretConfigRenderer,
   JsonParseConfigRenderer,
-  ReturnConfigRenderer,
-  LogConfigRenderer,
-  ErrorConfigRenderer,
+  StopAndErrorConfigRenderer,
+  NodeSettingsPanel,
   CheckKycConfigRenderer,
   TokenNodeConfigRenderer,
   CheckBalanceConfigRenderer,
@@ -75,12 +74,8 @@ function renderNodeConfig(
       return <AbiDecodeConfigRenderer config={config as any} onChange={onChange} />;
     case "merge":
       return <MergeConfigRenderer config={config as any} onChange={onChange} />;
-    case "return":
-      return <ReturnConfigRenderer config={config as any} onChange={onChange} />;
-    case "log":
-      return <LogConfigRenderer config={config as any} onChange={onChange} />;
-    case "error":
-      return <ErrorConfigRenderer config={config as any} onChange={onChange} />;
+    case "stopAndError":
+      return <StopAndErrorConfigRenderer config={config as any} onChange={onChange} />;
     case "mintToken":
       return <TokenNodeConfigRenderer variant="mint" config={config as any} onChange={onChange} isTestnet={isTestnet} />;
     case "burnToken":
@@ -103,6 +98,7 @@ export function ConfigPanel() {
   const selectedNodeId = useEditorStore((s) => s.selectedNodeId);
   const nodes = useEditorStore((s) => s.nodes);
   const updateNodeConfig = useEditorStore((s) => s.updateNodeConfig);
+  const updateNodeSettings = useEditorStore((s) => s.updateNodeSettings);
   const updateNodeLabel = useEditorStore((s) => s.updateNodeLabel);
   const removeNode = useEditorStore((s) => s.removeNode);
   const selectNode = useEditorStore((s) => s.selectNode);
@@ -239,6 +235,23 @@ export function ConfigPanel() {
               workflowGlobalConfig.isTestnet
             )}
           </div>
+
+          {/* Node Settings (return expression & logging) — non-trigger nodes only */}
+          {entry.category !== "trigger" && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-1.5 pt-1">
+                <Sliders size={11} className="text-zinc-600" />
+                <span className="text-[10px] font-semibold text-zinc-600 uppercase tracking-[0.08em]">
+                  Node Settings
+                </span>
+              </div>
+
+              <NodeSettingsPanel
+                settings={node.data.settings}
+                onChange={(patch) => updateNodeSettings(node.id, patch)}
+              />
+            </div>
+          )}
 
           {/* Delete */}
           <div className="pt-2">

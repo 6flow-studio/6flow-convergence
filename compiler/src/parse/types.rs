@@ -74,6 +74,15 @@ pub struct NodeSettings {
     pub on_error: Option<OnErrorBehavior>,
     pub notes: Option<String>,
     pub execute_once: Option<bool>,
+    pub return_expression: Option<String>,
+    pub log: Option<LogSettings>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LogSettings {
+    pub level: String,
+    pub message_template: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -149,13 +158,17 @@ pub enum WorkflowNode {
     #[serde(rename = "ai")]
     Ai(NodeBase<AiNodeConfig>),
 
-    // Output
+    // Output (legacy — kept for backward compatibility with saved workflows)
     #[serde(rename = "return")]
     Return(NodeBase<ReturnConfig>),
     #[serde(rename = "log")]
     Log(NodeBase<LogConfig>),
     #[serde(rename = "error")]
     Error(NodeBase<ErrorConfig>),
+
+    // Control Flow — Stop and Error (replaces Error node)
+    #[serde(rename = "stopAndError")]
+    StopAndError(NodeBase<StopAndErrorConfig>),
 
     // Tokenization
     #[serde(rename = "mintToken")]
@@ -202,6 +215,7 @@ impl WorkflowNode {
             WorkflowNode::Return(n) => &n.id,
             WorkflowNode::Log(n) => &n.id,
             WorkflowNode::Error(n) => &n.id,
+            WorkflowNode::StopAndError(n) => &n.id,
             WorkflowNode::MintToken(n) => &n.id,
             WorkflowNode::BurnToken(n) => &n.id,
             WorkflowNode::TransferToken(n) => &n.id,
@@ -230,6 +244,7 @@ impl WorkflowNode {
             WorkflowNode::Return(n) => &n.data.label,
             WorkflowNode::Log(n) => &n.data.label,
             WorkflowNode::Error(n) => &n.data.label,
+            WorkflowNode::StopAndError(n) => &n.data.label,
             WorkflowNode::MintToken(n) => &n.data.label,
             WorkflowNode::BurnToken(n) => &n.data.label,
             WorkflowNode::TransferToken(n) => &n.data.label,
@@ -258,11 +273,41 @@ impl WorkflowNode {
             WorkflowNode::Return(_) => "return",
             WorkflowNode::Log(_) => "log",
             WorkflowNode::Error(_) => "error",
+            WorkflowNode::StopAndError(_) => "stopAndError",
             WorkflowNode::MintToken(_) => "mintToken",
             WorkflowNode::BurnToken(_) => "burnToken",
             WorkflowNode::TransferToken(_) => "transferToken",
             WorkflowNode::CheckKyc(_) => "checkKyc",
             WorkflowNode::CheckBalance(_) => "checkBalance",
+        }
+    }
+
+    pub fn settings(&self) -> Option<&NodeSettings> {
+        match self {
+            WorkflowNode::CronTrigger(n) => n.settings.as_ref(),
+            WorkflowNode::HttpTrigger(n) => n.settings.as_ref(),
+            WorkflowNode::EvmLogTrigger(n) => n.settings.as_ref(),
+            WorkflowNode::HttpRequest(n) => n.settings.as_ref(),
+            WorkflowNode::EvmRead(n) => n.settings.as_ref(),
+            WorkflowNode::EvmWrite(n) => n.settings.as_ref(),
+            WorkflowNode::GetSecret(n) => n.settings.as_ref(),
+            WorkflowNode::CodeNode(n) => n.settings.as_ref(),
+            WorkflowNode::JsonParse(n) => n.settings.as_ref(),
+            WorkflowNode::AbiEncode(n) => n.settings.as_ref(),
+            WorkflowNode::AbiDecode(n) => n.settings.as_ref(),
+            WorkflowNode::Merge(n) => n.settings.as_ref(),
+            WorkflowNode::Filter(n) => n.settings.as_ref(),
+            WorkflowNode::If(n) => n.settings.as_ref(),
+            WorkflowNode::Ai(n) => n.settings.as_ref(),
+            WorkflowNode::Return(n) => n.settings.as_ref(),
+            WorkflowNode::Log(n) => n.settings.as_ref(),
+            WorkflowNode::Error(n) => n.settings.as_ref(),
+            WorkflowNode::StopAndError(n) => n.settings.as_ref(),
+            WorkflowNode::MintToken(n) => n.settings.as_ref(),
+            WorkflowNode::BurnToken(n) => n.settings.as_ref(),
+            WorkflowNode::TransferToken(n) => n.settings.as_ref(),
+            WorkflowNode::CheckKyc(n) => n.settings.as_ref(),
+            WorkflowNode::CheckBalance(n) => n.settings.as_ref(),
         }
     }
 
@@ -278,7 +323,20 @@ impl WorkflowNode {
     pub fn is_terminal(&self) -> bool {
         matches!(
             self,
-            WorkflowNode::Return(_) | WorkflowNode::Error(_)
+            WorkflowNode::Return(_)
+                | WorkflowNode::Error(_)
+                | WorkflowNode::StopAndError(_)
+        )
+    }
+
+    /// Check if a node is a leaf (no outgoing edges) based on the graph.
+    /// Leaf nodes get auto-return if they don't already have a terminal operation.
+    pub fn is_explicit_terminal(&self) -> bool {
+        matches!(
+            self,
+            WorkflowNode::Return(_)
+                | WorkflowNode::Error(_)
+                | WorkflowNode::StopAndError(_)
         )
     }
 }
@@ -565,7 +623,7 @@ pub struct AiNodeConfig {
 }
 
 // =============================================================================
-// OUTPUT CONFIGS
+// OUTPUT CONFIGS (legacy — kept for backward compatibility)
 // =============================================================================
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -584,6 +642,16 @@ pub struct LogConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ErrorConfig {
+    pub error_message: String,
+}
+
+// =============================================================================
+// STOP AND ERROR CONFIG
+// =============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StopAndErrorConfig {
     pub error_message: String,
 }
 

@@ -53,6 +53,11 @@ export interface NodeSettings {
   onError?: OnErrorBehavior; // default 'stop'
   notes?: string; // User-facing documentation note
   executeOnce?: boolean; // Only process first item (for batch scenarios)
+  returnExpression?: string; // Custom return value for leaf nodes
+  log?: {
+    level: LogLevel;
+    messageTemplate: string;
+  };
 }
 
 /** Generic base node - all nodes extend this */
@@ -459,36 +464,18 @@ export interface AINodeConfig {
 export type AINode = BaseNode<"ai", AINodeConfig>;
 
 // =============================================================================
-// OUTPUT NODES (Termination)
+// OUTPUT / TERMINAL TYPES
 // =============================================================================
 
-/** Return - end workflow with a value */
-export interface ReturnConfig {
-  returnExpression: string; // What to return: "result" or custom expression
-}
-
-export type ReturnNode = BaseNode<"return", ReturnConfig>;
-
-// -----------------------------------------------------------------------------
-
-/** Log - debug logging */
+/** Log level (used by NodeSettings.log) */
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
-export interface LogConfig {
-  level: LogLevel; // Default 'info'
-  messageTemplate: string;
-}
-
-export type LogNode = BaseNode<"log", LogConfig>;
-
-// -----------------------------------------------------------------------------
-
-/** Error - terminate with error */
-export interface ErrorConfig {
+/** Stop and Error - terminate workflow with an error (control flow node) */
+export interface StopAndErrorConfig {
   errorMessage: string; // Error message template
 }
 
-export type ErrorNode = BaseNode<"error", ErrorConfig>;
+export type StopAndErrorNode = BaseNode<"stopAndError", StopAndErrorConfig>;
 
 // =============================================================================
 // TOKENIZATION-SPECIFIC NODES (Convenience Wrappers)
@@ -597,12 +584,9 @@ export type NodeType =
   // Control Flow
   | "filter"
   | "if"
+  | "stopAndError"
   // AI
   | "ai"
-  // Output
-  | "return"
-  | "log"
-  | "error"
   // Tokenization
   | "mintToken"
   | "burnToken"
@@ -618,7 +602,6 @@ export type NodeCategory =
   | "transform"
   | "controlFlow"
   | "ai"
-  | "output"
   | "tokenization"
   | "regulation";
 
@@ -642,12 +625,9 @@ export const NODE_TYPE_TO_CATEGORY: Record<NodeType, NodeCategory> = {
   // Control Flow
   filter: "controlFlow",
   if: "controlFlow",
+  stopAndError: "controlFlow",
   // AI
   ai: "ai",
-  // Output
-  return: "output",
-  log: "output",
-  error: "output",
   // Tokenization
   mintToken: "tokenization",
   burnToken: "tokenization",
@@ -682,12 +662,9 @@ export type WorkflowNode =
   // Control Flow
   | FilterNode
   | IfNode
+  | StopAndErrorNode
   // AI
   | AINode
-  // Output
-  | ReturnNode
-  | LogNode
-  | ErrorNode
   // Tokenization
   | MintTokenNode
   | BurnTokenNode
@@ -723,17 +700,12 @@ export function isTransformNode(node: WorkflowNode): boolean {
 
 /** Check if a node is a control flow node */
 export function isControlFlowNode(node: WorkflowNode): boolean {
-  return ["filter", "if"].includes(node.type);
+  return ["filter", "if", "stopAndError"].includes(node.type);
 }
 
 /** Check if a node is an AI node */
 export function isAINode(node: WorkflowNode): boolean {
   return ["ai"].includes(node.type);
-}
-
-/** Check if a node is an output node (termination) */
-export function isOutputNode(node: WorkflowNode): boolean {
-  return ["return", "log", "error"].includes(node.type);
 }
 
 /** Check if a node is a tokenization-specific node */
@@ -770,9 +742,9 @@ export type { ChainSelectorName } from "../supportedChain";
  *                                                                |
  *                                                    true -------+------- false
  *                                                      |                    |
- *                                              [Mint Token]              [Log]
- *                                                      |                    |
- *                                               [Return]              [Return]
+ *                                              [Mint Token]       [Stop and Error]
+ *                                   (settings.returnExpression
+ *                                     = '"Minted successfully"')
  */
 export const exampleWorkflow: Workflow = {
   id: "example-tokenization-workflow",
@@ -864,35 +836,19 @@ export const exampleWorkflow: Workflow = {
           gasLimit: "500000",
         },
       },
+      settings: {
+        returnExpression: '"Minted successfully"',
+      },
     },
     {
-      id: "log-1",
-      type: "log",
+      id: "error-1",
+      type: "stopAndError",
       position: { x: 900, y: 300 },
       data: {
-        label: "Log Rejection",
+        label: "KYC Not Approved",
         config: {
-          level: "warn",
-          messageTemplate: "User {{parse-1.walletAddress}} not KYC approved",
+          errorMessage: "KYC not approved",
         },
-      },
-    },
-    {
-      id: "return-1",
-      type: "return",
-      position: { x: 1100, y: 100 },
-      data: {
-        label: "Return Success",
-        config: { returnExpression: '"Minted successfully"' },
-      },
-    },
-    {
-      id: "return-2",
-      type: "return",
-      position: { x: 1100, y: 300 },
-      data: {
-        label: "Return Rejected",
-        config: { returnExpression: '"KYC not approved"' },
       },
     },
   ],
@@ -901,9 +857,12 @@ export const exampleWorkflow: Workflow = {
     { id: "e2", source: "http-1", target: "parse-1" },
     { id: "e3", source: "parse-1", target: "condition-1" },
     { id: "e4", source: "condition-1", target: "mint-1", sourceHandle: "true" },
-    { id: "e5", source: "condition-1", target: "log-1", sourceHandle: "false" },
-    { id: "e6", source: "mint-1", target: "return-1" },
-    { id: "e7", source: "log-1", target: "return-2" },
+    {
+      id: "e5",
+      source: "condition-1",
+      target: "error-1",
+      sourceHandle: "false",
+    },
   ],
   createdAt: "2025-01-01T00:00:00Z",
   updatedAt: "2025-01-01T00:00:00Z",

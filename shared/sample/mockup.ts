@@ -1,77 +1,57 @@
 import type { Workflow } from '../model/node';
 
 export const mockupWorkflow: Workflow = {
-  id: 'mockup-workflow',
-  name: 'HTTP Trigger to AI Action',
-  description: 'Receive an HTTP request and use an AI node to decide the next action',
-  version: '1.0.0',
-  globalConfig: {
-    isTestnet: true,
-    secrets: [
-      {
-        name: 'OPENAI_API_KEY',
-        envVariable: 'OPENAI_API_KEY',
+  "id": "k1779vqkbgr88sm1n924323zk981pvap",
+  "name": "Untitled Workflow",
+  "version": "1.0.0",
+  "nodes": [
+    {
+      "id": "node_1771844793857_0",
+      "type": "cronTrigger",
+      "position": {
+        "x": 318,
+        "y": 227
       },
-    ],
-    rpcs: [],
+      "data": {
+        "label": "Cron Trigger",
+        "config": {
+          "schedule": "0 */10 * * * *",
+          "timezone": "UTC"
+        }
+      }
+    },
+    {
+      "id": "node_1771844795623_1",
+      "type": "httpRequest",
+      "position": {
+        "x": 611.0495543294459,
+        "y": 221.97764532182748
+      },
+      "data": {
+        "label": "HTTP Request",
+        "config": {
+          "method": "GET",
+          "url": "https://jsonplaceholder.typicode.com/posts",
+          "responseFormat": "json"
+        }
+      },
+      "settings": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "xy-edge__node_1771844793857_0output-node_1771844795623_1input",
+      "source": "node_1771844793857_0",
+      "target": "node_1771844795623_1",
+      "sourceHandle": "output",
+      "targetHandle": "input"
+    }
+  ],
+  "globalConfig": {
+    "isTestnet": true,
+    "secrets": [],
+    "rpcs": []
   },
-  nodes: [
-    {
-      id: 'trigger-1',
-      type: 'httpTrigger',
-      position: { x: 120, y: 220 },
-      data: {
-        label: 'Incoming Webhook',
-        config: {
-          httpMethod: 'POST',
-          path: '/ai/action',
-          authentication: { type: 'none' },
-          responseMode: 'lastNode',
-          responseCode: 200,
-          responseHeaders: {
-            'Content-Type': 'application/json',
-          },
-          allowedOrigins: ['*'],
-        },
-      },
-    },
-    {
-      id: 'ai-1',
-      type: 'ai',
-      position: { x: 400, y: 220 },
-      data: {
-        label: 'Decide Next Action',
-        config: {
-          provider: 'openai',
-          baseUrl: 'https://api.openai.com/v1/chat/completions',
-          model: 'gpt-4o-mini',
-          apiKeySecret: 'OPENAI_API_KEY',
-          systemPrompt: 'You are an operations assistant. Return a concise next-action recommendation in JSON.',
-          userPrompt: 'Analyze the incoming webhook request and return one clear recommended action.',
-          temperature: 0.2,
-          maxTokens: 200,
-          responseFormat: 'json',
-          timeout: 10000,
-          maxRetries: 2,
-        },
-      },
-    },
-    {
-      id: 'return-1',
-      type: 'return',
-      position: { x: 680, y: 220 },
-      data: {
-        label: 'Return AI Result',
-        config: {
-          returnExpression: '{{ai-1.choices[0].message.content}}',
-        },
-      },
-    },
-  ],
-  edges: [
-    { id: 'e1', source: 'trigger-1', target: 'ai-1' },
-    { id: 'e2', source: 'ai-1', target: 'return-1' },
-  ],
-  createdAt: '2026-02-17T00:00:00Z',
-  updatedAt: '2026-02-17T00:00:00Z',
-};
+  "createdAt": "2026-02-23T11:11:19.105Z",
+  "updatedAt": "2026-02-23T11:11:19.105Z"
+}

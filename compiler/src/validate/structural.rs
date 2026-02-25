@@ -121,11 +121,20 @@ fn v006_trigger_no_incoming(workflow: &Workflow, graph: &WorkflowGraph, errors: 
 }
 
 fn v007_at_least_one_terminal(workflow: &Workflow, errors: &mut Vec<CompilerError>) {
-    let has_terminal = workflow.nodes.iter().any(|n| n.is_terminal());
-    if !has_terminal {
+    // A workflow is valid if it has an explicit terminal node (return, error, stopAndError)
+    // OR if it has leaf nodes (nodes with no outgoing edges) — leaf nodes get auto-return.
+    let has_explicit_terminal = workflow.nodes.iter().any(|n| n.is_terminal());
+    if has_explicit_terminal {
+        return;
+    }
+
+    // Check for leaf nodes (non-trigger nodes with no outgoing edges)
+    let sources: std::collections::HashSet<&str> = workflow.edges.iter().map(|e| e.source.as_str()).collect();
+    let has_leaf = workflow.nodes.iter().any(|n| !n.is_trigger() && !sources.contains(n.id()));
+    if !has_leaf {
         errors.push(CompilerError::validate(
             "V007",
-            "Workflow must have at least one terminal node (return or error)",
+            "Workflow must have at least one terminal or leaf node",
             None,
         ));
     }

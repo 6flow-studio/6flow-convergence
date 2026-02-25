@@ -22,7 +22,6 @@ export const CATEGORY_COLORS: Record<NodeCategory, string> = {
   transform: "#a855f7",
   controlFlow: "#f97316",
   ai: "#22c55e",
-  output: "#6b7280",
   tokenization: "#eab308",
   regulation: "#14b8a6",
 };
@@ -33,7 +32,6 @@ export const CATEGORY_LABELS: Record<NodeCategory, string> = {
   transform: "Transforms",
   controlFlow: "Control Flow",
   ai: "AI",
-  output: "Output",
   tokenization: "Tokenization",
   regulation: "Regulation",
 };
@@ -217,6 +215,16 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
       combineWith: "and",
     },
   },
+  {
+    type: "stopAndError",
+    label: "Stop and Error",
+    category: "controlFlow",
+    color: CATEGORY_COLORS.controlFlow,
+    icon: "AlertTriangle",
+    inputs: [{ name: "input" }],
+    outputs: [],
+    defaultConfig: { errorMessage: "" },
+  },
 
   // AI
   {
@@ -237,38 +245,6 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
       temperature: 0.7,
       responseFormat: "text",
     },
-  },
-
-  // Output
-  {
-    type: "return",
-    label: "Return",
-    category: "output",
-    color: CATEGORY_COLORS.output,
-    icon: "CornerDownLeft",
-    inputs: [{ name: "input" }],
-    outputs: [],
-    defaultConfig: { returnExpression: "result" },
-  },
-  {
-    type: "log",
-    label: "Log",
-    category: "output",
-    color: CATEGORY_COLORS.output,
-    icon: "Terminal",
-    inputs: [{ name: "input" }],
-    outputs: [{ name: "output" }],
-    defaultConfig: { level: "info", messageTemplate: "" },
-  },
-  {
-    type: "error",
-    label: "Error",
-    category: "output",
-    color: CATEGORY_COLORS.output,
-    icon: "AlertTriangle",
-    inputs: [{ name: "input" }],
-    outputs: [],
-    defaultConfig: { errorMessage: "" },
   },
 
   // Tokenization

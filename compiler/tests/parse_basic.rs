@@ -10,8 +10,8 @@ fn parse_example_workflow() {
     let workflow = parse::parse(json).expect("Should parse successfully");
     assert_eq!(workflow.id, "example-tokenization-workflow");
     assert_eq!(workflow.name, "KYC-Gated Token Minting");
-    assert_eq!(workflow.nodes.len(), 8);
-    assert_eq!(workflow.edges.len(), 7);
+    assert_eq!(workflow.nodes.len(), 6);
+    assert_eq!(workflow.edges.len(), 5);
     assert!(workflow.global_config.is_testnet);
 }
 
@@ -44,8 +44,7 @@ fn parse_node_types_correct() {
     assert!(types.contains(&"jsonParse"));
     assert!(types.contains(&"if"));
     assert!(types.contains(&"mintToken"));
-    assert!(types.contains(&"log"));
-    assert!(types.contains(&"return"));
+    assert!(types.contains(&"stopAndError"));
 }
 
 #[test]
@@ -53,12 +52,21 @@ fn build_graph_from_example() {
     let json = include_str!("fixtures/example_workflow.json");
     let workflow = parse::parse(json).expect("Should parse");
     let graph = parse::WorkflowGraph::build(&workflow).expect("Should build graph");
-    assert_eq!(graph.node_indices.len(), 8);
+    assert_eq!(graph.node_indices.len(), 6);
     // trigger-1 should have 1 successor
     assert_eq!(graph.outgoing_count("trigger-1"), 1);
     // condition-1 (if) should have 2 successors
     assert_eq!(graph.outgoing_count("condition-1"), 2);
-    // return nodes should have 0 successors
-    assert_eq!(graph.outgoing_count("return-1"), 0);
-    assert_eq!(graph.outgoing_count("return-2"), 0);
+    // leaf nodes should have 0 successors
+    assert_eq!(graph.outgoing_count("mint-1"), 0);
+    assert_eq!(graph.outgoing_count("error-1"), 0);
+}
+
+/// Backward compatibility: old workflow JSON with return/log/error nodes still parses.
+#[test]
+fn parse_legacy_return_log_error() {
+    let json = include_str!("fixtures/linear_workflow.json");
+    let workflow = parse::parse(json).expect("Should parse legacy return node");
+    let types: Vec<&str> = workflow.nodes.iter().map(|n| n.node_type()).collect();
+    assert!(types.contains(&"return"), "Legacy return type should parse");
 }

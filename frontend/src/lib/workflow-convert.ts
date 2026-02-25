@@ -28,6 +28,7 @@ export function toReactFlowNodes(nodes: SharedWorkflowNode[]): WorkflowNode[] {
         label: node.data.label,
         nodeType,
         config: node.data.config as Record<string, unknown>,
+        settings: node.settings,
       },
     };
   });
@@ -40,7 +41,7 @@ export function toReactFlowNodes(nodes: SharedWorkflowNode[]): WorkflowNode[] {
  */
 export function fromReactFlowNodes(nodes: WorkflowNode[]): SharedWorkflowNode[] {
   return nodes.map((node) => {
-    const { nodeType, label, config, ...rest } = node.data;
+    const { nodeType, label, config, settings, ...rest } = node.data;
     void rest; // discard extra RF data keys
 
     return {
@@ -51,6 +52,7 @@ export function fromReactFlowNodes(nodes: WorkflowNode[]): SharedWorkflowNode[] 
         label,
         config,
       },
+      settings,
     } as SharedWorkflowNode;
   });
 }

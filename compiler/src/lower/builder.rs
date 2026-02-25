@@ -90,6 +90,48 @@ fn build_steps(
                         Err(e) => errors.extend(e),
                     }
                 }
+
+                // Expand settings.log: append a LogOp step after the node
+                if let Some(settings) = node.settings() {
+                    if let Some(log) = &settings.log {
+                        let level = match log.level.as_str() {
+                            "debug" => LogLevel::Debug,
+                            "warn" => LogLevel::Warn,
+                            "error" => LogLevel::Error,
+                            _ => LogLevel::Info,
+                        };
+                        steps.push(Step {
+                            id: format!("{}___log", node_id),
+                            source_node_ids: vec![node_id.to_string()],
+                            label: format!("Log ({})", node.label()),
+                            operation: Operation::Log(LogOp {
+                                level,
+                                message: resolve_value_expr(&log.message_template, id_map),
+                            }),
+                            output: None,
+                        });
+                    }
+                }
+
+                // Auto-return for leaf nodes: if no outgoing edges and not an explicit
+                // terminal node, append a ReturnOp
+                let is_leaf = graph.outgoing_edges(node_id).is_empty();
+                let is_terminal = node.is_explicit_terminal();
+                if is_leaf && !is_terminal {
+                    let return_expr = node
+                        .settings()
+                        .and_then(|s| s.return_expression.as_deref())
+                        .unwrap_or("\"ok\"");
+                    steps.push(Step {
+                        id: format!("{}___auto_return", node_id),
+                        source_node_ids: vec![node_id.to_string()],
+                        label: "Auto return".into(),
+                        operation: Operation::Return(ReturnOp {
+                            expression: resolve_value_expr(return_expr, id_map),
+                        }),
+                        output: None,
+                    });
+                }
             }
         }
 
@@ -373,6 +415,7 @@ fn lower_node(
         WorkflowNode::Ai(n) => lower_ai(node_id, &n.data.config, id_map),
         WorkflowNode::Log(n) => lower_log(node_id, &n.data.config, id_map),
         WorkflowNode::Error(n) => lower_error(node_id, &n.data.config, id_map),
+        WorkflowNode::StopAndError(n) => lower_stop_and_error(node_id, &n.data.config, id_map),
         WorkflowNode::Return(n) => lower_return(node_id, &n.data.config, id_map),
         WorkflowNode::Merge(n) => lower_merge_standalone(node_id, &n.data.config),
         _ => {
@@ -783,6 +826,18 @@ fn lower_log(
 fn lower_error(
     _node_id: &str,
     config: &crate::parse::types::ErrorConfig,
+    id_map: &HashMap<String, String>,
+) -> (Operation, Option<OutputBinding>) {
+    let op = Operation::ErrorThrow(ErrorThrowOp {
+        message: resolve_value_expr(&config.error_message, id_map),
+    });
+
+    (op, None)
+}
+
+fn lower_stop_and_error(
+    _node_id: &str,
+    config: &crate::parse::types::StopAndErrorConfig,
     id_map: &HashMap<String, String>,
 ) -> (Operation, Option<OutputBinding>) {
     let op = Operation::ErrorThrow(ErrorThrowOp {

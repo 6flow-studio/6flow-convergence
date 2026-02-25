@@ -51,14 +51,6 @@ export const CATEGORY_NODE_STYLES: Record<
     bodyText: "text-emerald-300/70",
     glow: "shadow-emerald-500/10",
   },
-  output: {
-    bg: "bg-[#141416]",
-    border: "border-zinc-600/30",
-    headerBg: "bg-gradient-to-r from-zinc-600 to-zinc-500",
-    headerText: "text-white",
-    bodyText: "text-zinc-400/70",
-    glow: "shadow-zinc-500/10",
-  },
   tokenization: {
     bg: "bg-[#1a1708]",
     border: "border-amber-500/30",

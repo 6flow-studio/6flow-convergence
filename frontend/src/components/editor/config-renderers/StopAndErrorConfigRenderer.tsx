@@ -1,14 +1,14 @@
 "use client";
 
 import { TextareaField } from "../config-fields";
-import type { ErrorConfig } from "@6flow/shared/model/node";
+import type { StopAndErrorConfig } from "@6flow/shared/model/node";
 
 interface Props {
-  config: ErrorConfig;
+  config: StopAndErrorConfig;
   onChange: (patch: Record<string, unknown>) => void;
 }
 
-export function ErrorConfigRenderer({ config, onChange }: Props) {
+export function StopAndErrorConfigRenderer({ config, onChange }: Props) {
   return (
     <div className="space-y-3">
       <TextareaField

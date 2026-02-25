@@ -1,57 +1,49 @@
-import { cre, ok, consensusIdenticalAggregation, Runner, type Runtime, type HTTPSendRequester, type HTTPPayload } from "@chainlink/cre-sdk";
+import { cre, ok, consensusIdenticalAggregation, Runner, type Runtime, type HTTPSendRequester, type CronTrigger } from "@chainlink/cre-sdk";
+import { z } from "zod";
 
-type Config = Record<string, never>;
+const configSchema = z.object({
+  schedule: z.string().default("TZ=UTC 0 */10 * * * *"),
+});
 
-const fetch_ai_1 = (sendRequester: HTTPSendRequester, config: Config) => {
-  const body = {
-    model: "gpt-4o-mini",
-    messages: [
-      { role: "system", content: "You are an operations assistant. Return a concise next-action recommendation in JSON." },
-      { role: "user", content: "Analyze the incoming webhook request and return one clear recommended action." },
-    ],
-    temperature: 0.2,
-    max_tokens: 200,
-  };
+type Config = z.infer<typeof configSchema>;
 
-  const bodyBytes = new TextEncoder().encode(JSON.stringify(body));
-
+const fetch_node_1771844795623_1 = (sendRequester: HTTPSendRequester, config: Config) => {
   const req = {
-    url: "https://api.openai.com/v1/chat/completions",
-    method: "POST" as const,
-    body: Buffer.from(bodyBytes).toString("base64"),
-    headers: {
-      "Content-Type": "application/json",
-    },
+    url: "https://jsonplaceholder.typicode.com/posts",
+    method: "GET" as const,
   };
 
   const resp = sendRequester.sendRequest(req).result();
 
   if (!ok(resp)) {
-    throw new Error(`AI call failed with status: ${resp.statusCode}`);
+    throw new Error(`HTTP request failed with status: ${resp.statusCode}`);
   }
 
-  return JSON.parse(Buffer.from(resp.body, "base64").toString("utf-8"));
+  return { statusCode: resp.statusCode, body: resp.body, headers: resp.headers };
 };
 
-const onHttpRequest = (runtime: Runtime<Config>, triggerData: HTTPPayload): string => {
+const onCronTrigger = (runtime: Runtime<Config>, triggerData: CronTrigger): string => {
   const httpClient = new cre.capabilities.HTTPClient();
 
-  // Decide Next Action
-  const step_ai_1 = httpClient.sendRequest(runtime, fetch_ai_1, consensusIdenticalAggregation())(runtime.config).result();
-  return step_ai_1.choices[0].message.content;
+  // HTTP Request
+  const step_node_1771844795623_1 = httpClient.sendRequest(runtime, fetch_node_1771844795623_1, consensusIdenticalAggregation())(runtime.config).result();
+  runtime.log(`API response: ${JSON.stringify(step_node_1771844795623_1)}`);
+  return "\"ok\"";
 };
 
 const initWorkflow = (config: Config) => {
   return [
     cre.handler(
-      new cre.capabilities.HTTPCapability().trigger({}),
-      onHttpRequest,
+      new cre.capabilities.CronCapability().trigger({
+        schedule: config.schedule,
+      }),
+      onCronTrigger,
     ),
   ];
 };
 
 export async function main() {
-  const runner = await Runner.newRunner<Config>();
+  const runner = await Runner.newRunner<Config>({ configSchema });
   await runner.run(initWorkflow);
 }
 

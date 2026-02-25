@@ -221,11 +221,11 @@ expression: ir
                 }
               },
               {
-                "id": "return-1",
+                "id": "mint-1___write___auto_return",
                 "source_node_ids": [
-                  "return-1"
+                  "mint-1___write"
                 ],
-                "label": "Return mint success",
+                "label": "Auto return",
                 "operation": {
                   "type": "Return",
                   "expression": {
@@ -241,46 +241,14 @@ expression: ir
           "false_branch": {
             "steps": [
               {
-                "id": "log-1",
+                "id": "error-1",
                 "source_node_ids": [
-                  "log-1"
+                  "error-1"
                 ],
-                "label": "Log KYC rejection",
+                "label": "KYC Not Approved",
                 "operation": {
-                  "type": "Log",
-                  "level": "Warn",
+                  "type": "ErrorThrow",
                   "message": {
-                    "kind": "Template",
-                    "parts": [
-                      {
-                        "part_type": "Lit",
-                        "value": "User "
-                      },
-                      {
-                        "part_type": "Expr",
-                        "value": {
-                          "kind": "ConfigRef",
-                          "field": "walletAddress"
-                        }
-                      },
-                      {
-                        "part_type": "Lit",
-                        "value": " not KYC approved"
-                      }
-                    ]
-                  }
-                },
-                "output": null
-              },
-              {
-                "id": "return-2",
-                "source_node_ids": [
-                  "return-2"
-                ],
-                "label": "Return rejection",
-                "operation": {
-                  "type": "Return",
-                  "expression": {
                     "kind": "Literal",
                     "literal_type": "String",
                     "value": "KYC not approved"

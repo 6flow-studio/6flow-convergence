@@ -68,8 +68,7 @@ const onCronTrigger = (runtime: Runtime<Config>, triggerData: CronTrigger): stri
     }).result();
     return "Minted successfully";
   } else {
-    runtime.log(`[WARN] ${`User ${runtime.config.walletAddress} not KYC approved`}`);
-    return "KYC not approved";
+    throw new Error("KYC not approved");
   }
 };
 

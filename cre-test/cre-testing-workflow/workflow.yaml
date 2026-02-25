@@ -1,13 +1,13 @@
 staging-settings:
   user-workflow:
-    workflow-name: "mockup-workflow-staging"
+    workflow-name: "k1779vqkbgr88sm1n924323zk981pvap-staging"
   workflow-artifacts:
     workflow-path: "./main.ts"
     config-path: "./config.staging.json"
     secrets-path: "../secrets.yaml"
 production-settings:
   user-workflow:
-    workflow-name: "mockup-workflow-production"
+    workflow-name: "k1779vqkbgr88sm1n924323zk981pvap-production"
   workflow-artifacts:
     workflow-path: "./main.ts"
     config-path: "./config.production.json"

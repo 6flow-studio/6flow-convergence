@@ -1,96 +1,55 @@
 {
-    "id": "mockup-workflow",
-    "name": "HTTP Trigger to AI Action",
-    "description": "Receive an HTTP request and use an AI node to decide the next action",
+    "id": "k1779vqkbgr88sm1n924323zk981pvap",
+    "name": "Untitled Workflow",
     "version": "1.0.0",
-    "globalConfig": {
-        "isTestnet": true,
-        "secrets": [
-            {
-                "name": "OPENAI_API_KEY",
-                "envVariable": "OPENAI_API_KEY"
-            }
-        ],
-        "rpcs": []
-    },
     "nodes": [
         {
-            "id": "trigger-1",
-            "type": "httpTrigger",
+            "id": "node_1771844793857_0",
+            "type": "cronTrigger",
             "position": {
-                "x": 120,
-                "y": 220
+                "x": 318,
+                "y": 227
             },
             "data": {
-                "label": "Incoming Webhook",
+                "label": "Cron Trigger",
                 "config": {
-                    "httpMethod": "POST",
-                    "path": "/ai/action",
-                    "authentication": {
-                        "type": "none"
-                    },
-                    "responseMode": "lastNode",
-                    "responseCode": 200,
-                    "responseHeaders": {
-                        "Content-Type": "application/json"
-                    },
-                    "allowedOrigins": [
-                        "*"
-                    ]
+                    "schedule": "0 */10 * * * *",
+                    "timezone": "UTC"
                 }
             }
         },
         {
-            "id": "ai-1",
-            "type": "ai",
+            "id": "node_1771844795623_1",
+            "type": "httpRequest",
             "position": {
-                "x": 400,
-                "y": 220
+                "x": 611.0495543294459,
+                "y": 221.97764532182748
             },
             "data": {
-                "label": "Decide Next Action",
+                "label": "HTTP Request",
                 "config": {
-                    "provider": "openai",
-                    "baseUrl": "https://api.openai.com/v1/chat/completions",
-                    "model": "gpt-4o-mini",
-                    "apiKeySecret": "OPENAI_API_KEY",
-                    "systemPrompt": "You are an operations assistant. Return a concise next-action recommendation in JSON.",
-                    "userPrompt": "Analyze the incoming webhook request and return one clear recommended action.",
-                    "temperature": 0.2,
-                    "maxTokens": 200,
-                    "responseFormat": "json",
-                    "timeout": 10000,
-                    "maxRetries": 2
+                    "method": "GET",
+                    "url": "https://jsonplaceholder.typicode.com/posts",
+                    "responseFormat": "json"
                 }
-            }
-        },
-        {
-            "id": "return-1",
-            "type": "return",
-            "position": {
-                "x": 680,
-                "y": 220
             },
-            "data": {
-                "label": "Return AI Result",
-                "config": {
-                    "returnExpression": "{{ai-1.choices[0].message.content}}"
-                }
-            }
+            "settings": {}
         }
     ],
     "edges": [
         {
-            "id": "e1",
-            "source": "trigger-1",
-            "target": "ai-1"
-        },
-        {
-            "id": "e2",
-            "source": "ai-1",
-            "target": "return-1"
+            "id": "xy-edge__node_1771844793857_0output-node_1771844795623_1input",
+            "source": "node_1771844793857_0",
+            "target": "node_1771844795623_1",
+            "sourceHandle": "output",
+            "targetHandle": "input"
         }
     ],
-    "createdAt": "2026-02-17T00:00:00Z",
-    "updatedAt": "2026-02-17T00:00:00Z"
+    "globalConfig": {
+        "isTestnet": true,
+        "secrets": [],
+        "rpcs": []
+    },
+    "createdAt": "2026-02-23T11:11:19.105Z",
+    "updatedAt": "2026-02-23T11:11:19.105Z"
 }

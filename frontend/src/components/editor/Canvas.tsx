@@ -19,7 +19,6 @@ import { TriggerNode } from "./nodes/TriggerNode";
 import { ActionNode } from "./nodes/ActionNode";
 import { TransformNode } from "./nodes/TransformNode";
 import { ControlFlowNode } from "./nodes/ControlFlowNode";
-import { OutputNode } from "./nodes/OutputNode";
 import { TokenizationNode } from "./nodes/TokenizationNode";
 import { AINode } from "./nodes/AINode";
 import { RegulationNode } from "./nodes/RegulationNode";
@@ -30,7 +29,6 @@ const nodeTypes: NodeTypes = {
   action: ActionNode,
   transform: TransformNode,
   controlFlow: ControlFlowNode,
-  output: OutputNode,
   tokenization: TokenizationNode,
   ai: AINode,
   regulation: RegulationNode,
