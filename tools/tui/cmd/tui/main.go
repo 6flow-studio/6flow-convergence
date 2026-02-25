@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
@@ -66,6 +68,17 @@ func (i actionItem) Title() string       { return i.title }
 func (i actionItem) Description() string { return i.description }
 func (i actionItem) FilterValue() string { return i.title }
 
+type secretPickItem struct {
+	id          string
+	envVar      string
+	hasValue    bool
+	description string
+}
+
+func (i secretPickItem) Title() string       { return i.id }
+func (i secretPickItem) Description() string { return i.description }
+func (i secretPickItem) FilterValue() string { return i.id }
+
 type keyMap struct {
 	Pane1  key.Binding
 	Pane2  key.Binding
@@ -103,7 +116,7 @@ var keys = keyMap{
 	Run:    key.NewBinding(key.WithKeys("enter", "space"), key.WithHelp("enter", "run/select")),
 	Top:    key.NewBinding(key.WithKeys("g"), key.WithHelp("g", "console top")),
 	Bottom: key.NewBinding(key.WithKeys("G"), key.WithHelp("G", "console bottom")),
-	Clear:  key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "clear console")),
+	Clear:  key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "copy selected line")),
 	Login:  key.NewBinding(key.WithKeys("y", "n"), key.WithHelp("y/n", "login or quit")),
 	Quit:   key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit")),
 }
@@ -145,6 +158,22 @@ type secretsCmdFinishedMsg struct {
 	err   error
 }
 
+type secretsSetupStatusMsg struct {
+	ready bool
+	err   error
+}
+
+type secretOptionsLoadedMsg struct {
+	actionID string
+	logs     []string
+	options  []core.LocalSecretEntry
+	err      error
+}
+
+type copyNoticeClearedMsg struct {
+	id int
+}
+
 type model struct {
 	phase     appPhase
 	authState authState
@@ -172,8 +201,12 @@ type model struct {
 	secretsMenuOpen         bool
 	secretsWorkflowID       string
 	secretsWorkflowName     string
+	secretsSetupReady       bool
 	secretsTargets          []string
 	secretsTargetIndex      int
+	secretPickOpen          bool
+	secretPickAction        string
+	secretPickList          list.Model
 	setupSecretsPromptOpen  bool
 	setupPrivateKeyInput    textinput.Model
 	setupRPCURLInput        textinput.Model
@@ -185,6 +218,12 @@ type model struct {
 	secretValueInput        textinput.Model
 	secretFormActiveField   int
 	secretFormError         string
+	secretIDLocked          bool
+	secretRemoveFromConvex  bool
+	consoleLines            []string
+	consoleSelected         int
+	copyNotice              string
+	copyNoticeID            int
 
 	logs []string
 }
@@ -211,6 +250,22 @@ func newList(title string, items []list.Item) list.Model {
 	return l
 }
 
+func buildSecretsActions(setupReady bool) []list.Item {
+	coreActions := []list.Item{
+		actionItem{id: "read", title: "READ", description: "Inspect local secrets from secrets.yaml + .env"},
+		actionItem{id: "update", title: "UPDATE", description: "Update secret value in .env"},
+		actionItem{id: "add", title: "ADD", description: "Add secret key+value locally and to frontend config"},
+		actionItem{id: "remove", title: "REMOVE", description: "Clear local value (optional frontend removal)"},
+	}
+	setupAction := actionItem{id: "setup-secrets-env", title: "Setup secrets env", description: "Set private key + RPC URL locally"}
+	backAction := actionItem{id: "back", title: "Back", description: "Close secrets submenu"}
+
+	if !setupReady {
+		return append([]list.Item{setupAction}, append(coreActions, backAction)...)
+	}
+	return append(coreActions, setupAction, backAction)
+}
+
 func initialModel() model {
 	base := os.Getenv("SIXFLOW_WEB_URL")
 	if strings.TrimSpace(base) == "" {
@@ -227,14 +282,8 @@ func initialModel() model {
 		actionItem{id: "secrets", title: "Secrets", description: "Manage secrets in local environment"},
 		actionItem{id: "deploy", title: "Deploy (Unavailable)", description: "Not available in current CLI version"},
 	}
-	secretsActions := []list.Item{
-		actionItem{id: "setup-secrets-env", title: "Setup secrets env", description: "Set private key + RPC URL locally"},
-		actionItem{id: "read", title: "Read", description: "Inspect local secrets from secrets.yaml + .env"},
-		actionItem{id: "create", title: "Create", description: "Create secret in secrets.yaml + .env"},
-		actionItem{id: "update", title: "Update", description: "Update secret value in .env"},
-		actionItem{id: "delete", title: "Delete", description: "Delete secret from secrets.yaml + .env"},
-		actionItem{id: "back", title: "Back", description: "Close secrets submenu"},
-	}
+	secretsActions := buildSecretsActions(false)
+	secretPickList := newList("Select secret", []list.Item{})
 
 	sp := spinner.New()
 	sp.Spinner = spinner.Line
@@ -279,6 +328,7 @@ func initialModel() model {
 		workflowList:         newList("Workflows", []list.Item{}),
 		actionList:           newList("Actions", actions),
 		secretsMenu:          newList("Secrets submenu", secretsActions),
+		secretPickList:       secretPickList,
 		secretsTargets:       []string{"staging-settings"},
 		setupPrivateKeyInput: keyInput,
 		setupRPCURLInput:     rpcInput,
@@ -367,26 +417,35 @@ func creWhoAmICmd() tea.Cmd {
 	}
 }
 
-func secretsCommandCmd(actionID, workflowID, workflowName, target, secretID, secretValue string) tea.Cmd {
+func normalizeSecretNameInput(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return ""
+	}
+	return strings.ToUpper(strings.ReplaceAll(trimmed, " ", "_"))
+}
+
+func secretsCommandCmd(baseURL, token, actionID, workflowID, workflowName, target, secretID, secretValue, frontendSyncAction string) tea.Cmd {
 	return func() tea.Msg {
 		var (
 			result *core.SecretsCommandResult
 			err    error
 			label  string
+			logs   []string
 		)
 
 		switch actionID {
 		case "read":
 			label = "Secrets read"
 			result, err = core.InspectLocalSecrets(workflowID, workflowName, target)
-		case "create":
-			label = "Secrets create"
+		case "add":
+			label = "Secrets add"
 			result, err = core.CreateLocalSecret(workflowID, workflowName, target, secretID, secretValue)
 		case "update":
 			label = "Secrets update"
 			result, err = core.UpdateLocalSecret(workflowID, workflowName, target, secretID, secretValue)
-		case "delete":
-			label = "Secrets delete"
+		case "remove":
+			label = "Secrets remove"
 			result, err = core.DeleteLocalSecret(workflowID, workflowName, target, secretID)
 		default:
 			return secretsCmdFinishedMsg{
@@ -395,13 +454,59 @@ func secretsCommandCmd(actionID, workflowID, workflowName, target, secretID, sec
 			}
 		}
 
-		if err != nil {
-			if result != nil && len(result.Logs) > 0 {
-				return secretsCmdFinishedMsg{logs: result.Logs, label: label, err: err}
-			}
-			return secretsCmdFinishedMsg{label: label, err: err}
+		if result != nil {
+			logs = append(logs, result.Logs...)
 		}
-		return secretsCmdFinishedMsg{logs: result.Logs, label: label, err: nil}
+
+		if err != nil {
+			return secretsCmdFinishedMsg{logs: logs, label: label, err: err}
+		}
+
+		syncAction := strings.TrimSpace(strings.ToLower(frontendSyncAction))
+		if syncAction != "" {
+			if strings.TrimSpace(token) == "" {
+				return secretsCmdFinishedMsg{
+					logs:  logs,
+					label: label,
+					err:   errors.New("cannot sync workflow secret to frontend without auth session"),
+				}
+			}
+			if err := core.UpdateWorkflowSecretInFrontend(baseURL, token, workflowID, syncAction, normalizeSecretNameInput(secretID)); err != nil {
+				return secretsCmdFinishedMsg{
+					logs:  logs,
+					label: label,
+					err:   fmt.Errorf("local update succeeded but frontend sync failed: %w", err),
+				}
+			}
+			logs = append(logs, fmt.Sprintf("Synced secret %s to frontend workflow config (%s).", normalizeSecretNameInput(secretID), syncAction))
+		}
+
+		return secretsCmdFinishedMsg{logs: logs, label: label, err: nil}
+	}
+}
+
+func secretsSetupStatusCmd(workflowID, workflowName, target string) tea.Cmd {
+	return func() tea.Msg {
+		ready, err := core.IsWorkflowSecretsSetupReady(workflowID, workflowName, target)
+		return secretsSetupStatusMsg{ready: ready, err: err}
+	}
+}
+
+func secretOptionsCmd(actionID, workflowID, workflowName, target string) tea.Cmd {
+	return func() tea.Msg {
+		result, err := core.ListLocalSecrets(workflowID, workflowName, target)
+		if err != nil {
+			if result != nil {
+				return secretOptionsLoadedMsg{actionID: actionID, logs: result.Logs, err: err}
+			}
+			return secretOptionsLoadedMsg{actionID: actionID, err: err}
+		}
+		return secretOptionsLoadedMsg{
+			actionID: actionID,
+			logs:     result.Logs,
+			options:  result.Entries,
+			err:      nil,
+		}
 	}
 }
 
@@ -429,16 +534,34 @@ func (m model) Init() tea.Cmd {
 	return tea.Batch(m.spinner.Tick, initSessionCmd(), creWhoAmICmd())
 }
 
+func classifyLogColor(line string) lipgloss.Color {
+	lower := strings.ToLower(line)
+	switch {
+	case strings.Contains(lower, "[cre]"):
+		return lipgloss.Color("12")
+	case strings.Contains(lower, "[bun]"):
+		return lipgloss.Color("10")
+	case strings.Contains(lower, "frontend"):
+		return lipgloss.Color("6")
+	case strings.Contains(lower, "convex"):
+		return lipgloss.Color("13")
+	case strings.Contains(lower, "setup secrets env"):
+		return lipgloss.Color("11")
+	case strings.Contains(lower, "failed") || strings.Contains(lower, "error"):
+		return lipgloss.Color("9")
+	default:
+		return lipgloss.Color("7")
+	}
+}
+
 func wrapLine(input string, width int) []string {
 	if width <= 1 {
 		return []string{input}
 	}
-
 	runes := []rune(input)
 	if len(runes) <= width {
 		return []string{input}
 	}
-
 	out := make([]string, 0, (len(runes)/width)+1)
 	for len(runes) > width {
 		out = append(out, string(runes[:width]))
@@ -456,20 +579,107 @@ func (m *model) refreshConsoleContent() {
 		width = 80
 	}
 
-	wrapped := make([]string, 0, len(m.logs))
-	for _, line := range m.logs {
-		wrapped = append(wrapped, wrapLine(line, width)...)
+	type renderedLine struct {
+		text  string
+		color lipgloss.Color
 	}
-	m.console.SetContent(strings.Join(wrapped, "\n"))
+
+	rendered := make([]renderedLine, 0, len(m.logs))
+	for _, line := range m.logs {
+		color := classifyLogColor(line)
+		for _, segment := range wrapLine(line, width) {
+			rendered = append(rendered, renderedLine{text: segment, color: color})
+		}
+	}
+
+	if len(rendered) == 0 {
+		rendered = append(rendered, renderedLine{text: "", color: lipgloss.Color("7")})
+	}
+	if m.consoleSelected < 0 {
+		m.consoleSelected = 0
+	}
+	if m.consoleSelected >= len(rendered) {
+		m.consoleSelected = len(rendered) - 1
+	}
+
+	m.consoleLines = m.consoleLines[:0]
+	styled := make([]string, 0, len(rendered))
+	for idx, line := range rendered {
+		m.consoleLines = append(m.consoleLines, line.text)
+		if idx == m.consoleSelected {
+			styled = append(styled, lipgloss.NewStyle().Foreground(lipgloss.Color("0")).Background(lipgloss.Color("11")).Render(line.text))
+			continue
+		}
+		styled = append(styled, lipgloss.NewStyle().Foreground(line.color).Render(line.text))
+	}
+	m.console.SetContent(strings.Join(styled, "\n"))
+	m.ensureConsoleSelectionVisible()
 }
 
 func (m *model) appendLog(line string) {
-	atBottom := m.console.AtBottom()
+	atBottom := m.console.AtBottom() || len(m.consoleLines) == 0 || m.consoleSelected >= len(m.consoleLines)-1
 	m.logs = append(m.logs, withTimestamp(line))
+	if atBottom {
+		m.consoleSelected = len(m.consoleLines)
+	}
 	m.refreshConsoleContent()
 	if atBottom {
 		m.console.GotoBottom()
 	}
+}
+
+func (m *model) ensureConsoleSelectionVisible() {
+	if len(m.consoleLines) == 0 {
+		return
+	}
+	if m.consoleSelected < m.console.YOffset {
+		diff := m.console.YOffset - m.consoleSelected
+		if diff > 0 {
+			m.console.LineUp(diff)
+		}
+		return
+	}
+	bottom := m.console.YOffset + m.console.Height - 1
+	if m.consoleSelected > bottom {
+		diff := m.consoleSelected - bottom
+		if diff > 0 {
+			m.console.LineDown(diff)
+		}
+	}
+}
+
+func copyToClipboard(value string) error {
+	text := strings.TrimSpace(value)
+	if text == "" {
+		return errors.New("nothing to copy")
+	}
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("pbcopy")
+	case "linux":
+		if _, err := exec.LookPath("wl-copy"); err == nil {
+			cmd = exec.Command("wl-copy")
+		} else if _, err := exec.LookPath("xclip"); err == nil {
+			cmd = exec.Command("xclip", "-selection", "clipboard")
+		} else if _, err := exec.LookPath("xsel"); err == nil {
+			cmd = exec.Command("xsel", "--clipboard", "--input")
+		} else {
+			return errors.New("no clipboard tool found (install wl-copy/xclip/xsel)")
+		}
+	case "windows":
+		cmd = exec.Command("cmd", "/c", "clip")
+	default:
+		return errors.New("unsupported platform for clipboard copy")
+	}
+	cmd.Stdin = strings.NewReader(text)
+	return cmd.Run()
+}
+
+func clearCopyNoticeCmd(id int) tea.Cmd {
+	return tea.Tick(1400*time.Millisecond, func(_ time.Time) tea.Msg {
+		return copyNoticeClearedMsg{id: id}
+	})
 }
 
 func (m *model) setWorkflows(items []core.FrontendWorkflow) {
@@ -554,6 +764,7 @@ func (m *model) resize() {
 	m.workflowList.SetSize(leftW-4, wfH-2)
 	m.actionList.SetSize(leftW-4, actionH-2)
 	m.secretsMenu.SetSize(leftW-4, actionH-2)
+	m.secretPickList.SetSize(leftW-4, actionH-2)
 	m.console.Width = rightW - 2
 	m.console.Height = mainH - 2
 	m.refreshConsoleContent()
@@ -593,6 +804,12 @@ func (m model) selectedAction() *actionItem {
 		return nil
 	}
 	return &item
+}
+
+func (m *model) refreshSecretsMenu() {
+	items := buildSecretsActions(m.secretsSetupReady)
+	m.secretsMenu.SetItems(items)
+	m.secretsMenu.Select(0)
 }
 
 func compactIdentity(identity string) string {
@@ -774,16 +991,92 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.setupSecretsPromptError = ""
 			m.setupPrivateKeyInput.SetValue("")
 			m.setupRPCURLInput.SetValue("")
+			m.busy = false
+			return m, secretsSetupStatusCmd(m.secretsWorkflowID, m.secretsWorkflowName, m.currentSecretsTarget())
 		}
 		if strings.HasPrefix(msg.label, "Secrets ") {
 			m.secretFormOpen = false
 			m.secretFormMode = ""
 			m.secretFormError = ""
+			m.secretIDLocked = false
+			m.secretRemoveFromConvex = false
 			m.secretIDInput.SetValue("")
 			m.secretValueInput.SetValue("")
 		}
 		m.appendLog("Action \"" + msg.label + "\" completed.")
 		m.busy = false
+		return m, nil
+
+	case secretsSetupStatusMsg:
+		if msg.err != nil {
+			m.secretsSetupReady = false
+			m.refreshSecretsMenu()
+			m.appendLog("Unable to read setup status: " + msg.err.Error())
+			return m, nil
+		}
+		m.secretsSetupReady = msg.ready
+		m.refreshSecretsMenu()
+		return m, nil
+
+	case secretOptionsLoadedMsg:
+		for _, line := range msg.logs {
+			m.appendLog(line)
+		}
+		if msg.err != nil {
+			m.appendLog("Unable to list secrets: " + msg.err.Error())
+			m.busy = false
+			return m, nil
+		}
+
+		items := make([]list.Item, 0, len(msg.options))
+		for _, option := range msg.options {
+			switch msg.actionID {
+			case "add":
+				if option.HasValue {
+					continue
+				}
+			}
+			status := "missing in .env"
+			if option.HasValue {
+				status = "present in .env"
+			}
+			description := status
+			if strings.TrimSpace(option.EnvVar) != "" {
+				description = fmt.Sprintf("%s (%s)", option.EnvVar, status)
+			}
+			items = append(items, secretPickItem{
+				id:          option.ID,
+				envVar:      option.EnvVar,
+				hasValue:    option.HasValue,
+				description: description,
+			})
+		}
+
+		if len(items) == 0 {
+			switch msg.actionID {
+			case "add":
+				m.appendLog("No missing secrets to add.")
+			case "update":
+				m.appendLog("No secrets available to update.")
+			case "remove":
+				m.appendLog("No configured secrets to remove.")
+			}
+			m.busy = false
+			return m, nil
+		}
+
+		m.secretPickAction = msg.actionID
+		m.secretPickOpen = true
+		m.secretPickList.SetItems(items)
+		m.secretPickList.Select(0)
+		m.busy = false
+		m.appendLog("Pick a secret from the list and press Enter.")
+		return m, nil
+
+	case copyNoticeClearedMsg:
+		if msg.id == m.copyNoticeID {
+			m.copyNotice = ""
+		}
 		return m, nil
 
 	case tea.KeyMsg:
@@ -865,11 +1158,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 		if m.secretFormOpen {
+			if m.secretFormMode == "remove" {
+				switch msg.String() {
+				case "t", "T", "ctrl+t":
+					m.secretRemoveFromConvex = !m.secretRemoveFromConvex
+					if m.secretRemoveFromConvex {
+						m.appendLog("REMOVE mode: Convex removal enabled.")
+					} else {
+						m.appendLog("REMOVE mode: Convex removal disabled (clear local value only).")
+					}
+					return m, nil
+				}
+			}
+
 			switch msg.String() {
 			case "esc":
 				m.secretFormOpen = false
 				m.secretFormMode = ""
 				m.secretFormError = ""
+				m.secretIDLocked = false
+				m.secretRemoveFromConvex = false
 				m.secretIDInput.SetValue("")
 				m.secretValueInput.SetValue("")
 				m.appendLog("Secrets form canceled.")
@@ -878,35 +1186,45 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.busy {
 					return m, nil
 				}
-				id := strings.TrimSpace(m.secretIDInput.Value())
+				id := normalizeSecretNameInput(m.secretIDInput.Value())
 				value := strings.TrimSpace(m.secretValueInput.Value())
 				if id == "" {
 					m.secretFormError = "Secret ID is required."
 					return m, nil
 				}
-				if m.secretFormMode != "delete" && m.secretFormActiveField == 0 {
+				if !m.secretIDLocked && m.secretFormMode != "remove" && m.secretFormActiveField == 0 {
 					m.secretFormActiveField = 1
 					m.secretIDInput.Blur()
 					m.secretValueInput.Focus()
 					return m, nil
 				}
-				if m.secretFormMode != "delete" && value == "" {
+				if m.secretFormMode != "remove" && value == "" {
 					m.secretFormError = "Secret value is required."
 					return m, nil
 				}
 				m.busy = true
 				m.secretFormError = ""
 				m.appendLog(fmt.Sprintf("Applying secrets %s for %s...", m.secretFormMode, m.secretsWorkflowName))
+				frontendSyncAction := ""
+				if m.secretFormMode == "add" {
+					frontendSyncAction = "add"
+				}
+				if m.secretFormMode == "remove" && m.secretRemoveFromConvex {
+					frontendSyncAction = "remove"
+				}
 				return m, secretsCommandCmd(
+					m.webBaseURL,
+					m.token,
 					m.secretFormMode,
 					m.secretsWorkflowID,
 					m.secretsWorkflowName,
 					m.currentSecretsTarget(),
 					id,
 					value,
+					frontendSyncAction,
 				)
 			case "tab", "shift+tab", "up", "down":
-				if m.secretFormMode == "delete" {
+				if m.secretIDLocked || m.secretFormMode == "remove" {
 					return m, nil
 				}
 				if m.secretFormActiveField == 0 {
@@ -922,7 +1240,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			var cmd tea.Cmd
-			if m.secretFormMode == "delete" || m.secretFormActiveField == 0 {
+			if !m.secretIDLocked && (m.secretFormMode == "remove" || m.secretFormActiveField == 0) {
 				m.secretIDInput, cmd = m.secretIDInput.Update(msg)
 			} else {
 				m.secretValueInput, cmd = m.secretValueInput.Update(msg)
@@ -930,9 +1248,54 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 
+		if m.secretPickOpen {
+			if msg.String() == "esc" || msg.String() == "backspace" || msg.String() == "b" {
+				m.secretPickOpen = false
+				m.secretPickAction = ""
+				m.appendLog("Secret picker canceled.")
+				return m, nil
+			}
+
+			if key.Matches(msg, keys.Run) {
+				if m.busy {
+					return m, nil
+				}
+				selected, ok := m.secretPickList.SelectedItem().(secretPickItem)
+				if !ok {
+					return m, nil
+				}
+				m.secretPickOpen = false
+				m.secretIDInput.SetValue(selected.id)
+				m.secretValueInput.SetValue("")
+				m.secretFormError = ""
+				m.secretIDLocked = true
+				m.secretRemoveFromConvex = false
+
+				m.secretFormOpen = true
+				m.secretFormMode = m.secretPickAction
+				if m.secretPickAction == "remove" {
+					m.secretFormActiveField = 0
+					m.secretIDInput.Blur()
+					m.secretValueInput.Blur()
+				} else {
+					m.secretFormActiveField = 1
+					m.secretIDInput.Blur()
+					m.secretValueInput.Focus()
+				}
+				m.appendLog(fmt.Sprintf("Selected %s for secrets %s.", selected.id, m.secretPickAction))
+				return m, nil
+			}
+
+			var cmd tea.Cmd
+			m.secretPickList, cmd = m.secretPickList.Update(msg)
+			return m, cmd
+		}
+
 		if m.secretsMenuOpen {
 			if msg.String() == "esc" || msg.String() == "backspace" || msg.String() == "b" {
 				m.secretsMenuOpen = false
+				m.secretPickOpen = false
+				m.secretPickAction = ""
 				m.secretsWorkflowID = ""
 				m.secretsWorkflowName = ""
 				m.appendLog("Closed secrets submenu.")
@@ -949,6 +1312,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				if selected.id == "back" {
 					m.secretsMenuOpen = false
+					m.secretPickOpen = false
+					m.secretPickAction = ""
 					m.secretsWorkflowID = ""
 					m.secretsWorkflowName = ""
 					m.appendLog("Closed secrets submenu.")
@@ -970,22 +1335,39 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.appendLog("Setup secrets env opened. Values are stored locally only.")
 					return m, nil
 				}
-				if selected.id == "create" || selected.id == "update" || selected.id == "delete" {
-					m.secretFormOpen = true
-					m.secretFormMode = selected.id
-					m.secretFormError = ""
-					m.secretFormActiveField = 0
-					m.secretIDInput.SetValue("")
-					m.secretValueInput.SetValue("")
-					m.secretIDInput.Focus()
-					m.secretValueInput.Blur()
-					m.appendLog(fmt.Sprintf("Opened secrets %s form for %s.", selected.id, m.secretsWorkflowName))
-					return m, nil
+				if selected.id == "add" || selected.id == "update" || selected.id == "remove" {
+					if selected.id == "add" {
+						m.secretFormOpen = true
+						m.secretFormMode = "add"
+						m.secretFormError = ""
+						m.secretIDLocked = false
+						m.secretRemoveFromConvex = false
+						m.secretFormActiveField = 0
+						m.secretIDInput.SetValue("")
+						m.secretValueInput.SetValue("")
+						m.secretIDInput.Focus()
+						m.secretValueInput.Blur()
+						m.appendLog("Secrets add form opened. New key will be added to local secrets.yaml and frontend config.")
+						return m, nil
+					}
+					m.busy = true
+					m.appendLog(fmt.Sprintf("Loading secrets list for %s...", strings.ToUpper(selected.id)))
+					return m, secretOptionsCmd(selected.id, m.secretsWorkflowID, m.secretsWorkflowName, m.currentSecretsTarget())
 				}
 
 				m.busy = true
 				m.appendLog(fmt.Sprintf("Starting %s for %s...", selected.title, m.secretsWorkflowName))
-				return m, secretsCommandCmd(selected.id, m.secretsWorkflowID, m.secretsWorkflowName, m.currentSecretsTarget(), "", "")
+				return m, secretsCommandCmd(
+					m.webBaseURL,
+					m.token,
+					selected.id,
+					m.secretsWorkflowID,
+					m.secretsWorkflowName,
+					m.currentSecretsTarget(),
+					"",
+					"",
+					"",
+				)
 			}
 
 			var cmd tea.Cmd
@@ -1011,17 +1393,47 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.focus == focusConsole {
 			switch msg.String() {
 			case "up", "k":
-				m.console.LineUp(1)
-			case "down", "j":
-				m.console.LineDown(1)
-			case "g":
-				m.console.GotoTop()
-			case "G":
-				m.console.GotoBottom()
-			case "c":
-				m.logs = []string{withTimestamp("Console cleared.")}
+				if m.consoleSelected > 0 {
+					m.consoleSelected--
+				}
 				m.refreshConsoleContent()
-				m.console.GotoBottom()
+			case "down", "j":
+				if m.consoleSelected < len(m.consoleLines)-1 {
+					m.consoleSelected++
+				}
+				m.refreshConsoleContent()
+			case "g":
+				m.consoleSelected = 0
+				m.refreshConsoleContent()
+			case "G":
+				if len(m.consoleLines) > 0 {
+					m.consoleSelected = len(m.consoleLines) - 1
+				}
+				m.refreshConsoleContent()
+			case "c":
+				if len(m.consoleLines) == 0 {
+					m.appendLog("No logs to copy.")
+					return m, nil
+				}
+				selected := m.consoleLines[m.consoleSelected]
+				if err := copyToClipboard(selected); err != nil {
+					m.appendLog("Copy failed: " + err.Error())
+					return m, nil
+				}
+				m.copyNoticeID++
+				m.copyNotice = "Copied to clipboard"
+				return m, clearCopyNoticeCmd(m.copyNoticeID)
+			case "Y":
+				if len(m.logs) == 0 {
+					m.appendLog("No logs to copy.")
+					return m, nil
+				}
+				all := strings.Join(m.logs, "\n")
+				if err := copyToClipboard(all); err != nil {
+					m.appendLog("Copy failed: " + err.Error())
+					return m, nil
+				}
+				m.appendLog("Copied all log lines to clipboard.")
 			}
 			return m, nil
 		}
@@ -1089,11 +1501,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return m, nil
 					}
 					m.secretsMenuOpen = true
+					m.secretPickOpen = false
+					m.secretPickAction = ""
 					m.secretsWorkflowID = workflow.id
 					m.secretsWorkflowName = workflow.title
+					m.secretsSetupReady = false
+					m.refreshSecretsMenu()
 					m.focus = focusActions
 					m.appendLog(fmt.Sprintf("Opened secrets submenu for %s. Press esc to go back.", workflow.title))
-					return m, nil
+					return m, secretsSetupStatusCmd(m.secretsWorkflowID, m.secretsWorkflowName, m.currentSecretsTarget())
 				}
 
 				workflow := m.selectedWorkflow()
@@ -1229,14 +1645,20 @@ func (m model) renderSecretFormPrompt() string {
 		fmt.Sprintf("workflow: %s | target: %s", m.secretsWorkflowName, m.currentSecretsTarget()),
 	)
 	hints := "Enter submits. Esc cancels."
-	if m.secretFormMode != "delete" {
+	if m.secretFormMode != "remove" && !m.secretIDLocked {
 		hints = "Tab to switch fields. Enter on value submits. Esc cancels."
+	}
+	if m.secretIDLocked {
+		hints = "Secret ID is selected from list. Enter submits. Esc cancels."
+	}
+	if m.secretFormMode == "remove" {
+		hints = "Enter clears local value. Press T to toggle removing from frontend config. Esc cancels."
 	}
 	hintsView := lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render(hints)
 
 	secretIDLabel := "Secret ID"
 	secretValueLabel := "Secret value"
-	if m.secretFormMode != "delete" {
+	if m.secretFormMode != "remove" && !m.secretIDLocked {
 		if m.secretFormActiveField == 0 {
 			secretIDLabel = lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Render(secretIDLabel)
 		} else {
@@ -1252,10 +1674,20 @@ func (m model) renderSecretFormPrompt() string {
 		target,
 		"",
 		secretIDLabel,
-		m.secretIDInput.View(),
 	}
-	if m.secretFormMode != "delete" {
+	if m.secretIDLocked {
+		lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Render(m.secretIDInput.Value()))
+	} else {
+		lines = append(lines, m.secretIDInput.View())
+	}
+	if m.secretFormMode != "remove" {
 		lines = append(lines, "", secretValueLabel, m.secretValueInput.View())
+	} else {
+		removeMode := "OFF (default: clear local value only)"
+		if m.secretRemoveFromConvex {
+			removeMode = "ON (also remove from web)"
+		}
+		lines = append(lines, "", "Remove from web", removeMode)
 	}
 	lines = append(lines, hintsView)
 
@@ -1277,13 +1709,18 @@ func (m model) View() string {
 	}
 
 	leftW := m.workflowList.Width() + 4
-	rightW := m.console.Width + 2
+	rightW := m.console.Width
 
 	wf := paneStyle(m.focus == focusWorkflows).Width(leftW).Render(m.workflowList.View())
 	actionsPane := m.actionList.View()
 	if m.secretsMenuOpen {
-		m.secretsMenu.Title = fmt.Sprintf("Secrets submenu (staging-only): %s | target=%s (esc back)", m.secretsWorkflowName, m.currentSecretsTarget())
-		actionsPane = m.secretsMenu.View()
+		if m.secretPickOpen {
+			m.secretPickList.Title = fmt.Sprintf("Pick secret for %s: %s (esc back)", strings.ToUpper(m.secretPickAction), m.secretsWorkflowName)
+			actionsPane = m.secretPickList.View()
+		} else {
+			m.secretsMenu.Title = fmt.Sprintf("Secrets submenu (staging-only): %s | target=%s (esc back)", m.secretsWorkflowName, m.currentSecretsTarget())
+			actionsPane = m.secretsMenu.View()
+		}
 	} else {
 		m.actionList.Title = "Actions"
 	}
@@ -1298,10 +1735,26 @@ func (m model) View() string {
 		lipgloss.NewStyle().Bold(true).Render(consoleHeader),
 		m.console.View(),
 	)
-	rightCol := paneStyle(m.focus == focusConsole).Width(rightW).Render(consoleBody)
-
+	buildRightCol := func(width int) string {
+		if width < 10 {
+			width = 10
+		}
+		return paneStyle(m.focus == focusConsole).Width(width).Render(consoleBody)
+	}
+	rightCol := buildRightCol(rightW)
 	body := lipgloss.JoinHorizontal(lipgloss.Top, leftCol, rightCol)
+	for lipgloss.Width(body) > m.width && rightW > 10 {
+		rightW--
+		rightCol = buildRightCol(rightW)
+		body = lipgloss.JoinHorizontal(lipgloss.Top, leftCol, rightCol)
+	}
 	footer := m.help.View(keys)
+	if m.focus == focusConsole {
+		footer += lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render(" • c copy selected line")
+	}
+	if strings.TrimSpace(m.copyNotice) != "" {
+		footer += " " + lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Render("· "+m.copyNotice)
+	}
 	sections := []string{m.headerView(), body}
 	if m.setupSecretsPromptOpen {
 		sections = append(sections, m.renderSetupSecretsPrompt())

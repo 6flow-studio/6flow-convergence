@@ -54,7 +54,6 @@ pub struct RpcEntry {
 #[serde(rename_all = "camelCase")]
 pub struct SecretReference {
     pub name: String,
-    pub env_variable: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

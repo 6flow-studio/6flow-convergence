@@ -23,6 +23,6 @@ fn end_to_end_linear_pipeline() {
 
     let output = compiler::codegen::codegen(&ir);
     dbg!(&output);
-    assert_eq!(output.files.len(), 8);
+    assert_eq!(output.files.len(), 7);
     assert!(output.files.iter().any(|f| f.path == "main.ts"));
 }

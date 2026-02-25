@@ -38,6 +38,16 @@ type bundleDownloadResponse struct {
 	Detail      string `json:"detail"`
 }
 
+type workflowSecretUpdateRequest struct {
+	Action     string `json:"action"`
+	SecretName string `json:"secretName"`
+}
+
+type workflowSecretUpdateResponse struct {
+	OK    bool   `json:"ok"`
+	Error string `json:"error"`
+}
+
 var ErrFrontendUnauthorized = errors.New("unauthorized")
 
 func NormalizeBaseURL(baseURL string) string {
@@ -161,4 +171,48 @@ func DownloadWorkflowBundle(baseURL, token, workflowID string) (*WorkflowBundle,
 		FileName: fileName,
 		Content:  body.Bytes(),
 	}, nil
+}
+
+func UpdateWorkflowSecretInFrontend(baseURL, token, workflowID, action, secretName string) error {
+	url := fmt.Sprintf("%s/api/tui/workflows/%s/secrets", NormalizeBaseURL(baseURL), workflowID)
+
+	normalizedSecret := strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(secretName), " ", "_"))
+	payload := workflowSecretUpdateRequest{
+		Action:     strings.TrimSpace(strings.ToLower(action)),
+		SecretName: normalizedSecret,
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	client := &http.Client{Timeout: 20 * time.Second}
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	var result workflowSecretUpdateResponse
+	_ = json.NewDecoder(resp.Body).Decode(&result)
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return ErrFrontendUnauthorized
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		if strings.TrimSpace(result.Error) != "" {
+			return errors.New(strings.TrimSpace(result.Error))
+		}
+		return fmt.Errorf("request failed with status %d", resp.StatusCode)
+	}
+
+	return nil
 }

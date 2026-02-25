@@ -81,8 +81,6 @@ pub enum ZodType {
 pub struct SecretDeclaration {
     /// Logical name used in `runtime.getSecret({id: ...})`.
     pub name: String,
-    /// Environment variable name for `.env`.
-    pub env_variable: String,
 }
 
 // =============================================================================

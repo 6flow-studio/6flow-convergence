@@ -15,6 +15,8 @@ type AuthSession struct {
 	SavedAt string `json:"savedAt"`
 }
 
+const localSessionFallbackTTL = 90 * 24 * time.Hour
+
 func sessionFilePath() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -54,11 +56,25 @@ func decodeJWTExp(token string) *int64 {
 }
 
 func IsSessionValid(session *AuthSession) bool {
-	if session == nil || session.Token == "" || session.Exp == nil {
+	if session == nil || strings.TrimSpace(session.Token) == "" {
 		return false
 	}
 
-	return (*session.Exp)*1000 > time.Now().UnixMilli()+5000
+	nowMs := time.Now().UnixMilli()
+	if session.Exp != nil && (*session.Exp)*1000 > nowMs+5000 {
+		return true
+	}
+
+	savedAt := strings.TrimSpace(session.SavedAt)
+	if savedAt == "" {
+		return false
+	}
+	parsed, err := time.Parse(time.RFC3339, savedAt)
+	if err != nil {
+		return false
+	}
+
+	return time.Since(parsed) <= localSessionFallbackTTL
 }
 
 func LoadAuthSession() (*AuthSession, error) {

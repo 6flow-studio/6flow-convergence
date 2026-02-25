@@ -52,7 +52,6 @@ pub fn kyc_minting_ir() -> WorkflowIR {
         ],
         required_secrets: vec![SecretDeclaration {
             name: "KYC_API_KEY".into(),
-            env_variable: "KYC_API_KEY_VAR".into(),
         }],
         evm_chains: vec![EvmChainUsage {
             chain_selector_name: "ethereum-testnet-sepolia".into(),
@@ -282,16 +281,13 @@ pub fn ir_with_steps(steps: Vec<Step>) -> WorkflowIR {
 /// Build a WorkflowIR with steps, secrets, and EVM chains declared.
 pub fn ir_with_steps_and_deps(
     steps: Vec<Step>,
-    secrets: Vec<(&str, &str)>,
+    secrets: Vec<&str>,
     evm_chains: Vec<(&str, &str, bool)>,
 ) -> WorkflowIR {
     let mut ir = ir_with_steps(steps);
     ir.required_secrets = secrets
         .into_iter()
-        .map(|(name, env)| SecretDeclaration {
-            name: name.into(),
-            env_variable: env.into(),
-        })
+        .map(|name| SecretDeclaration { name: name.into() })
         .collect();
     ir.evm_chains = evm_chains
         .into_iter()
