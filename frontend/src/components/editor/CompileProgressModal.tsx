@@ -99,7 +99,7 @@ export function CompileProgressModal({
                 Install 6Flow TUI and continue from terminal:
               </div>
               <code className="mt-2 block rounded-md border border-edge-dim bg-surface-0 px-2 py-1.5 text-[11px] text-zinc-300">
-                brew install 6flow
+                brew install 6flow-studio/6flow-convergence/tui
               </code>
             </div>
 
