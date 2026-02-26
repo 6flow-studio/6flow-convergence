@@ -69,10 +69,13 @@ func (i actionItem) Description() string { return i.description }
 func (i actionItem) FilterValue() string { return i.title }
 
 type secretPickItem struct {
-	id          string
-	envVar      string
-	hasValue    bool
-	description string
+	id           string
+	key          string
+	kind         string
+	section      string
+	currentValue string
+	description  string
+	selectable   bool
 }
 
 func (i secretPickItem) Title() string       { return i.id }
@@ -158,16 +161,17 @@ type secretsCmdFinishedMsg struct {
 	err   error
 }
 
-type secretsSetupStatusMsg struct {
-	ready bool
-	err   error
-}
-
 type secretOptionsLoadedMsg struct {
 	actionID string
 	logs     []string
 	options  []core.LocalSecretEntry
 	err      error
+}
+
+type variableOptionsLoadedMsg struct {
+	logs    []string
+	options []core.LocalVariableEntry
+	err     error
 }
 
 type copyNoticeClearedMsg struct {
@@ -201,19 +205,19 @@ type model struct {
 	secretsMenuOpen         bool
 	secretsWorkflowID       string
 	secretsWorkflowName     string
-	secretsSetupReady       bool
 	secretsTargets          []string
 	secretsTargetIndex      int
 	secretPickOpen          bool
 	secretPickAction        string
 	secretPickList          list.Model
-	setupSecretsPromptOpen  bool
-	setupPrivateKeyInput    textinput.Model
-	setupRPCURLInput        textinput.Model
-	setupPromptActiveField  int
-	setupSecretsPromptError string
+	variablePickerOpen      bool
+	variablePickerFocus     int
+	systemVariableList      list.Model
+	environmentVariableList list.Model
 	secretFormOpen          bool
 	secretFormMode          string
+	secretFormVariableKind  string
+	secretFormVariableKey   string
 	secretIDInput           textinput.Model
 	secretValueInput        textinput.Model
 	secretFormActiveField   int
@@ -250,20 +254,40 @@ func newList(title string, items []list.Item) list.Model {
 	return l
 }
 
-func buildSecretsActions(setupReady bool) []list.Item {
+func newVariableList(title string, items []list.Item) list.Model {
+	d := list.NewDefaultDelegate()
+	d.ShowDescription = true
+	d.SetHeight(2)
+	// Remove default selected left marker block for cleaner two-pane picker.
+	d.Styles.SelectedTitle = lipgloss.NewStyle().
+		Padding(0, 0, 0, 2).
+		Border(lipgloss.NormalBorder(), false, false, false, false).
+		Foreground(lipgloss.Color("13")).
+		Bold(true)
+	d.Styles.SelectedDesc = lipgloss.NewStyle().
+		Padding(0, 0, 0, 2).
+		Border(lipgloss.NormalBorder(), false, false, false, false).
+		Foreground(lipgloss.Color("13"))
+
+	l := list.New(items, d, 20, 10)
+	l.Title = title
+	l.SetFilteringEnabled(false)
+	l.SetShowHelp(false)
+	l.SetShowStatusBar(false)
+	l.SetShowPagination(false)
+	l.DisableQuitKeybindings()
+	return l
+}
+
+func buildSecretsActions() []list.Item {
 	coreActions := []list.Item{
 		actionItem{id: "read", title: "READ", description: "Inspect local secrets from secrets.yaml + .env"},
-		actionItem{id: "update", title: "UPDATE", description: "Update secret value in .env"},
+		actionItem{id: "update", title: "UPDATE", description: "Update system/environment variable values"},
 		actionItem{id: "add", title: "ADD", description: "Add secret key+value locally and to frontend config"},
 		actionItem{id: "remove", title: "REMOVE", description: "Clear local value (optional frontend removal)"},
 	}
-	setupAction := actionItem{id: "setup-secrets-env", title: "Setup secrets env", description: "Set private key + RPC URL locally"}
 	backAction := actionItem{id: "back", title: "Back", description: "Close secrets submenu"}
-
-	if !setupReady {
-		return append([]list.Item{setupAction}, append(coreActions, backAction)...)
-	}
-	return append(coreActions, setupAction, backAction)
+	return append(coreActions, backAction)
 }
 
 func initialModel() model {
@@ -282,25 +306,13 @@ func initialModel() model {
 		actionItem{id: "secrets", title: "Secrets", description: "Manage secrets in local environment"},
 		actionItem{id: "deploy", title: "Deploy (Unavailable)", description: "Not available in current CLI version"},
 	}
-	secretsActions := buildSecretsActions(false)
+	secretsActions := buildSecretsActions()
 	secretPickList := newList("Select secret", []list.Item{})
+	systemVariableList := newVariableList("System Variables", []list.Item{})
+	environmentVariableList := newVariableList("Environment Variables", []list.Item{})
 
 	sp := spinner.New()
 	sp.Spinner = spinner.Line
-
-	keyInput := textinput.New()
-	keyInput.Placeholder = "0x... or 64-hex private key"
-	keyInput.Prompt = "private key> "
-	keyInput.EchoMode = textinput.EchoPassword
-	keyInput.EchoCharacter = '•'
-	keyInput.CharLimit = 80
-	keyInput.Width = 70
-
-	rpcInput := textinput.New()
-	rpcInput.Placeholder = "https://..."
-	rpcInput.Prompt = "rpc url> "
-	rpcInput.CharLimit = 256
-	rpcInput.Width = 70
 
 	secretIDInput := textinput.New()
 	secretIDInput.Placeholder = "API_KEY"
@@ -319,24 +331,24 @@ func initialModel() model {
 	v.GotoBottom()
 
 	return model{
-		phase:                phaseCheckingAuth,
-		authState:            authDisconnected,
-		lastSyncAt:           "never",
-		user:                 user,
-		webBaseURL:           base,
-		focus:                focusWorkflows,
-		workflowList:         newList("Workflows", []list.Item{}),
-		actionList:           newList("Actions", actions),
-		secretsMenu:          newList("Secrets submenu", secretsActions),
-		secretPickList:       secretPickList,
-		secretsTargets:       []string{"staging-settings"},
-		setupPrivateKeyInput: keyInput,
-		setupRPCURLInput:     rpcInput,
-		secretIDInput:        secretIDInput,
-		secretValueInput:     secretValueInput,
-		console:              v,
-		help:                 help.New(),
-		spinner:              sp,
+		phase:                   phaseCheckingAuth,
+		authState:               authDisconnected,
+		lastSyncAt:              "never",
+		user:                    user,
+		webBaseURL:              base,
+		focus:                   focusWorkflows,
+		workflowList:            newList("Workflows", []list.Item{}),
+		actionList:              newList("Actions", actions),
+		secretsMenu:             newList("Secrets submenu", secretsActions),
+		secretPickList:          secretPickList,
+		systemVariableList:      systemVariableList,
+		environmentVariableList: environmentVariableList,
+		secretsTargets:          []string{"staging-settings"},
+		secretIDInput:           secretIDInput,
+		secretValueInput:        secretValueInput,
+		console:                 v,
+		help:                    help.New(),
+		spinner:                 sp,
 		logs: []string{
 			withTimestamp(fmt.Sprintf("Frontend API mode enabled (%s).", base)),
 			withTimestamp("Checking local authentication session..."),
@@ -441,9 +453,6 @@ func secretsCommandCmd(baseURL, token, actionID, workflowID, workflowName, targe
 		case "add":
 			label = "Secrets add"
 			result, err = core.CreateLocalSecret(workflowID, workflowName, target, secretID, secretValue)
-		case "update":
-			label = "Secrets update"
-			result, err = core.UpdateLocalSecret(workflowID, workflowName, target, secretID, secretValue)
 		case "remove":
 			label = "Secrets remove"
 			result, err = core.DeleteLocalSecret(workflowID, workflowName, target, secretID)
@@ -485,13 +494,6 @@ func secretsCommandCmd(baseURL, token, actionID, workflowID, workflowName, targe
 	}
 }
 
-func secretsSetupStatusCmd(workflowID, workflowName, target string) tea.Cmd {
-	return func() tea.Msg {
-		ready, err := core.IsWorkflowSecretsSetupReady(workflowID, workflowName, target)
-		return secretsSetupStatusMsg{ready: ready, err: err}
-	}
-}
-
 func secretOptionsCmd(actionID, workflowID, workflowName, target string) tea.Cmd {
 	return func() tea.Msg {
 		result, err := core.ListLocalSecrets(workflowID, workflowName, target)
@@ -510,16 +512,27 @@ func secretOptionsCmd(actionID, workflowID, workflowName, target string) tea.Cmd
 	}
 }
 
-func saveSecretsSetupCmd(workflowID, workflowName, target, privateKey, rpcURL string) tea.Cmd {
+func variableOptionsCmd(workflowID, workflowName, target string) tea.Cmd {
 	return func() tea.Msg {
-		result, err := core.SaveWorkflowSecretsSetup(
-			workflowID,
-			workflowName,
-			target,
-			privateKey,
-			rpcURL,
-		)
-		label := "Setup secrets env"
+		result, err := core.ListLocalVariableOptions(workflowID, workflowName, target)
+		if err != nil {
+			if result != nil {
+				return variableOptionsLoadedMsg{logs: result.Logs, err: err}
+			}
+			return variableOptionsLoadedMsg{err: err}
+		}
+		return variableOptionsLoadedMsg{
+			logs:    result.Logs,
+			options: result.Entries,
+			err:     nil,
+		}
+	}
+}
+
+func updateVariableCmd(workflowID, workflowName, target, kind, key, value string) tea.Cmd {
+	return func() tea.Msg {
+		result, err := core.UpdateLocalVariable(workflowID, workflowName, target, kind, key, value)
+		label := "Update value"
 		if err != nil {
 			if result != nil && len(result.Logs) > 0 {
 				return secretsCmdFinishedMsg{logs: result.Logs, label: label, err: err}
@@ -531,7 +544,7 @@ func saveSecretsSetupCmd(workflowID, workflowName, target, privateKey, rpcURL st
 }
 
 func (m model) Init() tea.Cmd {
-	return tea.Batch(m.spinner.Tick, initSessionCmd(), creWhoAmICmd())
+	return tea.Batch(m.spinner.Tick, initSessionCmd(), creWhoAmICmd(), tea.HideCursor)
 }
 
 func classifyLogColor(line string) lipgloss.Color {
@@ -545,7 +558,7 @@ func classifyLogColor(line string) lipgloss.Color {
 		return lipgloss.Color("6")
 	case strings.Contains(lower, "convex"):
 		return lipgloss.Color("13")
-	case strings.Contains(lower, "setup secrets env"):
+	case strings.Contains(lower, "update value"):
 		return lipgloss.Color("11")
 	case strings.Contains(lower, "failed") || strings.Contains(lower, "error"):
 		return lipgloss.Color("9")
@@ -765,8 +778,11 @@ func (m *model) resize() {
 	m.actionList.SetSize(leftW-4, actionH-2)
 	m.secretsMenu.SetSize(leftW-4, actionH-2)
 	m.secretPickList.SetSize(leftW-4, actionH-2)
+	m.systemVariableList.SetSize(max(20, (m.width/2)-10), max(8, actionH))
+	m.environmentVariableList.SetSize(max(20, (m.width/2)-10), max(8, actionH))
 	m.console.Width = rightW - 2
-	m.console.Height = mainH - 2
+	// Console pane also has a 1-line header, so keep viewport 1 line shorter.
+	m.console.Height = max(6, mainH-3)
 	m.refreshConsoleContent()
 }
 
@@ -807,7 +823,7 @@ func (m model) selectedAction() *actionItem {
 }
 
 func (m *model) refreshSecretsMenu() {
-	items := buildSecretsActions(m.secretsSetupReady)
+	items := buildSecretsActions()
 	m.secretsMenu.SetItems(items)
 	m.secretsMenu.Select(0)
 }
@@ -975,10 +991,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.appendLog(line)
 		}
 		if msg.err != nil {
-			if msg.label == "Setup secrets env" {
-				m.setupSecretsPromptError = msg.err.Error()
-				m.setupSecretsPromptOpen = true
-			} else if strings.HasPrefix(msg.label, "Secrets ") {
+			if msg.label == "Update value" || strings.HasPrefix(msg.label, "Secrets ") {
 				m.secretFormError = msg.err.Error()
 				m.secretFormOpen = m.secretFormMode != ""
 			}
@@ -986,17 +999,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.busy = false
 			return m, nil
 		}
-		if msg.label == "Setup secrets env" {
-			m.setupSecretsPromptOpen = false
-			m.setupSecretsPromptError = ""
-			m.setupPrivateKeyInput.SetValue("")
-			m.setupRPCURLInput.SetValue("")
-			m.busy = false
-			return m, secretsSetupStatusCmd(m.secretsWorkflowID, m.secretsWorkflowName, m.currentSecretsTarget())
-		}
-		if strings.HasPrefix(msg.label, "Secrets ") {
+		if msg.label == "Update value" || strings.HasPrefix(msg.label, "Secrets ") {
 			m.secretFormOpen = false
 			m.secretFormMode = ""
+			m.secretFormVariableKind = ""
+			m.secretFormVariableKey = ""
 			m.secretFormError = ""
 			m.secretIDLocked = false
 			m.secretRemoveFromConvex = false
@@ -1005,17 +1012,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.appendLog("Action \"" + msg.label + "\" completed.")
 		m.busy = false
-		return m, nil
-
-	case secretsSetupStatusMsg:
-		if msg.err != nil {
-			m.secretsSetupReady = false
-			m.refreshSecretsMenu()
-			m.appendLog("Unable to read setup status: " + msg.err.Error())
-			return m, nil
-		}
-		m.secretsSetupReady = msg.ready
-		m.refreshSecretsMenu()
 		return m, nil
 
 	case secretOptionsLoadedMsg:
@@ -1046,9 +1042,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			items = append(items, secretPickItem{
 				id:          option.ID,
-				envVar:      option.EnvVar,
-				hasValue:    option.HasValue,
+				key:         option.ID,
+				kind:        "secret_env",
+				section:     "environment",
 				description: description,
+				selectable:  true,
 			})
 		}
 
@@ -1071,6 +1069,65 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.secretPickList.Select(0)
 		m.busy = false
 		m.appendLog("Pick a secret from the list and press Enter.")
+		return m, nil
+
+	case variableOptionsLoadedMsg:
+		for _, line := range msg.logs {
+			m.appendLog(line)
+		}
+		if msg.err != nil {
+			m.appendLog("Unable to list variables: " + msg.err.Error())
+			m.busy = false
+			return m, nil
+		}
+		systemItems := make([]list.Item, 0)
+		environmentItems := make([]list.Item, 0)
+		for _, option := range msg.options {
+			switch option.Section {
+			case "system":
+				systemItems = append(systemItems, secretPickItem{
+					id:           option.Label,
+					key:          option.Key,
+					kind:         option.Kind,
+					section:      option.Section,
+					currentValue: option.CurrentValue,
+					description:  option.Description,
+					selectable:   true,
+				})
+			case "environment":
+				environmentItems = append(environmentItems, secretPickItem{
+					id:           option.Label,
+					key:          option.Key,
+					kind:         option.Kind,
+					section:      option.Section,
+					currentValue: option.CurrentValue,
+					description:  option.Description,
+					selectable:   true,
+				})
+			}
+		}
+		if len(systemItems) == 0 && len(environmentItems) == 0 {
+			m.appendLog("No variables available to update.")
+			m.busy = false
+			return m, nil
+		}
+		m.secretPickAction = "update"
+		m.variablePickerOpen = true
+		m.systemVariableList.SetItems(systemItems)
+		m.environmentVariableList.SetItems(environmentItems)
+		if len(systemItems) > 0 {
+			m.systemVariableList.Select(0)
+		}
+		if len(environmentItems) > 0 {
+			m.environmentVariableList.Select(0)
+		}
+		if len(systemItems) > 0 {
+			m.variablePickerFocus = 0
+		} else {
+			m.variablePickerFocus = 1
+		}
+		m.busy = false
+		m.appendLog("Update value picker opened. Choose from System (left) or Environment (right).")
 		return m, nil
 
 	case copyNoticeClearedMsg:
@@ -1103,60 +1160,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		if m.setupSecretsPromptOpen {
-			switch msg.String() {
-			case "esc":
-				m.setupSecretsPromptOpen = false
-				m.setupSecretsPromptError = ""
-				m.setupPrivateKeyInput.SetValue("")
-				m.setupRPCURLInput.SetValue("")
-				m.appendLog("Setup secrets env canceled.")
-				return m, nil
-			case "enter":
-				if m.busy {
-					return m, nil
-				}
-				if m.setupPromptActiveField == 0 {
-					m.setupPromptActiveField = 1
-					return m, nil
-				}
-				privateKey := strings.TrimSpace(m.setupPrivateKeyInput.Value())
-				rpcURL := strings.TrimSpace(m.setupRPCURLInput.Value())
-				if privateKey == "" || rpcURL == "" {
-					m.setupSecretsPromptError = "Private key and RPC URL are required."
-					return m, nil
-				}
-				m.busy = true
-				m.setupSecretsPromptError = ""
-				m.appendLog("Saving local secrets environment (.env + project.yaml) ...")
-				return m, saveSecretsSetupCmd(
-					m.secretsWorkflowID,
-					m.secretsWorkflowName,
-					m.currentSecretsTarget(),
-					privateKey,
-					rpcURL,
-				)
-			case "tab", "shift+tab", "up", "down":
-				if m.setupPromptActiveField == 0 {
-					m.setupPromptActiveField = 1
-					m.setupPrivateKeyInput.Blur()
-					m.setupRPCURLInput.Focus()
-				} else {
-					m.setupPromptActiveField = 0
-					m.setupRPCURLInput.Blur()
-					m.setupPrivateKeyInput.Focus()
-				}
-				return m, nil
-			}
-
-			var cmd tea.Cmd
-			if m.setupPromptActiveField == 0 {
-				m.setupPrivateKeyInput, cmd = m.setupPrivateKeyInput.Update(msg)
-			} else {
-				m.setupRPCURLInput, cmd = m.setupRPCURLInput.Update(msg)
-			}
-			return m, cmd
-		}
 		if m.secretFormOpen {
 			if m.secretFormMode == "remove" {
 				switch msg.String() {
@@ -1175,6 +1178,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "esc":
 				m.secretFormOpen = false
 				m.secretFormMode = ""
+				m.secretFormVariableKind = ""
+				m.secretFormVariableKey = ""
 				m.secretFormError = ""
 				m.secretIDLocked = false
 				m.secretRemoveFromConvex = false
@@ -1188,11 +1193,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				id := normalizeSecretNameInput(m.secretIDInput.Value())
 				value := strings.TrimSpace(m.secretValueInput.Value())
-				if id == "" {
+				if m.secretFormMode != "update" && id == "" {
 					m.secretFormError = "Secret ID is required."
 					return m, nil
 				}
-				if !m.secretIDLocked && m.secretFormMode != "remove" && m.secretFormActiveField == 0 {
+				if !m.secretIDLocked && m.secretFormMode != "remove" && m.secretFormMode != "update" && m.secretFormActiveField == 0 {
 					m.secretFormActiveField = 1
 					m.secretIDInput.Blur()
 					m.secretValueInput.Focus()
@@ -1204,7 +1209,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.busy = true
 				m.secretFormError = ""
-				m.appendLog(fmt.Sprintf("Applying secrets %s for %s...", m.secretFormMode, m.secretsWorkflowName))
+				m.appendLog(fmt.Sprintf("Applying %s for %s...", m.secretFormMode, m.secretsWorkflowName))
+				if m.secretFormMode == "update" {
+					return m, updateVariableCmd(
+						m.secretsWorkflowID,
+						m.secretsWorkflowName,
+						m.currentSecretsTarget(),
+						m.secretFormVariableKind,
+						m.secretFormVariableKey,
+						value,
+					)
+				}
 				frontendSyncAction := ""
 				if m.secretFormMode == "add" {
 					frontendSyncAction = "add"
@@ -1224,7 +1239,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					frontendSyncAction,
 				)
 			case "tab", "shift+tab", "up", "down":
-				if m.secretIDLocked || m.secretFormMode == "remove" {
+				if m.secretIDLocked || m.secretFormMode == "remove" || m.secretFormMode == "update" {
 					return m, nil
 				}
 				if m.secretFormActiveField == 0 {
@@ -1248,10 +1263,75 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 
+		if m.variablePickerOpen {
+			switch msg.String() {
+			case "esc", "backspace", "b":
+				m.variablePickerOpen = false
+				m.secretPickAction = ""
+				m.secretFormVariableKind = ""
+				m.secretFormVariableKey = ""
+				m.appendLog("Update value picker canceled.")
+				return m, nil
+			case "tab", "left", "right":
+				if m.variablePickerFocus == 0 {
+					if len(m.environmentVariableList.Items()) > 0 {
+						m.variablePickerFocus = 1
+					}
+				} else if len(m.systemVariableList.Items()) > 0 {
+					m.variablePickerFocus = 0
+				}
+				return m, nil
+			}
+
+			if key.Matches(msg, keys.Run) {
+				if m.busy {
+					return m, nil
+				}
+				var selectedItem list.Item
+				var ok bool
+				if m.variablePickerFocus == 0 {
+					selectedItem = m.systemVariableList.SelectedItem()
+				} else {
+					selectedItem = m.environmentVariableList.SelectedItem()
+				}
+				selected, castOK := selectedItem.(secretPickItem)
+				ok = castOK
+				if !ok {
+					m.appendLog("Select a variable first.")
+					return m, nil
+				}
+				m.variablePickerOpen = false
+				m.secretIDInput.SetValue(selected.id)
+				m.secretValueInput.SetValue(selected.currentValue)
+				m.secretFormError = ""
+				m.secretIDLocked = true
+				m.secretRemoveFromConvex = false
+				m.secretFormVariableKind = selected.kind
+				m.secretFormVariableKey = selected.key
+				m.secretFormOpen = true
+				m.secretFormMode = "update"
+				m.secretFormActiveField = 1
+				m.secretIDInput.Blur()
+				m.secretValueInput.Focus()
+				m.appendLog(fmt.Sprintf("Selected %s for update.", selected.id))
+				return m, nil
+			}
+
+			var cmd tea.Cmd
+			if m.variablePickerFocus == 0 {
+				m.systemVariableList, cmd = m.systemVariableList.Update(msg)
+			} else {
+				m.environmentVariableList, cmd = m.environmentVariableList.Update(msg)
+			}
+			return m, cmd
+		}
+
 		if m.secretPickOpen {
 			if msg.String() == "esc" || msg.String() == "backspace" || msg.String() == "b" {
 				m.secretPickOpen = false
 				m.secretPickAction = ""
+				m.secretFormVariableKind = ""
+				m.secretFormVariableKey = ""
 				m.appendLog("Secret picker canceled.")
 				return m, nil
 			}
@@ -1264,12 +1344,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if !ok {
 					return m, nil
 				}
+				if !selected.selectable {
+					m.appendLog("Select a variable row, not a section header.")
+					return m, nil
+				}
 				m.secretPickOpen = false
 				m.secretIDInput.SetValue(selected.id)
-				m.secretValueInput.SetValue("")
+				m.secretValueInput.SetValue(selected.currentValue)
 				m.secretFormError = ""
 				m.secretIDLocked = true
 				m.secretRemoveFromConvex = false
+				m.secretFormVariableKind = selected.kind
+				m.secretFormVariableKey = selected.key
 
 				m.secretFormOpen = true
 				m.secretFormMode = m.secretPickAction
@@ -1282,7 +1368,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.secretIDInput.Blur()
 					m.secretValueInput.Focus()
 				}
-				m.appendLog(fmt.Sprintf("Selected %s for secrets %s.", selected.id, m.secretPickAction))
+				m.appendLog(fmt.Sprintf("Selected %s for %s.", selected.id, m.secretPickAction))
 				return m, nil
 			}
 
@@ -1295,7 +1381,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.String() == "esc" || msg.String() == "backspace" || msg.String() == "b" {
 				m.secretsMenuOpen = false
 				m.secretPickOpen = false
+				m.variablePickerOpen = false
 				m.secretPickAction = ""
+				m.secretFormVariableKind = ""
+				m.secretFormVariableKey = ""
 				m.secretsWorkflowID = ""
 				m.secretsWorkflowName = ""
 				m.appendLog("Closed secrets submenu.")
@@ -1313,26 +1402,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if selected.id == "back" {
 					m.secretsMenuOpen = false
 					m.secretPickOpen = false
+					m.variablePickerOpen = false
 					m.secretPickAction = ""
+					m.secretFormVariableKind = ""
+					m.secretFormVariableKey = ""
 					m.secretsWorkflowID = ""
 					m.secretsWorkflowName = ""
 					m.appendLog("Closed secrets submenu.")
-					return m, nil
-				}
-				if selected.id == "setup-secrets-env" {
-					m.setupSecretsPromptOpen = true
-					m.setupSecretsPromptError = ""
-					m.setupPromptActiveField = 0
-					m.setupPrivateKeyInput.SetValue("")
-					defaultRPC, err := core.GetWorkflowSecretsSetupDefaults(m.secretsWorkflowID, m.secretsWorkflowName, m.currentSecretsTarget())
-					if err == nil {
-						m.setupRPCURLInput.SetValue(defaultRPC)
-					} else {
-						m.setupRPCURLInput.SetValue("")
-					}
-					m.setupPrivateKeyInput.Focus()
-					m.setupRPCURLInput.Blur()
-					m.appendLog("Setup secrets env opened. Values are stored locally only.")
 					return m, nil
 				}
 				if selected.id == "add" || selected.id == "update" || selected.id == "remove" {
@@ -1349,6 +1425,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.secretValueInput.Blur()
 						m.appendLog("Secrets add form opened. New key will be added to local secrets.yaml and frontend config.")
 						return m, nil
+					}
+					if selected.id == "update" {
+						m.busy = true
+						m.appendLog("Loading variables for UPDATE VALUE...")
+						return m, variableOptionsCmd(m.secretsWorkflowID, m.secretsWorkflowName, m.currentSecretsTarget())
 					}
 					m.busy = true
 					m.appendLog(fmt.Sprintf("Loading secrets list for %s...", strings.ToUpper(selected.id)))
@@ -1502,14 +1583,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					m.secretsMenuOpen = true
 					m.secretPickOpen = false
+					m.variablePickerOpen = false
 					m.secretPickAction = ""
 					m.secretsWorkflowID = workflow.id
 					m.secretsWorkflowName = workflow.title
-					m.secretsSetupReady = false
 					m.refreshSecretsMenu()
 					m.focus = focusActions
 					m.appendLog(fmt.Sprintf("Opened secrets submenu for %s. Press esc to go back.", workflow.title))
-					return m, secretsSetupStatusCmd(m.secretsWorkflowID, m.secretsWorkflowName, m.currentSecretsTarget())
+					return m, nil
 				}
 
 				workflow := m.selectedWorkflow()
@@ -1593,54 +1674,14 @@ func max(a, b int) int {
 	return b
 }
 
-func (m model) renderSetupSecretsPrompt() string {
-	title := lipgloss.NewStyle().Bold(true).Render("Setup secrets environment")
-	notice := lipgloss.NewStyle().Foreground(lipgloss.Color("11")).Render(
-		"Values are stored locally (.env + project.yaml). Nothing is sent to 6flow servers.",
-	)
-	target := lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render(
-		fmt.Sprintf("workflow: %s | target: %s", m.secretsWorkflowName, m.currentSecretsTarget()),
-	)
-	hints := lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render("Tab to switch fields. Enter on RPC field saves. Esc cancels.")
-	errorLine := ""
-	if strings.TrimSpace(m.setupSecretsPromptError) != "" {
-		errorLine = lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Render(m.setupSecretsPromptError)
-	}
-
-	privateKeyLabel := "Private key"
-	rpcLabel := "RPC URL"
-	if m.setupPromptActiveField == 0 {
-		privateKeyLabel = lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Render(privateKeyLabel)
-	} else {
-		rpcLabel = lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Render(rpcLabel)
-	}
-
-	lines := []string{
-		title,
-		notice,
-		target,
-		"",
-		privateKeyLabel,
-		m.setupPrivateKeyInput.View(),
-		"",
-		rpcLabel,
-		m.setupRPCURLInput.View(),
-		hints,
-	}
-	if errorLine != "" {
-		lines = append(lines, errorLine)
-	}
-
-	panel := paneStyle(true).Padding(1, 2).Width(max(70, m.width-2))
-	return panel.Render(strings.Join(lines, "\n"))
-}
-
 func (m model) renderSecretFormPrompt() string {
 	modeTitle := strings.ToUpper(m.secretFormMode)
 	title := lipgloss.NewStyle().Bold(true).Render("Secrets " + modeTitle)
-	notice := lipgloss.NewStyle().Foreground(lipgloss.Color("11")).Render(
-		"Local simulation mode: updates only secrets.yaml and workflow .env.",
-	)
+	noticeText := "Local simulation mode: updates only secrets.yaml and workflow .env."
+	if m.secretFormMode == "update" {
+		noticeText = "Update selected variable in local .env or project.yaml."
+	}
+	notice := lipgloss.NewStyle().Foreground(lipgloss.Color("11")).Render(noticeText)
 	target := lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render(
 		fmt.Sprintf("workflow: %s | target: %s", m.secretsWorkflowName, m.currentSecretsTarget()),
 	)
@@ -1651,6 +1692,9 @@ func (m model) renderSecretFormPrompt() string {
 	if m.secretIDLocked {
 		hints = "Secret ID is selected from list. Enter submits. Esc cancels."
 	}
+	if m.secretFormMode == "update" {
+		hints = "Variable is selected from list. Enter submits. Esc cancels."
+	}
 	if m.secretFormMode == "remove" {
 		hints = "Enter clears local value. Press T to toggle removing from frontend config. Esc cancels."
 	}
@@ -1658,6 +1702,10 @@ func (m model) renderSecretFormPrompt() string {
 
 	secretIDLabel := "Secret ID"
 	secretValueLabel := "Secret value"
+	if m.secretFormMode == "update" {
+		secretIDLabel = "Variable"
+		secretValueLabel = "Value"
+	}
 	if m.secretFormMode != "remove" && !m.secretIDLocked {
 		if m.secretFormActiveField == 0 {
 			secretIDLabel = lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Render(secretIDLabel)
@@ -1699,6 +1747,52 @@ func (m model) renderSecretFormPrompt() string {
 	return panel.Render(strings.Join(lines, "\n"))
 }
 
+func (m model) renderVariablePickerPrompt() string {
+	title := lipgloss.NewStyle().Bold(true).Render("Update Value")
+	subtitle := lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render(
+		"Select from System Variables (left) or Environment Variables (right). Tab/Left/Right to switch panel, Enter to edit, Esc to close.",
+	)
+
+	systemList := m.systemVariableList
+	environmentList := m.environmentVariableList
+	panelWidth := max(90, m.width-2)
+	listWidth := (panelWidth - 12) / 2
+	listHeight := max(10, m.height/3)
+	systemList.SetSize(listWidth, max(6, listHeight-2))
+	environmentList.SetSize(listWidth, max(6, listHeight-2))
+	systemList.Title = ""
+	environmentList.Title = ""
+
+	activeHeader := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("14")).
+		Underline(true)
+	inactiveHeader := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("8"))
+	leftHeader := inactiveHeader.Render("System Variables")
+	rightHeader := inactiveHeader.Render("Environment Variables")
+	if m.variablePickerFocus == 0 {
+		leftHeader = activeHeader.Render("System Variables")
+	} else {
+		rightHeader = activeHeader.Render("Environment Variables")
+	}
+
+	leftBody := lipgloss.JoinVertical(lipgloss.Left, leftHeader, systemList.View())
+	rightBody := lipgloss.JoinVertical(lipgloss.Left, rightHeader, environmentList.View())
+	leftStyle := lipgloss.NewStyle().Width(listWidth+2).Padding(0, 1)
+	rightStyle := lipgloss.NewStyle().Width(listWidth+2).Padding(0, 1)
+	lists := lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		leftStyle.Render(leftBody),
+		"  ",
+		rightStyle.Render(rightBody),
+	)
+
+	panel := paneStyle(true).Padding(1, 2).Width(panelWidth)
+	return panel.Render(lipgloss.JoinVertical(lipgloss.Left, title, subtitle, "", lists))
+}
+
 func (m model) View() string {
 	if m.width == 0 || m.height == 0 {
 		return "Loading..."
@@ -1715,10 +1809,14 @@ func (m model) View() string {
 	actionsPane := m.actionList.View()
 	if m.secretsMenuOpen {
 		if m.secretPickOpen {
-			m.secretPickList.Title = fmt.Sprintf("Pick secret for %s: %s (esc back)", strings.ToUpper(m.secretPickAction), m.secretsWorkflowName)
+			pickLabel := "secret"
+			if m.secretPickAction == "update" {
+				pickLabel = "variable"
+			}
+			m.secretPickList.Title = fmt.Sprintf("Pick %s for %s: %s (esc back)", pickLabel, strings.ToUpper(m.secretPickAction), m.secretsWorkflowName)
 			actionsPane = m.secretPickList.View()
 		} else {
-			m.secretsMenu.Title = fmt.Sprintf("Secrets submenu (staging-only): %s | target=%s (esc back)", m.secretsWorkflowName, m.currentSecretsTarget())
+			m.secretsMenu.Title = fmt.Sprintf("Secrets submenu: %s | target=%s (esc back)", m.secretsWorkflowName, m.currentSecretsTarget())
 			actionsPane = m.secretsMenu.View()
 		}
 	} else {
@@ -1756,8 +1854,8 @@ func (m model) View() string {
 		footer += " " + lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Render("· "+m.copyNotice)
 	}
 	sections := []string{m.headerView(), body}
-	if m.setupSecretsPromptOpen {
-		sections = append(sections, m.renderSetupSecretsPrompt())
+	if m.variablePickerOpen {
+		sections = append(sections, m.renderVariablePickerPrompt())
 	}
 	if m.secretFormOpen {
 		sections = append(sections, m.renderSecretFormPrompt())
