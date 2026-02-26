@@ -1,5 +1,5 @@
 //! Generate supporting project files: config.json, secrets.yaml, workflow.yaml,
-//! project.yaml, package.json, tsconfig.json.
+//! project.yaml, package.json, tsconfig.json, .env.
 //! SYNC NOTE: Keep trigger/operation-based generation logic here aligned with
 //! IR changes that come from `shared/model/node.ts` + lowering updates.
 
@@ -37,7 +37,7 @@ pub fn gen_secrets_yaml(ir: &WorkflowIR) -> String {
     let mut lines = vec!["secretsNames:".to_string()];
     for secret in &ir.required_secrets {
         lines.push(format!("  {}:", secret.name));
-        lines.push(format!("    - {}", secret.name));
+        lines.push(format!("    - {}", secret.env_variable));
     }
     lines.push(String::new());
     lines.join("\n")
@@ -188,6 +188,24 @@ pub fn gen_tsconfig_json() -> String {
 "#.to_string()
 }
 
+/// Generate `.env` content for local CRE simulation.
+pub fn gen_dot_env(ir: &WorkflowIR) -> String {
+    let mut lines = vec![
+        "# Environment variables for CRE simulation".to_string(),
+        "# Fill in real values before running `cre simulate`".to_string(),
+    ];
+    if ir.required_secrets.is_empty() {
+        lines.push("# No secrets required for this workflow".to_string());
+    } else {
+        lines.push(String::new());
+        for secret in &ir.required_secrets {
+            lines.push(format!("{}=<{}>", secret.env_variable, secret.name));
+        }
+    }
+    lines.push(String::new());
+    lines.join("\n")
+}
+
 fn needs_viem(ir: &WorkflowIR) -> bool {
     has_viem_ops(&ir.handler_body)
         || matches!(&ir.trigger, TriggerDef::EvmLog(_))
@@ -264,6 +282,7 @@ mod tests {
             config_schema: vec![],
             required_secrets: vec![SecretDeclaration {
                 name: "API_KEY".into(),
+                env_variable: "API_KEY_VAR".into(),
             }],
             evm_chains: vec![],
             user_rpcs: vec![],
@@ -273,7 +292,72 @@ mod tests {
         let yaml = gen_secrets_yaml(&ir);
         assert!(yaml.contains("secretsNames:"));
         assert!(yaml.contains("  API_KEY:"));
-        assert!(yaml.contains("    - API_KEY"));
+        assert!(yaml.contains("    - API_KEY_VAR"));
+    }
+
+    #[test]
+    fn dot_env_with_secrets() {
+        let ir = WorkflowIR {
+            metadata: WorkflowMetadata {
+                id: "test".into(),
+                name: "Test".into(),
+                description: None,
+                version: "1.0.0".into(),
+                is_testnet: true,
+                default_chain_selector: None,
+            },
+            trigger: TriggerDef::Cron(CronTriggerDef {
+                schedule: ValueExpr::string("*"),
+
+            }),
+            trigger_param: TriggerParam::CronTrigger,
+            config_schema: vec![],
+            required_secrets: vec![
+                SecretDeclaration {
+                    name: "API_KEY".into(),
+                    env_variable: "API_KEY_VAR".into(),
+                },
+                SecretDeclaration {
+                    name: "DB_PASSWORD".into(),
+                    env_variable: "DB_PASSWORD_VAR".into(),
+                },
+            ],
+            evm_chains: vec![],
+            user_rpcs: vec![],
+            handler_body: Block { steps: vec![] },
+        };
+
+        let env = gen_dot_env(&ir);
+        assert!(env.contains("API_KEY_VAR=<API_KEY>"));
+        assert!(env.contains("DB_PASSWORD_VAR=<DB_PASSWORD>"));
+    }
+
+    #[test]
+    fn dot_env_without_secrets() {
+        let ir = WorkflowIR {
+            metadata: WorkflowMetadata {
+                id: "test".into(),
+                name: "Test".into(),
+                description: None,
+                version: "1.0.0".into(),
+                is_testnet: true,
+                default_chain_selector: None,
+            },
+            trigger: TriggerDef::Cron(CronTriggerDef {
+                schedule: ValueExpr::string("*"),
+
+            }),
+            trigger_param: TriggerParam::CronTrigger,
+            config_schema: vec![],
+            required_secrets: vec![],
+            evm_chains: vec![],
+            user_rpcs: vec![],
+            handler_body: Block { steps: vec![] },
+        };
+
+        let env = gen_dot_env(&ir);
+        assert!(env.contains("No secrets required"));
+        assert!(!env.contains("=<"));
     }
 
     #[test]

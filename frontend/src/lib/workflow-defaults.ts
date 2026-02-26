@@ -13,6 +13,7 @@ export function cloneGlobalConfig(config: GlobalConfig): GlobalConfig {
     isTestnet: config.isTestnet,
     secrets: config.secrets.map((secret) => ({
       name: secret.name,
+      envVariable: secret.envVariable,
     })),
     rpcs: config.rpcs.map((rpc) => ({
       chainName: rpc.chainName,

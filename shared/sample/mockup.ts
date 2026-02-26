@@ -10,6 +10,7 @@ export const mockupWorkflow: Workflow = {
     secrets: [
       {
         name: 'OPENAI_API_KEY',
+        envVariable: 'OPENAI_API_KEY',
       },
     ],
     rpcs: [],

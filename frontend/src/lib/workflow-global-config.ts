@@ -8,7 +8,7 @@ function isSecretReference(value: unknown): value is SecretReference {
   if (!value || typeof value !== "object") return false;
 
   const secret = value as Partial<SecretReference>;
-  return typeof secret.name === "string";
+  return typeof secret.name === "string" && typeof secret.envVariable === "string";
 }
 
 function isRpcEntry(value: unknown): value is RpcEntry {
@@ -41,6 +41,7 @@ export function sanitizeGlobalConfig(value: unknown): GlobalConfig {
         .filter(isSecretReference)
         .map((secret) => ({
           name: secret.name,
+          envVariable: secret.envVariable,
         }))
     : defaults.secrets;
   const rpcs = Array.isArray(incoming.rpcs)

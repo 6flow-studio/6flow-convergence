@@ -6,7 +6,7 @@
     "globalConfig": {
         "isTestnet": true,
         "secrets": [
-            { "name": "KYC_API_KEY" }
+            { "name": "KYC_API_KEY", "envVariable": "KYC_API_KEY_VAR" }
         ],
         "rpcs": [
             { "chainName": "ethereum-mainnet", "url": "https://rpc.example.com/ethereum-mainnet" },

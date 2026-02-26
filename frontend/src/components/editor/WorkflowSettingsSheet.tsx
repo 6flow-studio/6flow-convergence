@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, RotateCcw, Trash2 } from "lucide-react";
+import { AlertTriangle, Plus, RotateCcw, Trash2 } from "lucide-react";
 import type {
   GlobalConfig,
   RpcEntry,
@@ -33,6 +33,7 @@ interface WorkflowSettingsSheetProps {
 function cloneSecrets(secrets: SecretReference[]): SecretReference[] {
   return secrets.map((secret) => ({
     name: secret.name,
+    envVariable: secret.envVariable,
   }));
 }
 
@@ -100,7 +101,7 @@ export function WorkflowSettingsSheet({
   function addSecret() {
     setDraft((previous) => ({
       ...previous,
-      secrets: [...previous.secrets, { name: "" }],
+      secrets: [...previous.secrets, { name: "", envVariable: "" }],
     }));
   }
 
@@ -134,12 +135,21 @@ export function WorkflowSettingsSheet({
 
   const filteredChains = getFilteredChains(draft.isTestnet);
 
+  const secretNameConflicts = draft.secrets.map(
+    (secret) =>
+      secret.name.trim().length > 0 &&
+      secret.envVariable.trim().length > 0 &&
+      secret.name.trim() === secret.envVariable.trim()
+  );
+  const hasSecretConflicts = secretNameConflicts.some(Boolean);
+
   function handleSave() {
     const normalizedSecrets = draft.secrets
       .map((secret) => ({
         name: secret.name.trim(),
+        envVariable: secret.envVariable.trim(),
       }))
-      .filter((secret) => secret.name.length > 0);
+      .filter((secret) => secret.name.length > 0 && secret.envVariable.length > 0);
 
     const normalizedRpcs = draft.rpcs
       .map((rpc) => ({ chainName: rpc.chainName, url: rpc.url.trim() }))
@@ -191,23 +201,39 @@ export function WorkflowSettingsSheet({
             />
             <div className="space-y-2">
               {draft.secrets.map((secret, index) => (
-                <div key={`secret-${index}`} className="flex items-center gap-2">
-                  <Input
-                    value={secret.name}
-                    onChange={(event) =>
-                      updateSecret(index, "name", event.target.value)
-                    }
-                    placeholder="Secret key name"
-                    className="h-8 bg-surface-2 border-edge-dim text-zinc-300 text-[12px]"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-zinc-500 hover:text-red-400"
-                    onClick={() => removeSecret(index)}
-                  >
-                    <Trash2 size={13} />
-                  </Button>
+                <div key={`secret-${index}`} className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={secret.name}
+                      onChange={(event) =>
+                        updateSecret(index, "name", event.target.value)
+                      }
+                      placeholder="Secret name"
+                      className={`h-8 bg-surface-2 text-zinc-300 text-[12px] ${secretNameConflicts[index] ? "border-amber-500/60" : "border-edge-dim"}`}
+                    />
+                    <Input
+                      value={secret.envVariable}
+                      onChange={(event) =>
+                        updateSecret(index, "envVariable", event.target.value)
+                      }
+                      placeholder="Env variable"
+                      className={`h-8 bg-surface-2 text-zinc-300 text-[12px] ${secretNameConflicts[index] ? "border-amber-500/60" : "border-edge-dim"}`}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-zinc-500 hover:text-red-400"
+                      onClick={() => removeSecret(index)}
+                    >
+                      <Trash2 size={13} />
+                    </Button>
+                  </div>
+                  {secretNameConflicts[index] && (
+                    <div className="flex items-center gap-1.5 text-amber-400 text-[11px] pl-0.5">
+                      <AlertTriangle size={11} />
+                      Secret name and env variable must be different — CRE does not allow identical values.
+                    </div>
+                  )}
                 </div>
               ))}
 
@@ -289,6 +315,7 @@ export function WorkflowSettingsSheet({
             size="sm"
             className="h-8 text-xs bg-accent-blue hover:bg-blue-500"
             onClick={handleSave}
+            disabled={hasSecretConflicts}
           >
             Save Settings
           </Button>
