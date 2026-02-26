@@ -10,11 +10,11 @@ This file guides agents and contributors working in this repo.
 
 ```bash
 .
-├── backend/    # NestJS backend services
 ├── compiler/   # Rust-based compiler for CRE
 ├── frontend/   # NextJS frontend application
 ├── shared/     # Shared helper functions and data models across TypeScript codebase
 ├── cre-test/   # CRE test environment (for testing compiler output)
+├── tools/      # TUI tooling for local secrets/simulation workflows
 ```
 
 # Non-Negotiables
@@ -25,13 +25,15 @@ This file guides agents and contributors working in this repo.
 # Architecture Notes
 
 - Frontend: Next.js + React Flow for the node-edge editor and UX.
-- Backend: NestJS services that provide the node-edge object and APIs.
 - Compiler: Rust transpiler that converts the graph into CRE (TypeScript) workflows.
+- TUI tooling: `tools/tui` (Go + Bubble Tea) consumes `frontend/src/app/api/tui/*` to sync compiled bundles and run local secrets/simulation workflows.
 - Runtime: Chainlink Runtime Environment (CRE).
+- We let users to set their secret values in TUI. On frontend it just set the key of secrets.yaml.
 
 # Contribution Expectations
 
-- Keep changes scoped to one area (`frontend`, `backend`, or `compiler`) unless cross-cutting is required.
+- Keep changes scoped to one area (`frontend`, `compiler`) unless cross-cutting is required.
+- Treat `tools/tui` + `frontend/src/app/api/tui/*` as one integration contract: if bundle/secrets/simulate behavior changes on one side, update the other side in the same PR.
 - Preserve the "compiler pattern": visual graphs are transpiled into native, deployable CRE executables.
 - Favor code-first extensibility: support a "Code Node" where users inject JS/TS logic.
 - Maintain support for non-linear workflows (conditionals, loops).
@@ -39,7 +41,7 @@ This file guides agents and contributors working in this repo.
 # Testing
 
 - Prefer fast, deterministic tests.
-- Add tests alongside changes in the relevant area (`frontend`, `backend`, `compiler`). If it's typescript, will use Jest
+- Add tests alongside changes in the relevant area (`frontend`, `compiler`). If it's typescript, will use Jest
 
 ## How to run test compiler end-to-end
 
