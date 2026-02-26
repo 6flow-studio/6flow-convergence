@@ -22,7 +22,7 @@ fn test_http_request_get() {
             http_get_with_bearer("https://api.example.com/data", "API_KEY"),
             "any",
         )],
-        vec!["API_KEY"],
+        vec![("API_KEY", "API_KEY_VAR")],
         vec![],
     );
     let errors = validate_ir(&ir);
@@ -138,7 +138,7 @@ fn test_evm_write() {
 fn test_get_secret() {
     let ir = ir_with_steps_and_deps(
         vec![make_step_with_output("secret-1", get_secret_op("MY_SECRET"), "{ value: string }")],
-        vec!["MY_SECRET"],
+        vec![("MY_SECRET", "MY_SECRET_VAR")],
         vec![],
     );
     let errors = validate_ir(&ir);
@@ -431,7 +431,7 @@ fn test_filter_skip() {
 fn test_ai_call() {
     let ir = ir_with_steps_and_deps(
         vec![make_step_with_output("ai-1", ai_call_op("openai", "OPENAI_KEY"), "any")],
-        vec!["OPENAI_KEY"],
+        vec![("OPENAI_KEY", "OPENAI_KEY_VAR")],
         vec![],
     );
     let errors = validate_ir(&ir);

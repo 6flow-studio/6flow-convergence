@@ -27,6 +27,10 @@
     {
       "content": "{\n  \"compilerOptions\": {\n    \"target\": \"ES2022\",\n    \"module\": \"ES2022\",\n    \"moduleResolution\": \"bundler\",\n    \"strict\": true,\n    \"esModuleInterop\": true,\n    \"skipLibCheck\": true,\n    \"forceConsistentCasingInFileNames\": true,\n    \"outDir\": \"./dist\",\n    \"rootDir\": \".\"\n  },\n  \"include\": [\"*.ts\"]\n}\n",
       "path": "tsconfig.json"
+    },
+    {
+      "content": "# Environment variables for CRE simulation\n# Fill in real values before running `cre simulate`\n\nOPENAI_API_KEY=<OPENAI_API_KEY>\n",
+      "path": ".env"
     }
   ],
   "status": "success",

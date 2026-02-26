@@ -91,7 +91,8 @@ export interface GlobalConfig {
 
 /** Reference to a secret in secrets.yaml */
 export interface SecretReference {
-  name: string; // Logical name used in code and in generated secrets.yaml
+  name: string; // Logical name used in code
+  envVariable: string; // Environment variable name in .env
 }
 
 /** Complete workflow definition */
