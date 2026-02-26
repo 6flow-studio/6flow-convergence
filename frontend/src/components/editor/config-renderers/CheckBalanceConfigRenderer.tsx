@@ -1,6 +1,6 @@
 "use client";
 
-import { TextField, TextareaField, CollapsibleSection } from "../config-fields";
+import { TextField, ExpressionTextField, TextareaField, CollapsibleSection } from "../config-fields";
 import { ChainSelectorField } from "../config-fields/ChainSelectorField";
 import type { CheckBalanceConfig } from "@6flow/shared/model/node";
 
@@ -27,7 +27,7 @@ export function CheckBalanceConfigRenderer({ config, onChange, isTestnet }: Prop
         mono
       />
 
-      <TextField
+      <ExpressionTextField
         label="Address Source"
         description="{{nodeId.field}} reference"
         value={config.addressSource}

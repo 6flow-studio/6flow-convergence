@@ -4,14 +4,17 @@
  * SYNC NOTE: The `renderNodeConfig` switch must stay aligned with
  * node types/configs in `shared/model/node.ts` (see checklist there).
  */
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 import { useEditorStore } from "@/lib/editor-store";
 import { getNodeEntry, CATEGORY_COLORS } from "@/lib/node-registry";
+import { getUpstreamNodes } from "@/lib/upstream-resolver";
+import { ExpressionInsertProvider } from "@/lib/expression-insert-context";
+import { InputSchemaPanel } from "./InputSchemaPanel";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { X, Trash2, Settings2, AlertTriangle, Sliders } from "lucide-react";
+import { X, Trash2, Settings2, AlertTriangle, Sliders, ArrowDownLeft } from "lucide-react";
 import type { NodeType } from "@6flow/shared/model/node";
 import {
   CodeNodeConfigRenderer,
@@ -97,6 +100,7 @@ const MAX_WIDTH = 600;
 export function ConfigPanel() {
   const selectedNodeId = useEditorStore((s) => s.selectedNodeId);
   const nodes = useEditorStore((s) => s.nodes);
+  const edges = useEditorStore((s) => s.edges);
   const updateNodeConfig = useEditorStore((s) => s.updateNodeConfig);
   const updateNodeSettings = useEditorStore((s) => s.updateNodeSettings);
   const updateNodeLabel = useEditorStore((s) => s.updateNodeLabel);
@@ -147,6 +151,10 @@ export function ConfigPanel() {
   const color = CATEGORY_COLORS[entry.category];
   const config = node.data.config;
   const nodeErrors = liveNodeErrorsByNodeId[node.id] ?? [];
+  const upstreamNodes = useMemo(
+    () => getUpstreamNodes(selectedNodeId!, nodes, edges),
+    [selectedNodeId, nodes, edges],
+  );
 
   return (
     <div
@@ -180,95 +188,110 @@ export function ConfigPanel() {
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="p-3 space-y-4">
-          {/* Node identity */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-semibold text-zinc-600 uppercase tracking-[0.08em] block">
-              Label
-            </label>
-            <Input
-              value={node.data.label}
-              onChange={(e) => updateNodeLabel(node.id, e.target.value)}
-              className="h-8 bg-surface-2 border-edge-dim text-zinc-200 text-[12px] hover:border-edge-bright focus:border-accent-blue transition-colors"
-            />
-          </div>
+        <ExpressionInsertProvider upstreamNodes={upstreamNodes}>
+          <div className="p-3 space-y-4">
+            {/* Node identity */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-semibold text-zinc-600 uppercase tracking-[0.08em] block">
+                Label
+              </label>
+              <Input
+                value={node.data.label}
+                onChange={(e) => updateNodeLabel(node.id, e.target.value)}
+                className="h-8 bg-surface-2 border-edge-dim text-zinc-200 text-[12px] hover:border-edge-bright focus:border-accent-blue transition-colors"
+              />
+            </div>
 
-          <div className="flex items-center gap-2">
-            <Badge
-              variant="secondary"
-              className="text-[10px] font-semibold border-0"
-              style={{ backgroundColor: color + "18", color }}
-            >
-              {entry.category}
-            </Badge>
-            <span className="text-[11px] text-zinc-600">{entry.label}</span>
-          </div>
+            <div className="flex items-center gap-2">
+              <Badge
+                variant="secondary"
+                className="text-[10px] font-semibold border-0"
+                style={{ backgroundColor: color + "18", color }}
+              >
+                {entry.category}
+              </Badge>
+              <span className="text-[11px] text-zinc-600">{entry.label}</span>
+            </div>
 
-          {nodeErrors.length > 0 && (
-            <div className="rounded-md border border-red-500/25 bg-red-500/10 px-2.5 py-2 space-y-1">
-              <div className="flex items-center gap-1.5 text-red-300 text-[11px] font-semibold">
-                <AlertTriangle size={12} />
-                <span>{nodeErrors.length} validation issue(s)</span>
-              </div>
-              {nodeErrors.map((error, index) => (
-                <div key={`${error.code}-${index}`} className="text-[11px] text-zinc-300 leading-relaxed">
-                  <span className="text-red-300">[{error.phase}:{error.code}]</span>{" "}
-                  {error.message}
+            {nodeErrors.length > 0 && (
+              <div className="rounded-md border border-red-500/25 bg-red-500/10 px-2.5 py-2 space-y-1">
+                <div className="flex items-center gap-1.5 text-red-300 text-[11px] font-semibold">
+                  <AlertTriangle size={12} />
+                  <span>{nodeErrors.length} validation issue(s)</span>
                 </div>
-              ))}
-            </div>
-          )}
-
-          {/* Config fields */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-1.5 pt-1">
-              <Settings2 size={11} className="text-zinc-600" />
-              <span className="text-[10px] font-semibold text-zinc-600 uppercase tracking-[0.08em]">
-                Configuration
-              </span>
-            </div>
-
-            {renderNodeConfig(
-              node.data.nodeType,
-              config,
-              (patch) => updateNodeConfig(node.id, patch),
-              workflowGlobalConfig.isTestnet
+                {nodeErrors.map((error, index) => (
+                  <div key={`${error.code}-${index}`} className="text-[11px] text-zinc-300 leading-relaxed">
+                    <span className="text-red-300">[{error.phase}:{error.code}]</span>{" "}
+                    {error.message}
+                  </div>
+                ))}
+              </div>
             )}
-          </div>
 
-          {/* Node Settings (return expression & logging) — non-trigger nodes only */}
-          {entry.category !== "trigger" && (
+            {/* Input schema — non-trigger nodes only */}
+            {entry.category !== "trigger" && upstreamNodes.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-1.5 pt-1">
+                  <ArrowDownLeft size={11} className="text-zinc-600" />
+                  <span className="text-[10px] font-semibold text-zinc-600 uppercase tracking-[0.08em]">
+                    Input
+                  </span>
+                </div>
+                <InputSchemaPanel upstreamNodes={upstreamNodes} />
+              </div>
+            )}
+
+            {/* Config fields */}
             <div className="space-y-3">
               <div className="flex items-center gap-1.5 pt-1">
-                <Sliders size={11} className="text-zinc-600" />
+                <Settings2 size={11} className="text-zinc-600" />
                 <span className="text-[10px] font-semibold text-zinc-600 uppercase tracking-[0.08em]">
-                  Node Settings
+                  Configuration
                 </span>
               </div>
 
-              <NodeSettingsPanel
-                settings={node.data.settings}
-                onChange={(patch) => updateNodeSettings(node.id, patch)}
-              />
+              {renderNodeConfig(
+                node.data.nodeType,
+                config,
+                (patch) => updateNodeConfig(node.id, patch),
+                workflowGlobalConfig.isTestnet
+              )}
             </div>
-          )}
 
-          {/* Delete */}
-          <div className="pt-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full text-red-500/60 hover:text-red-400 hover:bg-red-500/5 h-8 text-[11px] font-medium"
-              onClick={() => {
-                removeNode(node.id);
-                selectNode(null);
-              }}
-            >
-              <Trash2 size={12} className="mr-1.5" />
-              Delete Node
-            </Button>
+            {/* Node Settings (return expression & logging) — non-trigger nodes only */}
+            {entry.category !== "trigger" && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-1.5 pt-1">
+                  <Sliders size={11} className="text-zinc-600" />
+                  <span className="text-[10px] font-semibold text-zinc-600 uppercase tracking-[0.08em]">
+                    Node Settings
+                  </span>
+                </div>
+
+                <NodeSettingsPanel
+                  settings={node.data.settings}
+                  onChange={(patch) => updateNodeSettings(node.id, patch)}
+                />
+              </div>
+            )}
+
+            {/* Delete */}
+            <div className="pt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-red-500/60 hover:text-red-400 hover:bg-red-500/5 h-8 text-[11px] font-medium"
+                onClick={() => {
+                  removeNode(node.id);
+                  selectNode(null);
+                }}
+              >
+                <Trash2 size={12} className="mr-1.5" />
+                Delete Node
+              </Button>
+            </div>
           </div>
-        </div>
+        </ExpressionInsertProvider>
       </ScrollArea>
     </div>
   );

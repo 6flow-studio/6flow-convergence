@@ -1,6 +1,6 @@
 "use client";
 
-import { TextField } from "../config-fields";
+import { TextField, ExpressionTextField } from "../config-fields";
 import type { CheckKycConfig } from "@6flow/shared/model/node";
 
 interface Props {
@@ -26,7 +26,7 @@ export function CheckKycConfigRenderer({ config, onChange }: Props) {
         placeholder="KYC_API_KEY"
         mono
       />
-      <TextField
+      <ExpressionTextField
         label="Wallet Address Source"
         description="{{nodeId.field}} reference"
         value={config.walletAddressSource}

@@ -1,6 +1,6 @@
 "use client";
 
-import { TextField, TextareaField, CollapsibleSection } from "../config-fields";
+import { TextField, ExpressionTextField, TextareaField, CollapsibleSection } from "../config-fields";
 import { ChainSelectorField } from "../config-fields/ChainSelectorField";
 import type {
   MintTokenConfig,
@@ -47,7 +47,7 @@ export function TokenNodeConfigRenderer({ variant, config, onChange, isTestnet }
         mono
       />
 
-      <TextField
+      <ExpressionTextField
         label={field.label}
         description="{{nodeId.field}} reference"
         value={getAddressSource(config, variant)}
@@ -56,7 +56,7 @@ export function TokenNodeConfigRenderer({ variant, config, onChange, isTestnet }
         mono
       />
 
-      <TextField
+      <ExpressionTextField
         label="Amount Source"
         value={config.amountSource}
         onChange={(amountSource) => onChange({ amountSource })}

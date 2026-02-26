@@ -2,6 +2,7 @@
 
 import {
   TextField,
+  ExpressionTextField,
   SelectField,
   TextareaField,
   NumberField,
@@ -75,7 +76,7 @@ export function HttpRequestConfigRenderer({ config, onChange }: Props) {
         options={METHOD_OPTIONS}
       />
 
-      <TextField
+      <ExpressionTextField
         label="URL"
         description="Supports {{variable}} interpolation"
         value={config.url}
