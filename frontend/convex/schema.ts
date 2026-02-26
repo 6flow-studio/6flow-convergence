@@ -15,6 +15,7 @@ export default defineSchema({
     compiledArtifactFileName: v.optional(v.string()),
     compiledArtifactFileSize: v.optional(v.number()),
     compiledArtifactFileCount: v.optional(v.number()),
+    compiledArtifactCompilerVersion: v.optional(v.string()),
     compiledArtifactUpdatedAt: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),

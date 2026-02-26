@@ -695,10 +695,24 @@ func (m *model) setWorkflows(items []core.FrontendWorkflow) {
 		if item.UpdatedAt > 0 {
 			updated = time.UnixMilli(item.UpdatedAt).Local().Format("2006-01-02 15:04")
 		}
+		description := fmt.Sprintf("%s • %d nodes • %s", item.Status, item.NodeCount, updated)
+		if item.Status == "ready" {
+			compilerVersion := strings.TrimSpace(item.CompilerVersion)
+			if compilerVersion == "" {
+				compilerVersion = "unknown"
+			}
+			description = fmt.Sprintf(
+				"%s • compiler %s • %d nodes • %s",
+				item.Status,
+				compilerVersion,
+				item.NodeCount,
+				updated,
+			)
+		}
 		listItems = append(listItems, workflowItem{
 			id:          item.ID,
 			title:       item.Name,
-			description: fmt.Sprintf("%s • %d nodes • %s", item.Status, item.NodeCount, updated),
+			description: description,
 			status:      item.Status,
 		})
 		if item.ID == prev {

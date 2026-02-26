@@ -8,6 +8,7 @@ interface TuiWorkflowDto {
   updatedAt: number;
   nodeCount: number;
   status: "ready" | "draft";
+  compilerVersion: string;
 }
 
 function getBearerToken(request: NextRequest): string | null {
@@ -54,6 +55,7 @@ export async function GET(request: NextRequest) {
       updatedAt: workflow.updatedAt,
       nodeCount: parseNodeCount(workflow.nodes),
       status: workflow.compiledArtifactStorageId ? "ready" : "draft",
+      compilerVersion: workflow.compiledArtifactCompilerVersion ?? "",
     }));
 
     return NextResponse.json({ workflows: normalized }, { status: 200 });

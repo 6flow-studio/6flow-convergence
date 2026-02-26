@@ -84,6 +84,7 @@ export const saveCompiledArtifact = mutation({
     fileName: v.string(),
     fileSize: v.number(),
     fileCount: v.number(),
+    compilerVersion: v.string(),
     compiledAt: v.number(),
   },
   handler: async (ctx, args) => {
@@ -104,6 +105,7 @@ export const saveCompiledArtifact = mutation({
       compiledArtifactFileName: args.fileName,
       compiledArtifactFileSize: args.fileSize,
       compiledArtifactFileCount: args.fileCount,
+      compiledArtifactCompilerVersion: args.compilerVersion,
       compiledArtifactUpdatedAt: args.compiledAt,
       updatedAt: Date.now(),
     });
@@ -139,6 +141,7 @@ export const getCompiledArtifactForTui = query({
       fileName:
         workflow.compiledArtifactFileName ??
         `${workflow.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "workflow"}-cre-bundle.zip`,
+      compilerVersion: workflow.compiledArtifactCompilerVersion ?? "",
       workflowName: workflow.name,
       updatedAt: workflow.updatedAt,
     };

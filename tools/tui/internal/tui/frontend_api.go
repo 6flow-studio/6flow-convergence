@@ -14,11 +14,12 @@ import (
 )
 
 type FrontendWorkflow struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	UpdatedAt int64  `json:"updatedAt"`
-	NodeCount int    `json:"nodeCount"`
-	Status    string `json:"status"`
+	ID              string `json:"id"`
+	Name            string `json:"name"`
+	UpdatedAt       int64  `json:"updatedAt"`
+	NodeCount       int    `json:"nodeCount"`
+	Status          string `json:"status"`
+	CompilerVersion string `json:"compilerVersion"`
 }
 
 type workflowsResponse struct {
@@ -32,10 +33,11 @@ type WorkflowBundle struct {
 }
 
 type bundleDownloadResponse struct {
-	DownloadURL string `json:"downloadUrl"`
-	FileName    string `json:"fileName"`
-	Error       string `json:"error"`
-	Detail      string `json:"detail"`
+	DownloadURL     string `json:"downloadUrl"`
+	FileName        string `json:"fileName"`
+	CompilerVersion string `json:"compilerVersion"`
+	Error           string `json:"error"`
+	Detail          string `json:"detail"`
 }
 
 type workflowSecretUpdateRequest struct {
