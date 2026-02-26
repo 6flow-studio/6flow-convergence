@@ -365,6 +365,104 @@ func ensureConfigFile(workflowDir, configPath, fallbackConfigPath string) (bool,
 	return true, nil
 }
 
+func fileExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	return false, err
+}
+
+func preserveExistingDotEnv(existingPath, stagedPath string) (bool, error) {
+	exists, err := fileExists(existingPath)
+	if err != nil {
+		return false, err
+	}
+	if !exists {
+		return false, nil
+	}
+
+	raw, err := os.ReadFile(existingPath)
+	if err != nil {
+		return false, err
+	}
+	if err := ensureParent(stagedPath); err != nil {
+		return false, err
+	}
+	if err := os.WriteFile(stagedPath, raw, 0o600); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func isPreviewPlaceholderValue(value string) bool {
+	trimmed := strings.TrimSpace(value)
+	if len(trimmed) < 3 {
+		return false
+	}
+	if trimmed[0] != '<' || trimmed[len(trimmed)-1] != '>' {
+		return false
+	}
+
+	inner := strings.TrimSpace(trimmed[1 : len(trimmed)-1])
+	if inner == "" {
+		return false
+	}
+	return !strings.ContainsAny(inner, "<>")
+}
+
+func sanitizeDotEnvPreviewValues(dotEnvPath string) (int, error) {
+	raw, err := os.ReadFile(dotEnvPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return 0, nil
+		}
+		return 0, err
+	}
+
+	lines := strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
+	updatedCount := 0
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+
+		eq := strings.Index(line, "=")
+		if eq < 0 {
+			continue
+		}
+
+		key := strings.TrimSpace(line[:eq])
+		if key == "" {
+			continue
+		}
+		value := strings.TrimSpace(line[eq+1:])
+		if !isPreviewPlaceholderValue(value) {
+			continue
+		}
+
+		lines[i] = key + "="
+		updatedCount++
+	}
+
+	if updatedCount == 0 {
+		return 0, nil
+	}
+
+	content := strings.Join(lines, "\n")
+	if content != "" && !strings.HasSuffix(content, "\n") {
+		content += "\n"
+	}
+	if err := os.WriteFile(dotEnvPath, []byte(content), 0o600); err != nil {
+		return 0, err
+	}
+	return updatedCount, nil
+}
+
 func SyncWorkflowToLocal(baseURL, token, workflowID, workflowName string) (*SyncLocalResult, error) {
 	logs := []string{}
 	appendLog := func(msg string) {
@@ -475,6 +573,32 @@ func SyncWorkflowToLocal(baseURL, token, workflowID, workflowName string) (*Sync
 	}
 	if createdProductionConfig {
 		appendLog("Created missing production config file.")
+	}
+
+	existingDotEnvPath := filepath.Join(finalDir, workflowDirName, ".env")
+	stagedDotEnvPath := filepath.Join(workflowDir, ".env")
+	preservedDotEnv, err := preserveExistingDotEnv(existingDotEnvPath, stagedDotEnvPath)
+	if err != nil {
+		return nil, err
+	}
+	if preservedDotEnv {
+		appendLog("Preserved existing local .env from previous sync.")
+	} else {
+		privateKey, _ := readDotEnvValue(stagedDotEnvPath, "CRE_ETH_PRIVATE_KEY")
+		if !isValidPrivateKey(privateKey) {
+			autoPrivateKey := demoPrivateKeyForProject(workflowID)
+			if err := setDotEnvValue(stagedDotEnvPath, "CRE_ETH_PRIVATE_KEY", autoPrivateKey); err != nil {
+				return nil, err
+			}
+			appendLog("Initialized CRE_ETH_PRIVATE_KEY in local workflow .env.")
+		}
+	}
+	sanitizedCount, err := sanitizeDotEnvPreviewValues(stagedDotEnvPath)
+	if err != nil {
+		return nil, err
+	}
+	if sanitizedCount > 0 {
+		appendLog(fmt.Sprintf("Cleared preview placeholders in local .env (%d variable(s)).", sanitizedCount))
 	}
 
 	if err := os.RemoveAll(finalDir); err != nil {

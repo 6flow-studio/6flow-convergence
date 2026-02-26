@@ -430,11 +430,7 @@ func creWhoAmICmd() tea.Cmd {
 }
 
 func normalizeSecretNameInput(raw string) string {
-	trimmed := strings.TrimSpace(raw)
-	if trimmed == "" {
-		return ""
-	}
-	return strings.ToUpper(strings.ReplaceAll(trimmed, " ", "_"))
+	return strings.TrimSpace(raw)
 }
 
 func secretsCommandCmd(baseURL, token, actionID, workflowID, workflowName, target, secretID, secretValue, frontendSyncAction string) tea.Cmd {
