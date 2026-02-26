@@ -94,4 +94,14 @@ fn compile_and_save(fixture_name: &str, output_name: &str) {
 #[test]
 fn compile_mockup_workflow() {
     compile_and_save("sample_mockup.json", "codegen_mockup");
+
+    let output_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .join("shared/sample/codegen_mockup.json");
+
+    let content = fs::read_to_string(output_path).expect("should read generated mockup output");
+    let result: serde_json::Value =
+        serde_json::from_str(&content).expect("should parse generated mockup output");
+    assert_eq!(result["status"], "success");
 }

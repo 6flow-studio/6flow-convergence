@@ -5,10 +5,10 @@
 
 use std::collections::HashMap;
 
-use crate::ir::types::*;
 use super::fetch_fns::FetchContext;
 use super::value_expr::emit_value_expr;
 use super::writer::CodeWriter;
+use crate::ir::types::*;
 
 /// Emit an HttpRequest call in the handler body.
 /// The fetch function is emitted separately by `fetch_fns.rs`.
@@ -102,7 +102,14 @@ pub fn emit_evm_read(step: &Step, op: &EvmReadOp, w: &mut CodeWriter) {
             w.line(&format!("abi: [{}],", abi));
         }
         if !op.args.is_empty() {
-            w.line(&format!("args: [{}],", op.args.iter().map(|a| emit_value_expr(&a.value)).collect::<Vec<_>>().join(", ")));
+            w.line(&format!(
+                "args: [{}],",
+                op.args
+                    .iter()
+                    .map(|a| emit_value_expr(&a.value))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
         }
         w.dedent();
         w.line("}).result();");
@@ -256,15 +263,34 @@ pub fn emit_abi_decode(step: &Step, op: &AbiDecodeOp, w: &mut CodeWriter) {
 }
 
 /// Emit an AiCall (uses HTTP pattern with provider-specific body).
-pub fn emit_ai_call(step: &Step, op: &AiCallOp, w: &mut CodeWriter) {
+/// Fetches the API key secret and passes it through augmented config to the fetch function.
+pub fn emit_ai_call(
+    step: &Step,
+    op: &AiCallOp,
+    fetch_contexts: &HashMap<String, FetchContext>,
+    w: &mut CodeWriter,
+) {
     let fetch_fn_name = format!("fetch_{}", step.id.replace('-', "_"));
     let consensus_expr = emit_consensus(&op.consensus);
 
     if let Some(ref out) = step.output {
         w.line(&format!("// {}", step.label));
+
+        // Fetch the API key secret
+        let secret_var = format!("_aiApiKey_{}", step.id.replace('-', "_"));
+        let secret_name = fetch_contexts
+            .get(&step.id)
+            .and_then(|c| c.ai_api_key_secret.as_deref())
+            .unwrap_or(&op.api_key_secret);
         w.line(&format!(
-            "const {} = httpClient.sendRequest(runtime, {}, {})(runtime.config).result();",
-            out.variable_name, fetch_fn_name, consensus_expr
+            "const {} = runtime.getSecret({{ id: \"{}\" }}).result();",
+            secret_var, secret_name,
+        ));
+
+        // Pass secret value as third argument to sendRequest
+        w.line(&format!(
+            "const {} = httpClient.sendRequest(runtime, {}, {})(runtime.config, {}.value).result();",
+            out.variable_name, fetch_fn_name, consensus_expr, secret_var,
         ));
     }
 }
@@ -283,7 +309,7 @@ pub fn emit_log(_step: &Step, op: &LogOp, w: &mut CodeWriter) {
         w.line(&format!("runtime.log({});", msg));
     } else {
         // Wrap in template literal if not already
-        w.line(&format!("runtime.log(`{}${{{}}}`);" , prefix, msg));
+        w.line(&format!("runtime.log(`{}${{{}}}`);", prefix, msg));
     }
 }
 
@@ -301,9 +327,7 @@ pub fn emit_return(_step: &Step, op: &ReturnOp, w: &mut CodeWriter) {
 
 fn emit_consensus(consensus: &ConsensusStrategy) -> String {
     match consensus {
-        ConsensusStrategy::Identical => {
-            "consensusIdenticalAggregation()".to_string()
-        }
+        ConsensusStrategy::Identical => "consensusIdenticalAggregation()".to_string(),
         ConsensusStrategy::MedianByFields { fields } => {
             let field_entries: Vec<String> = fields
                 .iter()
@@ -347,7 +371,14 @@ mod tests {
             }),
         );
         let mut w = CodeWriter::new();
-        emit_get_secret(&step, match &step.operation { Operation::GetSecret(op) => op, _ => unreachable!() }, &mut w);
+        emit_get_secret(
+            &step,
+            match &step.operation {
+                Operation::GetSecret(op) => op,
+                _ => unreachable!(),
+            },
+            &mut w,
+        );
         let out = w.finish();
         assert!(out.contains("runtime.getSecret({ id: \"API_KEY\" }).result()"));
     }
@@ -369,9 +400,20 @@ mod tests {
             }),
         );
         let mut w = CodeWriter::new();
-        emit_json_parse(&step, match &step.operation { Operation::JsonParse(op) => op, _ => unreachable!() }, &mut w);
+        emit_json_parse(
+            &step,
+            match &step.operation {
+                Operation::JsonParse(op) => op,
+                _ => unreachable!(),
+            },
+            &mut w,
+        );
         let out = w.finish();
-        assert!(out.contains("JSON.parse(Buffer.from(step_http_1.body, \"base64\").toString(\"utf-8\"))"));
+        assert!(
+            out.contains(
+                "JSON.parse(Buffer.from(step_http_1.body, \"base64\").toString(\"utf-8\"))"
+            )
+        );
     }
 
     #[test]
@@ -386,7 +428,14 @@ mod tests {
             None,
         );
         let mut w = CodeWriter::new();
-        emit_log(&step, match &step.operation { Operation::Log(op) => op, _ => unreachable!() }, &mut w);
+        emit_log(
+            &step,
+            match &step.operation {
+                Operation::Log(op) => op,
+                _ => unreachable!(),
+            },
+            &mut w,
+        );
         let out = w.finish();
         assert!(out.contains("[WARN]"));
         assert!(out.contains("runtime.log"));
@@ -403,7 +452,14 @@ mod tests {
             None,
         );
         let mut w = CodeWriter::new();
-        emit_return(&step, match &step.operation { Operation::Return(op) => op, _ => unreachable!() }, &mut w);
+        emit_return(
+            &step,
+            match &step.operation {
+                Operation::Return(op) => op,
+                _ => unreachable!(),
+            },
+            &mut w,
+        );
         let out = w.finish();
         assert_eq!(out.trim(), "return \"done\";");
     }
@@ -419,7 +475,14 @@ mod tests {
             None,
         );
         let mut w = CodeWriter::new();
-        emit_error_throw(&step, match &step.operation { Operation::ErrorThrow(op) => op, _ => unreachable!() }, &mut w);
+        emit_error_throw(
+            &step,
+            match &step.operation {
+                Operation::ErrorThrow(op) => op,
+                _ => unreachable!(),
+            },
+            &mut w,
+        );
         let out = w.finish();
         assert_eq!(out.trim(), "throw new Error(\"failed\");");
     }

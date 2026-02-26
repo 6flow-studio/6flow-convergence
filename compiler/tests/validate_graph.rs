@@ -9,7 +9,24 @@ fn validate_example_workflow_passes() {
     let workflow = parse::parse(json).expect("Should parse");
     let graph = parse::WorkflowGraph::build(&workflow).expect("Should build graph");
     let errors = validate::validate_graph(&workflow, &graph);
-    assert!(errors.is_empty(), "Expected no validation errors, got: {:?}", errors);
+    assert!(
+        errors.is_empty(),
+        "Expected no validation errors, got: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn validate_log_only_workflow_passes() {
+    let json = include_str!("fixtures/sample_mockup.json");
+    let workflow = parse::parse(json).expect("Should parse");
+    let graph = parse::WorkflowGraph::build(&workflow).expect("Should build graph");
+    let errors = validate::validate_graph(&workflow, &graph);
+    assert!(
+        errors.is_empty(),
+        "Expected no validation errors, got: {:?}",
+        errors
+    );
 }
 
 #[test]
@@ -18,7 +35,11 @@ fn v001_no_trigger() {
     let workflow = parse::parse(json).unwrap();
     let graph = parse::WorkflowGraph::build(&workflow).unwrap();
     let errors = validate::validate_graph(&workflow, &graph);
-    assert!(errors.iter().any(|e| e.code == "V001"), "Should flag no trigger: {:?}", errors);
+    assert!(
+        errors.iter().any(|e| e.code == "V001"),
+        "Should flag no trigger: {:?}",
+        errors
+    );
 }
 
 #[test]
@@ -27,7 +48,11 @@ fn v004_cycle_detection() {
     let workflow = parse::parse(json).unwrap();
     let graph = parse::WorkflowGraph::build(&workflow).unwrap();
     let errors = validate::validate_graph(&workflow, &graph);
-    assert!(errors.iter().any(|e| e.code == "V004"), "Should detect cycle: {:?}", errors);
+    assert!(
+        errors.iter().any(|e| e.code == "V004"),
+        "Should detect cycle: {:?}",
+        errors
+    );
 }
 
 #[test]
@@ -36,7 +61,11 @@ fn v005_unreachable_node() {
     let workflow = parse::parse(json).unwrap();
     let graph = parse::WorkflowGraph::build(&workflow).unwrap();
     let errors = validate::validate_graph(&workflow, &graph);
-    assert!(errors.iter().any(|e| e.code == "V005"), "Should detect unreachable: {:?}", errors);
+    assert!(
+        errors.iter().any(|e| e.code == "V005"),
+        "Should detect unreachable: {:?}",
+        errors
+    );
 }
 
 #[test]
@@ -45,7 +74,11 @@ fn v008_if_missing_handle() {
     let workflow = parse::parse(json).unwrap();
     let graph = parse::WorkflowGraph::build(&workflow).unwrap();
     let errors = validate::validate_graph(&workflow, &graph);
-    assert!(errors.iter().any(|e| e.code == "V008"), "Should detect if node issue: {:?}", errors);
+    assert!(
+        errors.iter().any(|e| e.code == "V008"),
+        "Should detect if node issue: {:?}",
+        errors
+    );
 }
 
 #[test]
@@ -54,5 +87,9 @@ fn v010_self_loop() {
     let workflow = parse::parse(json).unwrap();
     let graph = parse::WorkflowGraph::build(&workflow).unwrap();
     let errors = validate::validate_graph(&workflow, &graph);
-    assert!(errors.iter().any(|e| e.code == "V010"), "Should detect self-loop: {:?}", errors);
+    assert!(
+        errors.iter().any(|e| e.code == "V010"),
+        "Should detect self-loop: {:?}",
+        errors
+    );
 }

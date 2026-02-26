@@ -135,10 +135,7 @@ mod tests {
         w.block_else();
         w.line("b();");
         w.block_close();
-        assert_eq!(
-            w.finish(),
-            "if (x) {\n  a();\n} else {\n  b();\n}\n"
-        );
+        assert_eq!(w.finish(), "if (x) {\n  a();\n} else {\n  b();\n}\n");
     }
 
     #[test]

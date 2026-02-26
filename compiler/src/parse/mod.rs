@@ -1,17 +1,20 @@
 //! Parse phase: JSON → Rust types + graph construction.
 
-pub mod types;
 pub mod graph;
+pub mod types;
 
-pub use types::*;
 pub use graph::WorkflowGraph;
+pub use types::*;
 
 use crate::error::CompilerError;
 
 /// Deserialize a workflow JSON string into a `Workflow` struct.
 pub fn parse(json: &str) -> Result<Workflow, Vec<CompilerError>> {
     serde_json::from_str::<Workflow>(json).map_err(|e| {
-        vec![CompilerError::parse("P001", format!("Failed to parse workflow JSON: {}", e))]
+        vec![CompilerError::parse(
+            "P001",
+            format!("Failed to parse workflow JSON: {}", e),
+        )]
     })
 }
 

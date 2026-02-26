@@ -11,7 +11,7 @@ Workflow JSON → Parse → Validate → Lower → IR Validate → Codegen → C
 | Phase | Entry point | Input → Output |
 | --- | --- | --- |
 | **Parse** | `parse::parse(json)` | JSON string → `Workflow` + `WorkflowGraph` |
-| **Validate** | `validate::validate_graph(workflow, graph)` | Graph-level (V001–V010) + per-node (N001–N021) checks |
+| **Validate** | `validate::validate_graph(workflow, graph)` | Graph-level (V001–V010, with V007 reserved) + per-node (N001–N021) checks |
 | **Lower** | `lower::lower(workflow, graph)` | `Workflow` → `WorkflowIR` (expand convenience nodes, resolve refs, detect branches) |
 | **IR Validate** | `ir::validate_ir(ir)` | Structural/semantic IR invariants (E001–E012) |
 | **Codegen** | `codegen::codegen(ir)` | `WorkflowIR` → 7-file CRE project bundle |
@@ -64,7 +64,7 @@ Deserializes frontend workflow JSON into Rust types. `WorkflowNode` is a `#[serd
 
 Two layers of checks before lowering:
 
-### Structural rules (V001–V010)
+### Structural rules (V001–V010, V007 reserved)
 
 | Code | Rule |
 | --- | --- |
@@ -74,7 +74,7 @@ Two layers of checks before lowering:
 | V004 | DAG (no cycles) |
 | V005 | All nodes reachable from trigger |
 | V006 | Trigger has no incoming edges |
-| V007 | At least one terminal node (return/error) |
+| V007 | Reserved (termination is now guaranteed by lowering via auto-added fallback return when needed) |
 | V008 | `if` node has exactly 2 outgoing edges with `true`/`false` handles |
 | V009 | `merge` node has ≥2 incoming edges |
 | V010 | No self-loops |

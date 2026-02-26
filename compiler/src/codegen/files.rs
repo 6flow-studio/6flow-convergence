@@ -91,7 +91,10 @@ pub fn gen_project_yaml(ir: &WorkflowIR) -> String {
 
     // 3. EVM log trigger chain
     if let TriggerDef::EvmLog(evm_log) = &ir.trigger {
-        let trigger_chain = evm_log.evm_client_binding.replace("evmClient_", "").replace('_', "-");
+        let trigger_chain = evm_log
+            .evm_client_binding
+            .replace("evmClient_", "")
+            .replace('_', "-");
         if seen_chains.insert(trigger_chain.clone()) {
             rpc_lines.push_str(&format!(
                 "    - chain-name: {}\n      url: https://0xrpc.io/sep\n",
@@ -102,12 +105,15 @@ pub fn gen_project_yaml(ir: &WorkflowIR) -> String {
 
     // 4. Fallback: at least one RPC required
     if rpc_lines.is_empty() {
-        let chain_name = ir.metadata.default_chain_selector.as_deref()
-            .unwrap_or(if ir.metadata.is_testnet {
-                "ethereum-testnet-sepolia"
-            } else {
-                "ethereum-mainnet"
-            });
+        let chain_name =
+            ir.metadata
+                .default_chain_selector
+                .as_deref()
+                .unwrap_or(if ir.metadata.is_testnet {
+                    "ethereum-testnet-sepolia"
+                } else {
+                    "ethereum-mainnet"
+                });
         let url = if ir.metadata.is_testnet {
             "https://0xrpc.io/sep"
         } else {
@@ -119,19 +125,13 @@ pub fn gen_project_yaml(ir: &WorkflowIR) -> String {
         ));
     }
 
-    format!(
-        "staging-settings:\n  rpcs:\n{}",
-        rpc_lines
-    )
+    format!("staging-settings:\n  rpcs:\n{}", rpc_lines)
 }
 
 /// Generate `package.json` content.
 pub fn gen_package_json(ir: &WorkflowIR) -> String {
     let name = &ir.metadata.id;
-    let mut deps = vec![
-        ("@chainlink/cre-sdk", "^1.0.9"),
-        ("zod", "^3.24"),
-    ];
+    let mut deps = vec![("@chainlink/cre-sdk", "^1.0.9"), ("zod", "^3.24")];
 
     // Check if viem is needed
     if needs_viem(ir) {
@@ -143,9 +143,7 @@ pub fn gen_package_json(ir: &WorkflowIR) -> String {
         .map(|(k, v)| format!("    \"{}\": \"{}\"", k, v))
         .collect();
 
-    let dev_dep_entries = vec![
-        format!("    \"@types/bun\": \"1.2.21\""),
-    ];
+    let dev_dep_entries = vec![format!("    \"@types/bun\": \"1.2.21\"")];
 
     format!(
         r#"{{
@@ -185,7 +183,8 @@ pub fn gen_tsconfig_json() -> String {
   },
   "include": ["*.ts"]
 }
-"#.to_string()
+"#
+    .to_string()
 }
 
 /// Generate `.env` content for local CRE simulation.
@@ -207,8 +206,7 @@ pub fn gen_dot_env(ir: &WorkflowIR) -> String {
 }
 
 fn needs_viem(ir: &WorkflowIR) -> bool {
-    has_viem_ops(&ir.handler_body)
-        || matches!(&ir.trigger, TriggerDef::EvmLog(_))
+    has_viem_ops(&ir.handler_body) || matches!(&ir.trigger, TriggerDef::EvmLog(_))
 }
 
 fn has_viem_ops(block: &Block) -> bool {
@@ -277,7 +275,7 @@ mod tests {
             },
             trigger: TriggerDef::Cron(CronTriggerDef {
                 schedule: ValueExpr::string("*"),
-                }),
+            }),
             trigger_param: TriggerParam::CronTrigger,
             config_schema: vec![],
             required_secrets: vec![SecretDeclaration {
@@ -308,7 +306,6 @@ mod tests {
             },
             trigger: TriggerDef::Cron(CronTriggerDef {
                 schedule: ValueExpr::string("*"),
-
             }),
             trigger_param: TriggerParam::CronTrigger,
             config_schema: vec![],
@@ -345,7 +342,6 @@ mod tests {
             },
             trigger: TriggerDef::Cron(CronTriggerDef {
                 schedule: ValueExpr::string("*"),
-
             }),
             trigger_param: TriggerParam::CronTrigger,
             config_schema: vec![],
@@ -455,7 +451,6 @@ mod tests {
             },
             trigger: TriggerDef::Cron(CronTriggerDef {
                 schedule: ValueExpr::string("*"),
-
             }),
             trigger_param: TriggerParam::CronTrigger,
             config_schema: vec![],

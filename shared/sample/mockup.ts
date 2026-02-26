@@ -1,77 +1,88 @@
 import type { Workflow } from '../model/node';
 
 export const mockupWorkflow: Workflow = {
-  id: 'mockup-workflow',
-  name: 'HTTP Trigger to AI Action',
-  description: 'Receive an HTTP request and use an AI node to decide the next action',
-  version: '1.0.0',
-  globalConfig: {
-    isTestnet: true,
-    secrets: [
+  "id": "k179c7tanagsa8qz2533p86dhs81wr8b",
+  "name": "gemini random number",
+  "version": "1.0.0",
+  "nodes": [
+    {
+      "id": "node_1772083694834_2",
+      "type": "ai",
+      "position": {
+        "x": 524.3711739992606,
+        "y": 355.8294488855681
+      },
+      "data": {
+        "label": "AI",
+        "config": {
+          "provider": "google",
+          "baseUrl": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
+          "model": "gemini-2.5-flash-lite",
+          "apiKeySecret": "GOOGLE_API",
+          "systemPrompt": "You're a helpful assistant",
+          "userPrompt": "return the random number 1-100",
+          "temperature": 0.7,
+          "responseFormat": "text"
+        }
+      }
+    },
+    {
+      "id": "node_1772084501876_1",
+      "type": "cronTrigger",
+      "position": {
+        "x": 274.9940192939582,
+        "y": 353.2688712135992
+      },
+      "data": {
+        "label": "Cron Trigger",
+        "config": {
+          "schedule": "*/1 * * * * *",
+          "timezone": "UTC"
+        }
+      }
+    },
+    {
+      "id": "node_1772086555694_0",
+      "type": "log",
+      "position": {
+        "x": 767.1930041949838,
+        "y": 343.3337669586786
+      },
+      "data": {
+        "label": "Log",
+        "config": {
+          "level": "info",
+          "messageTemplate": "{{node_1772083694834_2.candidates[0].content.parts[0].text}}"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "xy-edge__node_1772084501876_1output-node_1772083694834_2input",
+      "source": "node_1772084501876_1",
+      "target": "node_1772083694834_2",
+      "sourceHandle": "output",
+      "targetHandle": "input"
+    },
+    {
+      "id": "xy-edge__node_1772083694834_2output-node_1772086555694_0input",
+      "source": "node_1772083694834_2",
+      "target": "node_1772086555694_0",
+      "sourceHandle": "output",
+      "targetHandle": "input"
+    }
+  ],
+  "globalConfig": {
+    "isTestnet": true,
+    "secrets": [
       {
-        name: 'OPENAI_API_KEY',
-        envVariable: 'OPENAI_API_KEY',
-      },
+        "name": "GOOGLE_API",
+        "envVariable": "GOOGLE_API_KEY"
+      }
     ],
-    rpcs: [],
+    "rpcs": []
   },
-  nodes: [
-    {
-      id: 'trigger-1',
-      type: 'httpTrigger',
-      position: { x: 120, y: 220 },
-      data: {
-        label: 'Incoming Webhook',
-        config: {
-          httpMethod: 'POST',
-          path: '/ai/action',
-          authentication: { type: 'none' },
-          responseMode: 'lastNode',
-          responseCode: 200,
-          responseHeaders: {
-            'Content-Type': 'application/json',
-          },
-          allowedOrigins: ['*'],
-        },
-      },
-    },
-    {
-      id: 'ai-1',
-      type: 'ai',
-      position: { x: 400, y: 220 },
-      data: {
-        label: 'Decide Next Action',
-        config: {
-          provider: 'openai',
-          baseUrl: 'https://api.openai.com/v1/chat/completions',
-          model: 'gpt-4o-mini',
-          apiKeySecret: 'OPENAI_API_KEY',
-          systemPrompt: 'You are an operations assistant. Return a concise next-action recommendation in JSON.',
-          userPrompt: 'Analyze the incoming webhook request and return one clear recommended action.',
-          temperature: 0.2,
-          maxTokens: 200,
-          responseFormat: 'json',
-          timeout: 10000,
-          maxRetries: 2,
-        },
-      },
-    },
-    {
-      id: 'return-1',
-      type: 'return',
-      position: { x: 680, y: 220 },
-      data: {
-        label: 'Return AI Result',
-        config: {
-          returnExpression: '{{ai-1.choices[0].message.content}}',
-        },
-      },
-    },
-  ],
-  edges: [
-    { id: 'e1', source: 'trigger-1', target: 'ai-1' },
-    { id: 'e2', source: 'ai-1', target: 'return-1' },
-  ],
-  createdAt: '2026-02-17T00:00:00Z',
-  updatedAt: '2026-02-17T00:00:00Z',
+  "createdAt": "2026-02-26T07:23:58.545Z",
+  "updatedAt": "2026-02-26T07:23:58.545Z"
 };

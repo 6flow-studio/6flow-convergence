@@ -1,9 +1,9 @@
 //! Integration tests for the lowering pass: graph → WorkflowIR.
 
+use compiler::ir::types::{LiteralValue, Operation, ValueExpr};
+use compiler::lower;
 use compiler::parse;
 use compiler::validate;
-use compiler::lower;
-use compiler::ir::types::Operation;
 
 #[test]
 fn lower_linear_workflow() {
@@ -27,15 +27,13 @@ fn lower_linear_workflow() {
     let parse_step = &ir.handler_body.steps[1];
     assert_eq!(parse_step.id, "p1");
     match &parse_step.operation {
-        Operation::JsonParse(op) => {
-            match &op.input {
-                compiler::ir::types::ValueExpr::Binding(binding) => {
-                    assert_eq!(binding.step_id, "h1");
-                    assert_eq!(binding.field_path, "body");
-                }
-                other => panic!("Expected Binding ValueExpr, got {:?}", other),
+        Operation::JsonParse(op) => match &op.input {
+            compiler::ir::types::ValueExpr::Binding(binding) => {
+                assert_eq!(binding.step_id, "h1");
+                assert_eq!(binding.field_path, "body");
             }
-        }
+            other => panic!("Expected Binding ValueExpr, got {:?}", other),
+        },
         other => panic!("Expected JsonParse operation, got {:?}", other),
     }
 }
@@ -51,7 +49,10 @@ fn lower_example_workflow_produces_valid_ir() {
     let ir = lower::lower(&workflow, &graph).expect("Should lower successfully");
 
     assert_eq!(ir.metadata.id, "example-tokenization-workflow");
-    assert!(ir.evm_chains.len() >= 1, "Should have at least one EVM chain");
+    assert!(
+        ir.evm_chains.len() >= 1,
+        "Should have at least one EVM chain"
+    );
     assert_eq!(ir.required_secrets.len(), 1);
     assert_eq!(ir.required_secrets[0].name, "KYC_API_KEY");
 
@@ -69,8 +70,53 @@ fn lower_convenience_node_expansion() {
     let ir = lower::lower(&workflow, &graph).expect("Should lower");
 
     // Should have: mint-1___encode, mint-1___write, r1
-    let step_ids: Vec<&str> = ir.handler_body.steps.iter().map(|s| s.id.as_str()).collect();
-    assert!(step_ids.contains(&"mint-1___encode"), "Steps: {:?}", step_ids);
-    assert!(step_ids.contains(&"mint-1___write"), "Steps: {:?}", step_ids);
+    let step_ids: Vec<&str> = ir
+        .handler_body
+        .steps
+        .iter()
+        .map(|s| s.id.as_str())
+        .collect();
+    assert!(
+        step_ids.contains(&"mint-1___encode"),
+        "Steps: {:?}",
+        step_ids
+    );
+    assert!(
+        step_ids.contains(&"mint-1___write"),
+        "Steps: {:?}",
+        step_ids
+    );
     assert!(step_ids.contains(&"r1"), "Steps: {:?}", step_ids);
+}
+
+#[test]
+fn lower_adds_auto_return_when_workflow_has_no_terminal_node() {
+    let json = include_str!("fixtures/sample_mockup.json");
+    let workflow = parse::parse(json).unwrap();
+    let graph = parse::WorkflowGraph::build(&workflow).unwrap();
+    let errors = validate::validate_graph(&workflow, &graph);
+    assert!(errors.is_empty(), "Validation errors: {:?}", errors);
+
+    let ir = lower::lower(&workflow, &graph).expect("Should lower");
+    let last_step = ir
+        .handler_body
+        .steps
+        .last()
+        .expect("handler body should not be empty");
+
+    assert!(
+        last_step.id.starts_with("auto-return"),
+        "Expected auto return step ID, got {}",
+        last_step.id
+    );
+
+    match &last_step.operation {
+        Operation::Return(op) => match &op.expression {
+            ValueExpr::Literal(LiteralValue::String { value }) => {
+                assert_eq!(value, "Workflow completed");
+            }
+            other => panic!("Expected string literal return expression, got {:?}", other),
+        },
+        other => panic!("Expected auto-added Return operation, got {:?}", other),
+    }
 }

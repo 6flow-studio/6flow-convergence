@@ -138,10 +138,7 @@ mod tests {
 
     #[test]
     fn literal_string() {
-        assert_eq!(
-            emit_value_expr(&ValueExpr::string("hello")),
-            "\"hello\""
-        );
+        assert_eq!(emit_value_expr(&ValueExpr::string("hello")), "\"hello\"");
     }
 
     #[test]
