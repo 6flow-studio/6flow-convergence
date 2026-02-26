@@ -1,6 +1,13 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, Download, Loader2, X } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Download,
+  Loader2,
+  TerminalSquare,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { CompilerActionStatus } from "@/lib/compiler/compiler-types";
 
@@ -27,6 +34,7 @@ export function CompileProgressModal({
 
   const isRunning = status === "running";
   const isSuccess = status === "success";
+  const showDeliveryOptions = !isRunning && downloadUrl && downloadFileName;
   const title = isRunning
     ? "Compiling Workflow"
     : isSuccess
@@ -61,17 +69,45 @@ export function CompileProgressModal({
           </div>
         </div>
 
-        {!isRunning && downloadUrl && downloadFileName && (
-          <div className="mt-4 pt-4 border-t border-edge-dim flex items-center justify-end gap-2">
-            <Button asChild size="sm" className="h-8 text-xs">
-              <a href={downloadUrl} download={downloadFileName}>
-                <Download size={13} className="mr-1.5" />
-                Download .zip
-              </a>
-            </Button>
-            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={onClose}>
-              Close
-            </Button>
+        {showDeliveryOptions && (
+          <div className="mt-4 pt-4 border-t border-edge-dim space-y-3">
+            <div className="text-xs font-medium text-zinc-300">Choose how to continue</div>
+
+            <div className="rounded-lg border border-edge-dim bg-surface-0/40 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-zinc-100">Deploy manually</div>
+                  <div className="text-[11px] text-zinc-500">
+                    Download the CRE bundle as a `.zip` and deploy it yourself.
+                  </div>
+                </div>
+                <Button asChild size="sm" className="h-8 text-xs shrink-0">
+                  <a href={downloadUrl} download={downloadFileName}>
+                    <Download size={13} className="mr-1.5" />
+                    Download .zip
+                  </a>
+                </Button>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-edge-dim bg-surface-0/40 p-3">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-100">
+                <TerminalSquare size={13} className="text-accent-blue" />
+                Use 6Flow TUI
+              </div>
+              <div className="mt-1 text-[11px] text-zinc-500">
+                Install 6Flow TUI and continue from terminal:
+              </div>
+              <code className="mt-2 block rounded-md border border-edge-dim bg-surface-0 px-2 py-1.5 text-[11px] text-zinc-300">
+                brew install 6flow
+              </code>
+            </div>
+
+            <div className="flex justify-end">
+              <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={onClose}>
+                Close
+              </Button>
+            </div>
           </div>
         )}
       </div>
