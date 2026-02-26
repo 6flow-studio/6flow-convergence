@@ -8,16 +8,21 @@ import {
   CollapsibleSection,
 } from "../config-fields";
 import type { AINodeConfig } from "@6flow/shared/model/node";
+import { AI_PROVIDERS } from "@6flow/shared/listAIProviders";
 
 interface Props {
   config: AINodeConfig;
   onChange: (patch: Record<string, unknown>) => void;
 }
 
-const PROVIDER_OPTIONS = [
-  { value: "openai", label: "OpenAI" },
-  { value: "anthropic", label: "Anthropic" },
-  { value: "custom", label: "Custom" },
+const CUSTOM_VALUE = "__custom__";
+
+const MODEL_OPTIONS = [
+  ...AI_PROVIDERS.map((p) => ({
+    value: p.value,
+    label: `${p.label} (${p.provider})`,
+  })),
+  { value: CUSTOM_VALUE, label: "Custom" },
 ];
 
 const RESPONSE_FORMAT_OPTIONS = [
@@ -25,30 +30,62 @@ const RESPONSE_FORMAT_OPTIONS = [
   { value: "json", label: "JSON" },
 ];
 
+function isCustomModel(model: string) {
+  return !AI_PROVIDERS.some((p) => p.value === model);
+}
+
 export function AIConfigRenderer({ config, onChange }: Props) {
+  const isCustom = isCustomModel(config.model);
+  const selectValue = isCustom ? CUSTOM_VALUE : config.model;
+
+  const handleModelSelect = (value: string) => {
+    if (value === CUSTOM_VALUE) {
+      onChange({ provider: "custom", model: "", baseUrl: "" });
+      return;
+    }
+    const preset = AI_PROVIDERS.find((p) => p.value === value);
+    if (preset) {
+      onChange({
+        provider: preset.provider.toLowerCase(),
+        model: preset.value,
+        baseUrl: preset.baseUrl,
+      });
+    }
+  };
+
   return (
     <div className="space-y-3">
       <SelectField
-        label="Provider"
-        value={config.provider}
-        onChange={(provider) => onChange({ provider })}
-        options={PROVIDER_OPTIONS}
-      />
-
-      <TextField
-        label="Base URL"
-        value={config.baseUrl}
-        onChange={(baseUrl) => onChange({ baseUrl })}
-        placeholder="https://api.openai.com/v1"
-        mono
-      />
-
-      <TextField
         label="Model"
-        value={config.model}
-        onChange={(model) => onChange({ model })}
-        placeholder="gpt-4"
+        value={selectValue}
+        onChange={handleModelSelect}
+        options={MODEL_OPTIONS}
       />
+
+      {isCustom && (
+        <>
+          <TextField
+            label="Provider"
+            value={config.provider}
+            onChange={(provider) => onChange({ provider })}
+            placeholder="openai"
+          />
+          <TextField
+            label="Model ID"
+            value={config.model}
+            onChange={(model) => onChange({ model })}
+            placeholder="gpt-4"
+            mono
+          />
+          <TextField
+            label="Base URL"
+            value={config.baseUrl}
+            onChange={(baseUrl) => onChange({ baseUrl })}
+            placeholder="https://api.openai.com/v1/chat/completions"
+            mono
+          />
+        </>
+      )}
 
       <TextField
         label="API Key Secret"

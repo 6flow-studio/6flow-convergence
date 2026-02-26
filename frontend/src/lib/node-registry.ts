@@ -229,8 +229,8 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     outputs: [{ name: "output" }],
     defaultConfig: {
       provider: "openai",
-      baseUrl: "https://api.openai.com/v1",
-      model: "gpt-4",
+      baseUrl: "https://api.openai.com/v1/chat/completions",
+      model: "gpt-5-mini",
       apiKeySecret: "",
       systemPrompt: "",
       userPrompt: "",

@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "exports": {
     "./model/node": "./model/node.ts",
-    "./supportedChain": "./supportedChain.ts"
+    "./supportedChain": "./supportedChain.ts",
+    "./listAIProviders": "./listAIProviders.ts"
   }
 }
