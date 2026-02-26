@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/url"
@@ -36,6 +38,21 @@ type LocalSecretEntry struct {
 type LocalSecretsListResult struct {
 	Logs    []string
 	Entries []LocalSecretEntry
+}
+
+type LocalVariableEntry struct {
+	Section      string
+	Kind         string
+	ID           string
+	Key          string
+	Label        string
+	Description  string
+	CurrentValue string
+}
+
+type LocalVariableListResult struct {
+	Logs    []string
+	Entries []LocalVariableEntry
 }
 
 const (
@@ -304,7 +321,7 @@ func ensurePrivateKeyConfigured(dotEnvPath string) (bool, string, error) {
 		return true, "CRE_ETH_PRIVATE_KEY found in workflow .env.", nil
 	}
 
-	return false, "CRE_ETH_PRIVATE_KEY is not configured. Use Setup secrets env in the Secrets submenu.", nil
+	return false, "CRE_ETH_PRIVATE_KEY is not configured. Use Secrets -> UPDATE VALUE in the TUI.", nil
 }
 
 func readProjectRPC(projectYamlPath, target string) (string, error) {
@@ -392,6 +409,241 @@ func normalizeRPCURL(raw string) (string, error) {
 		return "", errors.New("RPC URL must start with http:// or https://")
 	}
 	return trimmed, nil
+}
+
+func demoPrivateKeyForProject(workflowID string) string {
+	sum := sha256.Sum256([]byte("6flow-demo-private-key:" + strings.TrimSpace(workflowID)))
+	return hex.EncodeToString(sum[:])
+}
+
+func targetIsTestnet(target string) bool {
+	switch strings.TrimSpace(target) {
+	case "production-settings":
+		return false
+	default:
+		return true
+	}
+}
+
+func readProjectRPCMap(projectYamlPath, target string) (map[string]string, error) {
+	raw, err := os.ReadFile(projectYamlPath)
+	if err != nil {
+		return nil, err
+	}
+	var parsed projectYAML
+	if err := yaml.Unmarshal(raw, &parsed); err != nil {
+		return nil, err
+	}
+	out := map[string]string{}
+	cfg, ok := parsed[target]
+	if !ok {
+		return out, nil
+	}
+	for _, rpc := range cfg.RPCs {
+		chainName := strings.TrimSpace(rpc.ChainName)
+		if chainName == "" {
+			continue
+		}
+		out[chainName] = strings.TrimSpace(rpc.URL)
+	}
+	return out, nil
+}
+
+func setProjectTargetRPC(projectYamlPath, target, chainName, rpcURL string) error {
+	raw, err := os.ReadFile(projectYamlPath)
+	if err != nil {
+		return err
+	}
+	var parsed projectYAML
+	if err := yaml.Unmarshal(raw, &parsed); err != nil {
+		return err
+	}
+	if parsed == nil {
+		parsed = projectYAML{}
+	}
+	cfg := parsed[target]
+	updated := false
+	for i := range cfg.RPCs {
+		if strings.EqualFold(strings.TrimSpace(cfg.RPCs[i].ChainName), strings.TrimSpace(chainName)) {
+			cfg.RPCs[i].URL = rpcURL
+			updated = true
+			break
+		}
+	}
+	if !updated {
+		cfg.RPCs = append(cfg.RPCs, rpcEntry{
+			ChainName: chainName,
+			URL:       rpcURL,
+		})
+	}
+	parsed[target] = cfg
+	updatedYAML, err := yaml.Marshal(parsed)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(projectYamlPath, updatedYAML, 0o644)
+}
+
+func ListLocalVariableOptions(workflowID, workflowName, target string) (*LocalVariableListResult, error) {
+	logs := []string{}
+	appendLog := func(msg string) { logs = append(logs, msg) }
+
+	projectRoot, secretsYamlPath, dotEnvPath, preflightLogs, err := preflightWorkflowSecrets(workflowID, workflowName, target)
+	if err != nil {
+		return nil, err
+	}
+	for _, l := range preflightLogs {
+		appendLog(l)
+	}
+
+	entries := []LocalVariableEntry{}
+	privateKey, _ := readDotEnvValue(dotEnvPath, "CRE_ETH_PRIVATE_KEY")
+	privateKey = strings.TrimSpace(privateKey)
+	if !isValidPrivateKey(privateKey) {
+		privateKey = demoPrivateKeyForProject(workflowID)
+	}
+	entries = append(entries, LocalVariableEntry{
+		Section:      "system",
+		Kind:         "private_key",
+		ID:           "CRE_ETH_PRIVATE_KEY",
+		Key:          "CRE_ETH_PRIVATE_KEY",
+		Label:        "CRE_ETH_PRIVATE_KEY",
+		Description:  "System private key for simulation",
+		CurrentValue: privateKey,
+	})
+
+	projectYamlPath := filepath.Join(projectRoot, "project.yaml")
+	rpcMap, err := readProjectRPCMap(projectYamlPath, target)
+	if err != nil {
+		return &LocalVariableListResult{Logs: logs}, err
+	}
+	for _, chain := range supportedChainsForTarget(targetIsTestnet(target)) {
+		current := strings.TrimSpace(rpcMap[chain.ChainName])
+		if current == "" {
+			current = chain.DefaultRPCURL
+		}
+		entries = append(entries, LocalVariableEntry{
+			Section:      "system",
+			Kind:         "rpc",
+			ID:           "RPC:" + chain.ChainName,
+			Key:          chain.ChainName,
+			Label:        "RPC: " + chain.Name,
+			Description:  chain.ChainName,
+			CurrentValue: current,
+		})
+	}
+
+	manifest, err := loadSecretsManifest(secretsYamlPath)
+	if err != nil {
+		return &LocalVariableListResult{Logs: logs}, err
+	}
+	localSecrets := listLocalSecretEntries(manifest, dotEnvPath)
+	for _, entry := range localSecrets {
+		currentValue := ""
+		if strings.TrimSpace(entry.EnvVar) != "" {
+			currentValue, _ = readDotEnvValue(dotEnvPath, entry.EnvVar)
+		}
+		status := "missing in .env"
+		if entry.HasValue {
+			status = "present in .env"
+		}
+		desc := status
+		if strings.TrimSpace(entry.EnvVar) != "" {
+			desc = fmt.Sprintf("%s (%s)", entry.EnvVar, status)
+		}
+		entries = append(entries, LocalVariableEntry{
+			Section:      "environment",
+			Kind:         "secret_env",
+			ID:           entry.ID,
+			Key:          entry.ID,
+			Label:        entry.ID,
+			Description:  desc,
+			CurrentValue: strings.TrimSpace(currentValue),
+		})
+	}
+
+	return &LocalVariableListResult{
+		Logs:    logs,
+		Entries: entries,
+	}, nil
+}
+
+func UpdateLocalVariable(workflowID, workflowName, target, kind, key, value string) (*SecretsCommandResult, error) {
+	logs := []string{}
+	appendLog := func(msg string) { logs = append(logs, msg) }
+
+	projectRoot, secretsYamlPath, dotEnvPath, preflightLogs, err := preflightWorkflowSecrets(workflowID, workflowName, target)
+	if err != nil {
+		return nil, err
+	}
+	for _, l := range preflightLogs {
+		appendLog(l)
+	}
+
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return &SecretsCommandResult{Logs: logs}, errors.New("value is required")
+	}
+
+	switch strings.TrimSpace(kind) {
+	case "private_key":
+		if !isValidPrivateKey(value) {
+			return &SecretsCommandResult{Logs: logs}, errors.New("invalid private key format (expected 64 hex chars, optional 0x)")
+		}
+		normalizedKey := value
+		if strings.HasPrefix(normalizedKey, "0x") {
+			normalizedKey = strings.TrimPrefix(normalizedKey, "0x")
+		}
+		if err := setDotEnvValue(dotEnvPath, "CRE_ETH_PRIVATE_KEY", normalizedKey); err != nil {
+			return &SecretsCommandResult{Logs: logs}, err
+		}
+		appendLog("Updated CRE_ETH_PRIVATE_KEY in local workflow .env.")
+		appendLog(".env path: " + dotEnvPath)
+		return &SecretsCommandResult{Logs: logs}, nil
+	case "rpc":
+		normalizedRPC, err := normalizeRPCURL(value)
+		if err != nil {
+			return &SecretsCommandResult{Logs: logs}, err
+		}
+		chainName := strings.TrimSpace(key)
+		if chainName == "" {
+			return &SecretsCommandResult{Logs: logs}, errors.New("chain name is required for rpc update")
+		}
+		projectYamlPath := filepath.Join(projectRoot, "project.yaml")
+		if err := setProjectTargetRPC(projectYamlPath, target, chainName, normalizedRPC); err != nil {
+			return &SecretsCommandResult{Logs: logs}, err
+		}
+		appendLog(fmt.Sprintf("Updated RPC for %s in project.yaml.", chainName))
+		appendLog("project path: " + projectYamlPath)
+		return &SecretsCommandResult{Logs: logs}, nil
+	case "secret_env":
+		secretID := normalizeSecretID(key)
+		if secretID == "" {
+			return &SecretsCommandResult{Logs: logs}, errors.New("secret id is required")
+		}
+		manifest, err := loadSecretsManifest(secretsYamlPath)
+		if err != nil {
+			return &SecretsCommandResult{Logs: logs}, err
+		}
+		envVars, exists := manifest.SecretsNames[secretID]
+		if !exists {
+			return &SecretsCommandResult{Logs: logs}, fmt.Errorf("secret %q does not exist", secretID)
+		}
+		envVar := ""
+		if len(envVars) > 0 {
+			envVar = strings.TrimSpace(envVars[0])
+		}
+		if envVar == "" {
+			return &SecretsCommandResult{Logs: logs}, fmt.Errorf("secret %q has no env var mapping", secretID)
+		}
+		if err := setDotEnvValue(dotEnvPath, envVar, value); err != nil {
+			return &SecretsCommandResult{Logs: logs}, err
+		}
+		appendLog(fmt.Sprintf("Updated secret value for %s in .env", secretID))
+		return &SecretsCommandResult{Logs: logs}, nil
+	default:
+		return &SecretsCommandResult{Logs: logs}, fmt.Errorf("unsupported variable kind %q", kind)
+	}
 }
 
 func GetWorkflowSecretsSetupDefaults(workflowID, workflowName, target string) (string, error) {
@@ -748,7 +1000,7 @@ func RunWorkflowSimulateLocal(workflowID, workflowName, target string) (*Simulat
 	if !privateKeyReady || len(missing) > 0 {
 		appendLog("Simulation blocked. Missing required local secret setup:")
 		if !privateKeyReady {
-			appendLog("- CRE_ETH_PRIVATE_KEY is missing. Open Secrets -> Setup secrets env.")
+			appendLog("- CRE_ETH_PRIVATE_KEY is missing. Open Secrets -> UPDATE VALUE.")
 		}
 		for _, entry := range missing {
 			if entry.EnvVar == "" {
