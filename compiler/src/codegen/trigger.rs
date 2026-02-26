@@ -1,8 +1,8 @@
 //! Emit `initWorkflow` and `main()` entry point.
 
-use crate::ir::types::*;
 use super::value_expr::emit_value_expr_init;
 use super::writer::CodeWriter;
+use crate::ir::types::*;
 
 /// Emit the `initWorkflow` function and `main()` entry point.
 pub fn emit_init_and_main(ir: &WorkflowIR, w: &mut CodeWriter) {
@@ -37,7 +37,10 @@ fn emit_cron_init(cron: &CronTriggerDef, handler_name: &str, w: &mut CodeWriter)
     w.indent();
     w.line("new cre.capabilities.CronCapability().trigger({");
     w.indent();
-    w.line(&format!("schedule: {},", emit_value_expr_init(&cron.schedule)));
+    w.line(&format!(
+        "schedule: {},",
+        emit_value_expr_init(&cron.schedule)
+    ));
     w.dedent();
     w.line("}),");
     w.line(&format!("{},", handler_name));
@@ -81,7 +84,12 @@ fn emit_http_init(http: &HttpTriggerDef, ir: &WorkflowIR, handler_name: &str, w:
     w.line("];");
 }
 
-fn emit_evm_log_init(evm_log: &EvmLogTriggerDef, ir: &WorkflowIR, handler_name: &str, w: &mut CodeWriter) {
+fn emit_evm_log_init(
+    evm_log: &EvmLogTriggerDef,
+    ir: &WorkflowIR,
+    handler_name: &str,
+    w: &mut CodeWriter,
+) {
     // Find the chain for the trigger
     w.line(&format!(
         "const network = getNetwork({{ chainFamily: \"evm\", chainSelectorName: \"{}\", isTestnet: {} }});",
@@ -113,7 +121,11 @@ fn emit_evm_log_init(evm_log: &EvmLogTriggerDef, ir: &WorkflowIR, handler_name: 
     w.indent();
 
     // Addresses
-    let addrs: Vec<String> = evm_log.contract_addresses.iter().map(|a| emit_value_expr_init(a)).collect();
+    let addrs: Vec<String> = evm_log
+        .contract_addresses
+        .iter()
+        .map(|a| emit_value_expr_init(a))
+        .collect();
     w.line(&format!("addresses: [{}],", addrs.join(", ")));
 
     // Topics

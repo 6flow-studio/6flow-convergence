@@ -1,9 +1,9 @@
 //! End-to-end pipeline test: Parse → Validate → Lower → IR Validate → Codegen.
 
+use compiler::ir::validate_ir;
+use compiler::lower;
 use compiler::parse;
 use compiler::validate;
-use compiler::lower;
-use compiler::ir::validate_ir;
 
 #[test]
 fn end_to_end_linear_pipeline() {

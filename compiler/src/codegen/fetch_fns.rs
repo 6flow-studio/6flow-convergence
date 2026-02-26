@@ -9,9 +9,9 @@
 
 use std::collections::HashMap;
 
-use crate::ir::types::*;
 use super::value_expr::{emit_value_expr, emit_value_expr_init};
 use super::writer::CodeWriter;
+use crate::ir::types::*;
 
 // =============================================================================
 // PUBLIC TYPES
@@ -42,6 +42,8 @@ pub struct DynamicRef {
 pub struct FetchContext {
     pub dynamic_refs: Vec<DynamicRef>,
     pub has_auth: bool,
+    /// For AI calls: the secret name to fetch the API key from.
+    pub ai_api_key_secret: Option<String>,
 }
 
 // =============================================================================
@@ -103,6 +105,7 @@ pub fn build_fetch_context(op: &HttpRequestOp) -> FetchContext {
     FetchContext {
         dynamic_refs: refs,
         has_auth: op.authentication.is_some(),
+        ai_api_key_secret: None,
     }
 }
 
@@ -178,7 +181,10 @@ fn build_subst_map(ctx: &FetchContext) -> HashMap<String, String> {
 // =============================================================================
 
 /// Emit all top-level fetch functions. Returns a map from step_id → FetchContext.
-pub fn emit_fetch_fns(fetch_fns: &[FetchFnInfo], w: &mut CodeWriter) -> HashMap<String, FetchContext> {
+pub fn emit_fetch_fns(
+    fetch_fns: &[FetchFnInfo],
+    w: &mut CodeWriter,
+) -> HashMap<String, FetchContext> {
     let mut contexts = HashMap::new();
     for f in fetch_fns {
         match &f.kind {
@@ -189,6 +195,14 @@ pub fn emit_fetch_fns(fetch_fns: &[FetchFnInfo], w: &mut CodeWriter) -> HashMap<
             }
             FetchFnKind::Ai(op) => {
                 emit_ai_fetch_fn(&f.fn_name, op, w);
+                contexts.insert(
+                    f.step_id.clone(),
+                    FetchContext {
+                        dynamic_refs: Vec::new(),
+                        has_auth: true,
+                        ai_api_key_secret: Some(op.api_key_secret.clone()),
+                    },
+                );
             }
         }
         w.blank();
@@ -283,13 +297,17 @@ fn emit_http_fetch_fn(fn_name: &str, op: &HttpRequestOp, ctx: &FetchContext, w: 
     // Return based on response format
     match op.response_format {
         HttpResponseFormat::Json => {
-            w.line("return { statusCode: resp.statusCode, body: resp.body, headers: resp.headers };");
+            w.line(
+                "return { statusCode: resp.statusCode, body: resp.body, headers: resp.headers };",
+            );
         }
         HttpResponseFormat::Text => {
             w.line("return { statusCode: resp.statusCode, body: new TextDecoder().decode(resp.body), headers: resp.headers };");
         }
         HttpResponseFormat::Binary => {
-            w.line("return { statusCode: resp.statusCode, body: resp.body, headers: resp.headers };");
+            w.line(
+                "return { statusCode: resp.statusCode, body: resp.body, headers: resp.headers };",
+            );
         }
     }
 
@@ -297,8 +315,9 @@ fn emit_http_fetch_fn(fn_name: &str, op: &HttpRequestOp, ctx: &FetchContext, w: 
 }
 
 fn emit_ai_fetch_fn(fn_name: &str, op: &AiCallOp, w: &mut CodeWriter) {
+    // AI fetch functions receive apiKey as a third parameter (passed from handler)
     w.block_open(&format!(
-        "const {} = (sendRequester: HTTPSendRequester, config: Config) =>",
+        "const {} = (sendRequester: HTTPSendRequester, config: any, apiKey: string) =>",
         fn_name
     ));
 
@@ -307,34 +326,38 @@ fn emit_ai_fetch_fn(fn_name: &str, op: &AiCallOp, w: &mut CodeWriter) {
     let system_prompt = emit_value_expr_init(&op.system_prompt);
     let user_prompt = emit_value_expr_init(&op.user_prompt);
 
-    // Build request body
-    w.block_open("const body =");
-    w.line(&format!("model: {},", model));
-    w.line("messages: [");
-    w.indent();
-    w.line(&format!("{{ role: \"system\", content: {} }},", system_prompt));
-    w.line(&format!("{{ role: \"user\", content: {} }},", user_prompt));
-    w.dedent();
-    w.line("],");
-    if let Some(temp) = op.temperature {
-        w.line(&format!("temperature: {},", temp));
+    let provider = op.provider.as_str();
+
+    // Build request body — provider-specific format
+    match provider {
+        "google" => emit_google_body(w, &model, &system_prompt, &user_prompt, op),
+        "anthropic" => emit_anthropic_body(w, &model, &system_prompt, &user_prompt, op),
+        _ => emit_openai_body(w, &model, &system_prompt, &user_prompt, op), // OpenAI-compatible default
     }
-    if let Some(max) = op.max_tokens {
-        w.line(&format!("max_tokens: {},", max));
-    }
-    w.dedent();
-    w.line("};");
-    w.blank();
 
     w.line("const bodyBytes = new TextEncoder().encode(JSON.stringify(body));");
     w.blank();
 
+    // Build request object with provider-specific auth headers
     w.block_open("const req =");
     w.line(&format!("url: {},", base_url));
     w.line("method: \"POST\" as const,");
     w.line("body: Buffer.from(bodyBytes).toString(\"base64\"),");
     w.block_open("headers:");
     w.line("\"Content-Type\": \"application/json\",");
+    match provider {
+        "google" => {
+            w.line("\"x-goog-api-key\": apiKey,");
+        }
+        "anthropic" => {
+            w.line("\"x-api-key\": apiKey,");
+            w.line("\"anthropic-version\": \"2023-06-01\",");
+        }
+        _ => {
+            // OpenAI-compatible
+            w.line("\"Authorization\": `Bearer ${apiKey}`,");
+        }
+    }
     w.dedent();
     w.line("},");
     w.dedent();
@@ -350,6 +373,101 @@ fn emit_ai_fetch_fn(fn_name: &str, op: &AiCallOp, w: &mut CodeWriter) {
     w.line("return JSON.parse(Buffer.from(resp.body, \"base64\").toString(\"utf-8\"));");
 
     w.block_close_semi();
+}
+
+fn emit_openai_body(
+    w: &mut CodeWriter,
+    model: &str,
+    system_prompt: &str,
+    user_prompt: &str,
+    op: &AiCallOp,
+) {
+    w.block_open("const body =");
+    w.line(&format!("model: {},", model));
+    w.line("messages: [");
+    w.indent();
+    w.line(&format!(
+        "{{ role: \"system\", content: {} }},",
+        system_prompt
+    ));
+    w.line(&format!("{{ role: \"user\", content: {} }},", user_prompt));
+    w.dedent();
+    w.line("],");
+    if let Some(temp) = op.temperature {
+        w.line(&format!("temperature: {},", temp));
+    }
+    if let Some(max) = op.max_tokens {
+        w.line(&format!("max_tokens: {},", max));
+    }
+    w.dedent();
+    w.line("};");
+    w.blank();
+}
+
+fn emit_anthropic_body(
+    w: &mut CodeWriter,
+    model: &str,
+    system_prompt: &str,
+    user_prompt: &str,
+    op: &AiCallOp,
+) {
+    w.block_open("const body =");
+    w.line(&format!("model: {},", model));
+    w.line(&format!("system: {},", system_prompt));
+    w.line("messages: [");
+    w.indent();
+    w.line(&format!("{{ role: \"user\", content: {} }},", user_prompt));
+    w.dedent();
+    w.line("],");
+    if let Some(temp) = op.temperature {
+        w.line(&format!("temperature: {},", temp));
+    }
+    if let Some(max) = op.max_tokens {
+        w.line(&format!("max_tokens: {},", max));
+    }
+    w.dedent();
+    w.line("};");
+    w.blank();
+}
+
+fn emit_google_body(
+    w: &mut CodeWriter,
+    _model: &str,
+    system_prompt: &str,
+    user_prompt: &str,
+    op: &AiCallOp,
+) {
+    w.block_open("const body =");
+    // Google uses system_instruction for system prompts
+    w.block_open("system_instruction:");
+    w.line(&format!("parts: [{{ text: {} }}],", system_prompt));
+    w.dedent();
+    w.line("},");
+    // Google uses contents array with parts
+    w.line("contents: [");
+    w.indent();
+    w.line(&format!(
+        "{{ role: \"user\", parts: [{{ text: {} }}] }},",
+        user_prompt
+    ));
+    w.dedent();
+    w.line("],");
+    // Google nests temperature/maxOutputTokens under generationConfig
+    let has_config = op.temperature.is_some() || op.max_tokens.is_some();
+    if has_config {
+        w.block_open("generationConfig:");
+        if let Some(temp) = op.temperature {
+            w.line(&format!("temperature: {},", temp));
+        }
+        if let Some(max) = op.max_tokens {
+            w.line(&format!("maxOutputTokens: {},", max));
+        }
+        w.dedent();
+        w.line("},");
+    }
+    w.dedent();
+    w.line("};");
+    w.blank();
 }
 
 #[cfg(test)]

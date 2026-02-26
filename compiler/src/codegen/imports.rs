@@ -1,7 +1,7 @@
 //! Scan the IR to determine which imports are needed and emit them.
 
-use crate::ir::types::*;
 use super::writer::CodeWriter;
+use crate::ir::types::*;
 
 /// Tracks which symbols are needed from each package.
 #[derive(Default)]

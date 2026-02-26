@@ -180,13 +180,23 @@ pub enum ValueExpr {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "literal_type")]
 pub enum LiteralValue {
-    String { value: String },
-    Number { value: f64 },
-    Integer { value: i64 },
-    Boolean { value: bool },
+    String {
+        value: String,
+    },
+    Number {
+        value: f64,
+    },
+    Integer {
+        value: i64,
+    },
+    Boolean {
+        value: bool,
+    },
     Null,
     /// JSON object/array as a string.
-    Json { value: String },
+    Json {
+        value: String,
+    },
 }
 
 /// Reference to a named output from a previous step.
@@ -212,9 +222,7 @@ pub enum TemplatePart {
 
 impl ValueExpr {
     pub fn string(s: impl Into<String>) -> Self {
-        ValueExpr::Literal(LiteralValue::String {
-            value: s.into(),
-        })
+        ValueExpr::Literal(LiteralValue::String { value: s.into() })
     }
 
     pub fn number(n: f64) -> Self {

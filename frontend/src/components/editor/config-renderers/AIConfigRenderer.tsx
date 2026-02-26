@@ -1,8 +1,8 @@
 "use client";
 
 import {
-  TextField,
   SelectField,
+  TextField,
   TextareaField,
   NumberField,
   CollapsibleSection,
@@ -13,6 +13,7 @@ import { AI_PROVIDERS } from "@6flow/shared/listAIProviders";
 interface Props {
   config: AINodeConfig;
   onChange: (patch: Record<string, unknown>) => void;
+  secretNames?: string[];
 }
 
 const CUSTOM_VALUE = "__custom__";
@@ -34,7 +35,7 @@ function isCustomModel(model: string) {
   return !AI_PROVIDERS.some((p) => p.value === model);
 }
 
-export function AIConfigRenderer({ config, onChange }: Props) {
+export function AIConfigRenderer({ config, onChange, secretNames = [] }: Props) {
   const isCustom = isCustomModel(config.model);
   const selectValue = isCustom ? CUSTOM_VALUE : config.model;
 
@@ -87,13 +88,13 @@ export function AIConfigRenderer({ config, onChange }: Props) {
         </>
       )}
 
-      <TextField
+      <SelectField
         label="API Key Secret"
-        description="References a secret name"
+        description="Select a secret defined in Workflow Settings"
         value={config.apiKeySecret}
         onChange={(apiKeySecret) => onChange({ apiKeySecret })}
-        placeholder="OPENAI_API_KEY"
-        mono
+        options={secretNames.map((name) => ({ value: name, label: name }))}
+        placeholder={secretNames.length === 0 ? "No secrets defined" : "Select a secret"}
       />
 
       <TextareaField

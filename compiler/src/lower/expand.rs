@@ -31,7 +31,9 @@ pub fn expand_node(
     match node {
         WorkflowNode::MintToken(n) => Some(expand_mint_token(&n.id, &n.data.config, id_map)),
         WorkflowNode::BurnToken(n) => Some(expand_burn_token(&n.id, &n.data.config, id_map)),
-        WorkflowNode::TransferToken(n) => Some(expand_transfer_token(&n.id, &n.data.config, id_map)),
+        WorkflowNode::TransferToken(n) => {
+            Some(expand_transfer_token(&n.id, &n.data.config, id_map))
+        }
         WorkflowNode::CheckKyc(n) => Some(expand_check_kyc(&n.id, &n.data.config, id_map)),
         WorkflowNode::CheckBalance(n) => Some(expand_check_balance(&n.id, &n.data.config, id_map)),
         _ => None,
@@ -75,11 +77,21 @@ fn expand_mint_token(
             abi_json,
             data_mappings: vec![
                 AbiDataMapping {
-                    param_name: config.token_abi.inputs.first().map(|i| i.name.clone()).unwrap_or("to".into()),
+                    param_name: config
+                        .token_abi
+                        .inputs
+                        .first()
+                        .map(|i| i.name.clone())
+                        .unwrap_or("to".into()),
                     value: resolve_value_expr(&config.recipient_source, id_map),
                 },
                 AbiDataMapping {
-                    param_name: config.token_abi.inputs.get(1).map(|i| i.name.clone()).unwrap_or("amount".into()),
+                    param_name: config
+                        .token_abi
+                        .inputs
+                        .get(1)
+                        .map(|i| i.name.clone())
+                        .unwrap_or("amount".into()),
                     value: resolve_value_expr(&config.amount_source, id_map),
                 },
             ],
@@ -138,11 +150,21 @@ fn expand_burn_token(
             abi_json,
             data_mappings: vec![
                 AbiDataMapping {
-                    param_name: config.token_abi.inputs.first().map(|i| i.name.clone()).unwrap_or("from".into()),
+                    param_name: config
+                        .token_abi
+                        .inputs
+                        .first()
+                        .map(|i| i.name.clone())
+                        .unwrap_or("from".into()),
                     value: resolve_value_expr(&config.from_source, id_map),
                 },
                 AbiDataMapping {
-                    param_name: config.token_abi.inputs.get(1).map(|i| i.name.clone()).unwrap_or("amount".into()),
+                    param_name: config
+                        .token_abi
+                        .inputs
+                        .get(1)
+                        .map(|i| i.name.clone())
+                        .unwrap_or("amount".into()),
                     value: resolve_value_expr(&config.amount_source, id_map),
                 },
             ],
@@ -201,11 +223,21 @@ fn expand_transfer_token(
             abi_json,
             data_mappings: vec![
                 AbiDataMapping {
-                    param_name: config.token_abi.inputs.first().map(|i| i.name.clone()).unwrap_or("to".into()),
+                    param_name: config
+                        .token_abi
+                        .inputs
+                        .first()
+                        .map(|i| i.name.clone())
+                        .unwrap_or("to".into()),
                     value: resolve_value_expr(&config.to_source, id_map),
                 },
                 AbiDataMapping {
-                    param_name: config.token_abi.inputs.get(1).map(|i| i.name.clone()).unwrap_or("amount".into()),
+                    param_name: config
+                        .token_abi
+                        .inputs
+                        .get(1)
+                        .map(|i| i.name.clone())
+                        .unwrap_or("amount".into()),
                     value: resolve_value_expr(&config.amount_source, id_map),
                 },
             ],
@@ -271,9 +303,13 @@ fn expand_check_kyc(
 
     let url = ValueExpr::Template {
         parts: vec![
-            TemplatePart::Lit { value: config.provider_url.clone() },
+            TemplatePart::Lit {
+                value: config.provider_url.clone(),
+            },
             TemplatePart::Lit { value: "/".into() },
-            TemplatePart::Expr { value: wallet_address },
+            TemplatePart::Expr {
+                value: wallet_address,
+            },
         ],
     };
 

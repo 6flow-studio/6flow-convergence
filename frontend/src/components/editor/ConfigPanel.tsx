@@ -42,7 +42,8 @@ function renderNodeConfig(
   nodeType: NodeType,
   config: Record<string, unknown>,
   onChange: (patch: Record<string, unknown>) => void,
-  isTestnet?: boolean
+  isTestnet?: boolean,
+  secretNames?: string[]
 ) {
   switch (nodeType) {
     case "codeNode":
@@ -56,7 +57,7 @@ function renderNodeConfig(
     case "filter":
       return <FilterConfigRenderer config={config as any} onChange={onChange} />;
     case "ai":
-      return <AIConfigRenderer config={config as any} onChange={onChange} />;
+      return <AIConfigRenderer config={config as any} onChange={onChange} secretNames={secretNames} />;
     case "cronTrigger":
       return <CronTriggerConfigRenderer config={config as any} onChange={onChange} />;
     case "evmLogTrigger":
@@ -66,7 +67,7 @@ function renderNodeConfig(
     case "evmWrite":
       return <EvmWriteConfigRenderer config={config as any} onChange={onChange} isTestnet={isTestnet} />;
     case "getSecret":
-      return <GetSecretConfigRenderer config={config as any} onChange={onChange} />;
+      return <GetSecretConfigRenderer config={config as any} onChange={onChange} secretNames={secretNames} />;
     case "jsonParse":
       return <JsonParseConfigRenderer config={config as any} onChange={onChange} />;
     case "abiEncode":
@@ -236,7 +237,8 @@ export function ConfigPanel() {
               node.data.nodeType,
               config,
               (patch) => updateNodeConfig(node.id, patch),
-              workflowGlobalConfig.isTestnet
+              workflowGlobalConfig.isTestnet,
+              workflowGlobalConfig.secrets.map((s) => s.name).filter(Boolean)
             )}
           </div>
 

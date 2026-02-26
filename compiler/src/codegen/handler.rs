@@ -5,11 +5,11 @@
 
 use std::collections::HashMap;
 
-use crate::ir::types::*;
 use super::fetch_fns::FetchContext;
 use super::operations;
 use super::value_expr::emit_condition;
 use super::writer::CodeWriter;
+use crate::ir::types::*;
 
 /// Emit the handler function signature and body.
 pub fn emit_handler(
@@ -66,9 +66,7 @@ fn emit_capability_instantiations(ir: &WorkflowIR, w: &mut CodeWriter) {
 fn has_http_steps(block: &Block) -> bool {
     block.steps.iter().any(|s| match &s.operation {
         Operation::HttpRequest(_) | Operation::AiCall(_) => true,
-        Operation::Branch(b) => {
-            has_http_steps(&b.true_branch) || has_http_steps(&b.false_branch)
-        }
+        Operation::Branch(b) => has_http_steps(&b.true_branch) || has_http_steps(&b.false_branch),
         _ => false,
     })
 }
@@ -143,7 +141,7 @@ pub fn emit_block(
                 operations::emit_abi_decode(step, op, w);
             }
             Operation::AiCall(op) => {
-                operations::emit_ai_call(step, op, w);
+                operations::emit_ai_call(step, op, fetch_contexts, w);
             }
             Operation::Log(op) => {
                 operations::emit_log(step, op, w);

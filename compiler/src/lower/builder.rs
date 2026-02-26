@@ -7,11 +7,15 @@ use std::collections::{HashMap, HashSet};
 
 use crate::error::CompilerError;
 use crate::ir::types::*;
-use crate::parse::types::{WorkflowNode, Workflow};
 use crate::parse::graph::WorkflowGraph;
+use crate::parse::types::{Workflow, WorkflowNode};
 
 use super::expand::{self, ExpandedStep};
 use super::reference::resolve_value_expr;
+
+const AUTO_RETURN_ID_PREFIX: &str = "auto-return";
+const AUTO_RETURN_LABEL: &str = "Auto Return";
+const AUTO_RETURN_MESSAGE: &str = "Workflow completed";
 
 /// Build the handler body from a topo-sorted list of node IDs.
 pub fn build_handler_body(
@@ -20,11 +24,8 @@ pub fn build_handler_body(
     graph: &WorkflowGraph,
     id_map: &HashMap<String, String>,
 ) -> Result<Block, Vec<CompilerError>> {
-    let node_map: HashMap<&str, &WorkflowNode> = workflow
-        .nodes
-        .iter()
-        .map(|n| (n.id(), n))
-        .collect();
+    let node_map: HashMap<&str, &WorkflowNode> =
+        workflow.nodes.iter().map(|n| (n.id(), n)).collect();
 
     // Skip trigger node
     let non_trigger: Vec<&str> = topo_order
@@ -39,9 +40,72 @@ pub fn build_handler_body(
         .collect();
 
     let mut consumed = HashSet::new();
-    let steps = build_steps(&non_trigger, &node_map, graph, id_map, &mut consumed)?;
+    let mut steps = build_steps(&non_trigger, &node_map, graph, id_map, &mut consumed)?;
+    ensure_terminating_step(&mut steps);
 
     Ok(Block { steps })
+}
+
+fn ensure_terminating_step(steps: &mut Vec<Step>) {
+    if steps_terminate(steps) {
+        return;
+    }
+
+    let step_id = next_auto_return_step_id(steps);
+    steps.push(Step {
+        id: step_id.clone(),
+        source_node_ids: vec![step_id.clone()],
+        label: AUTO_RETURN_LABEL.into(),
+        operation: Operation::Return(ReturnOp {
+            expression: ValueExpr::string(AUTO_RETURN_MESSAGE),
+        }),
+        output: None,
+    });
+}
+
+fn steps_terminate(steps: &[Step]) -> bool {
+    let Some(last) = steps.last() else {
+        return false;
+    };
+
+    match &last.operation {
+        Operation::Return(_) | Operation::ErrorThrow(_) => true,
+        Operation::Branch(branch) if branch.reconverge_at.is_none() => {
+            steps_terminate(&branch.true_branch.steps)
+                && steps_terminate(&branch.false_branch.steps)
+        }
+        _ => false,
+    }
+}
+
+fn next_auto_return_step_id(steps: &[Step]) -> String {
+    let mut ids = HashSet::new();
+    collect_step_ids(steps, &mut ids);
+
+    let mut index = 0;
+    loop {
+        let candidate = if index == 0 {
+            AUTO_RETURN_ID_PREFIX.to_string()
+        } else {
+            format!("{AUTO_RETURN_ID_PREFIX}-{index}")
+        };
+
+        if !ids.contains(&candidate) {
+            return candidate;
+        }
+
+        index += 1;
+    }
+}
+
+fn collect_step_ids(steps: &[Step], ids: &mut HashSet<String>) {
+    for step in steps {
+        ids.insert(step.id.clone());
+        if let Operation::Branch(branch) = &step.operation {
+            collect_step_ids(&branch.true_branch.steps, ids);
+            collect_step_ids(&branch.false_branch.steps, ids);
+        }
+    }
 }
 
 fn build_steps(
@@ -73,7 +137,15 @@ fn build_steps(
         match node {
             WorkflowNode::If(n) => {
                 // Build branch structure
-                match build_branch(node_id, &n.data.config, node_ids, node_map, graph, id_map, consumed) {
+                match build_branch(
+                    node_id,
+                    &n.data.config,
+                    node_ids,
+                    node_map,
+                    graph,
+                    id_map,
+                    consumed,
+                ) {
                     Ok(branch_steps) => steps.extend(branch_steps),
                     Err(e) => errors.extend(e),
                 }
@@ -131,11 +203,24 @@ fn build_branch(
     let false_target = false_target.unwrap_or("");
 
     // Find the merge/reconvergence point: the first node reachable from both branches.
-    let merge_node_id = find_reconvergence(if_node_id, true_target, false_target, all_node_ids, graph);
+    let merge_node_id =
+        find_reconvergence(if_node_id, true_target, false_target, all_node_ids, graph);
 
     // Collect nodes in each branch (between if and merge)
-    let true_nodes = collect_branch_nodes(true_target, merge_node_id.as_deref(), all_node_ids, graph, consumed);
-    let false_nodes = collect_branch_nodes(false_target, merge_node_id.as_deref(), all_node_ids, graph, consumed);
+    let true_nodes = collect_branch_nodes(
+        true_target,
+        merge_node_id.as_deref(),
+        all_node_ids,
+        graph,
+        consumed,
+    );
+    let false_nodes = collect_branch_nodes(
+        false_target,
+        merge_node_id.as_deref(),
+        all_node_ids,
+        graph,
+        consumed,
+    );
 
     // Build true branch steps
     let true_refs: Vec<&str> = true_nodes.iter().map(|s| s.as_str()).collect();
@@ -155,7 +240,11 @@ fn build_branch(
             let field = resolve_value_expr(&c.field, id_map);
             let value = c.value.as_ref().map(|v| resolve_value_expr(v, id_map));
             let operator = parse_comparison_op(&c.operator);
-            ConditionIR { field, operator, value }
+            ConditionIR {
+                field,
+                operator,
+                value,
+            }
         })
         .collect();
 
@@ -331,7 +420,13 @@ fn resolve_predecessor_input(
             "cronTrigger" | "httpTrigger" | "evmLogTrigger" => {
                 let field = match pred_node.node_type() {
                     "httpTrigger" => "input",
-                    _ => if default_field.is_empty() { "input" } else { default_field },
+                    _ => {
+                        if default_field.is_empty() {
+                            "input"
+                        } else {
+                            default_field
+                        }
+                    }
                 };
                 return ValueExpr::trigger_data(field);
             }
@@ -340,7 +435,10 @@ fn resolve_predecessor_input(
     }
 
     // Resolve through id_map in case predecessor was a convenience node
-    let step_id = id_map.get(*pred_id).cloned().unwrap_or_else(|| pred_id.to_string());
+    let step_id = id_map
+        .get(*pred_id)
+        .cloned()
+        .unwrap_or_else(|| pred_id.to_string());
 
     let field = match node_map.get(*pred_id).map(|n| n.node_type()) {
         Some("httpRequest") | Some("ai") => http_field,
@@ -366,9 +464,13 @@ fn lower_node(
         WorkflowNode::EvmWrite(n) => lower_evm_write(node_id, &n.data.config, id_map),
         WorkflowNode::GetSecret(n) => lower_get_secret(node_id, &n.data.config),
         WorkflowNode::CodeNode(n) => lower_code_node(node_id, &n.data.config, id_map),
-        WorkflowNode::JsonParse(n) => lower_json_parse(node_id, &n.data.config, graph, node_map, id_map),
+        WorkflowNode::JsonParse(n) => {
+            lower_json_parse(node_id, &n.data.config, graph, node_map, id_map)
+        }
         WorkflowNode::AbiEncode(n) => lower_abi_encode(node_id, &n.data.config, id_map),
-        WorkflowNode::AbiDecode(n) => lower_abi_decode(node_id, &n.data.config, graph, node_map, id_map),
+        WorkflowNode::AbiDecode(n) => {
+            lower_abi_decode(node_id, &n.data.config, graph, node_map, id_map)
+        }
         WorkflowNode::Filter(n) => lower_filter(node_id, &n.data.config, id_map),
         WorkflowNode::Ai(n) => lower_ai(node_id, &n.data.config, id_map),
         WorkflowNode::Log(n) => lower_log(node_id, &n.data.config, id_map),
@@ -378,7 +480,10 @@ fn lower_node(
         _ => {
             return Err(vec![CompilerError::lower(
                 "L003",
-                format!("Unsupported node type '{}' for direct lowering", node.node_type()),
+                format!(
+                    "Unsupported node type '{}' for direct lowering",
+                    node.node_type()
+                ),
                 Some(node_id.to_string()),
             )]);
         }
@@ -447,11 +552,9 @@ fn lower_http_request(
     });
 
     let authentication = config.authentication.as_ref().and_then(|auth| match auth {
-        crate::parse::types::HttpAuthConfig::BearerToken { token_secret } => {
-            Some(HttpAuth {
-                token_secret: token_secret.clone(),
-            })
-        }
+        crate::parse::types::HttpAuthConfig::BearerToken { token_secret } => Some(HttpAuth {
+            token_secret: token_secret.clone(),
+        }),
         _ => None, // Only BearerToken is supported
     });
 
@@ -470,7 +573,10 @@ fn lower_http_request(
         authentication,
         cache_max_age_seconds: config.cache_max_age,
         timeout_ms: config.timeout,
-        expected_status_codes: config.expected_status_codes.clone().unwrap_or_else(|| vec![200]),
+        expected_status_codes: config
+            .expected_status_codes
+            .clone()
+            .unwrap_or_else(|| vec![200]),
         response_format,
         consensus: ConsensusStrategy::Identical,
     });
@@ -509,8 +615,14 @@ fn lower_evm_read(
         function_name: config.function_name.clone(),
         abi_json,
         args,
-        from_address: config.from_address.as_ref().map(|a| resolve_value_expr(a, id_map)),
-        block_number: config.block_number.as_ref().map(|b| resolve_value_expr(b, id_map)),
+        from_address: config
+            .from_address
+            .as_ref()
+            .map(|a| resolve_value_expr(a, id_map)),
+        block_number: config
+            .block_number
+            .as_ref()
+            .map(|b| resolve_value_expr(b, id_map)),
     });
 
     let output = Some(OutputBinding {
@@ -707,7 +819,11 @@ fn lower_filter(
             let field = resolve_value_expr(&c.field, id_map);
             let value = c.value.as_ref().map(|v| resolve_value_expr(v, id_map));
             let operator = parse_comparison_op(&c.operator);
-            ConditionIR { field, operator, value }
+            ConditionIR {
+                field,
+                operator,
+                value,
+            }
         })
         .collect();
 

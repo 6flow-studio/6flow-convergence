@@ -68,11 +68,7 @@ fn validate_unique_step_ids(ir: &WorkflowIR, errors: &mut Vec<ValidationError>) 
     collect_step_ids(&ir.handler_body, &mut seen, errors);
 }
 
-fn collect_step_ids(
-    block: &Block,
-    seen: &mut HashSet<String>,
-    errors: &mut Vec<ValidationError>,
-) {
+fn collect_step_ids(block: &Block, seen: &mut HashSet<String>, errors: &mut Vec<ValidationError>) {
     for step in &block.steps {
         if !seen.insert(step.id.clone()) {
             errors.push(ValidationError {
@@ -340,7 +336,11 @@ fn validate_block_branch_merge(block: &Block, errors: &mut Vec<ValidationError>)
 // ---------------------------------------------------------------------------
 
 fn validate_secret_refs(ir: &WorkflowIR, errors: &mut Vec<ValidationError>) {
-    let declared: HashSet<&str> = ir.required_secrets.iter().map(|s| s.name.as_str()).collect();
+    let declared: HashSet<&str> = ir
+        .required_secrets
+        .iter()
+        .map(|s| s.name.as_str())
+        .collect();
     validate_block_secret_refs(&ir.handler_body, &declared, errors);
 }
 
@@ -398,7 +398,11 @@ fn collect_secret_refs_from_step(step: &Step) -> Vec<String> {
 // ---------------------------------------------------------------------------
 
 fn validate_evm_chain_refs(ir: &WorkflowIR, errors: &mut Vec<ValidationError>) {
-    let declared: HashSet<&str> = ir.evm_chains.iter().map(|c| c.binding_name.as_str()).collect();
+    let declared: HashSet<&str> = ir
+        .evm_chains
+        .iter()
+        .map(|c| c.binding_name.as_str())
+        .collect();
 
     // Check trigger
     if let TriggerDef::EvmLog(trigger) = &ir.trigger {
@@ -455,7 +459,12 @@ fn validate_cre_budget(ir: &WorkflowIR, errors: &mut Vec<ValidationError>) {
     let mut http_count = 0;
     let mut evm_read_count = 0;
     let mut evm_write_count = 0;
-    count_capabilities(&ir.handler_body, &mut http_count, &mut evm_read_count, &mut evm_write_count);
+    count_capabilities(
+        &ir.handler_body,
+        &mut http_count,
+        &mut evm_read_count,
+        &mut evm_write_count,
+    );
 
     if http_count > MAX_HTTP_CALLS {
         errors.push(ValidationError {
@@ -506,12 +515,22 @@ fn count_capabilities(
                 let mut true_http = 0;
                 let mut true_read = 0;
                 let mut true_write = 0;
-                count_capabilities(&branch.true_branch, &mut true_http, &mut true_read, &mut true_write);
+                count_capabilities(
+                    &branch.true_branch,
+                    &mut true_http,
+                    &mut true_read,
+                    &mut true_write,
+                );
 
                 let mut false_http = 0;
                 let mut false_read = 0;
                 let mut false_write = 0;
-                count_capabilities(&branch.false_branch, &mut false_http, &mut false_read, &mut false_write);
+                count_capabilities(
+                    &branch.false_branch,
+                    &mut false_http,
+                    &mut false_read,
+                    &mut false_write,
+                );
 
                 *http += true_http.max(false_http);
                 *evm_read += true_read.max(false_read);

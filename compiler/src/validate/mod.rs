@@ -2,12 +2,12 @@
 //!
 //! Validates the raw workflow graph before lowering to IR.
 
-pub mod structural;
 pub mod node_rules;
+pub mod structural;
 
 use crate::error::CompilerError;
-use crate::parse::types::{Workflow, WorkflowNode, GlobalConfig};
 use crate::parse::graph::WorkflowGraph;
+use crate::parse::types::{GlobalConfig, Workflow, WorkflowNode};
 
 /// Validate the entire workflow graph (structural + node configs).
 pub fn validate_graph(workflow: &Workflow, graph: &WorkflowGraph) -> Vec<CompilerError> {

@@ -73,11 +73,7 @@ fn test_e003_cross_branch_ref() {
             ValueExpr::boolean(true),
             Block {
                 steps: vec![
-                    make_step_with_output(
-                        "true-step",
-                        log_op(ValueExpr::string("hi")),
-                        "void",
-                    ),
+                    make_step_with_output("true-step", log_op(ValueExpr::string("hi")), "void"),
                     make_step("return-t", return_op(ValueExpr::string("t"))),
                 ],
             },
@@ -125,7 +121,13 @@ fn test_e003_binding_from_parent_scope() {
         ),
         make_step_with_output(
             "merge-1",
-            merge_op("branch-1", vec![("true", ValueExpr::string("ok")), ("false", ValueExpr::string("skip"))]),
+            merge_op(
+                "branch-1",
+                vec![
+                    ("true", ValueExpr::string("ok")),
+                    ("false", ValueExpr::string("skip")),
+                ],
+            ),
             "string",
         ),
     ]);
@@ -146,8 +148,20 @@ fn test_e004_merge_not_immediately_after() {
                 ValueExpr::trigger_data("x"),
                 ComparisonOp::Equals,
                 ValueExpr::boolean(true),
-                Block { steps: vec![make_step_with_output("t-step", log_op(ValueExpr::string("t")), "void")] },
-                Block { steps: vec![make_step_with_output("f-step", log_op(ValueExpr::string("f")), "void")] },
+                Block {
+                    steps: vec![make_step_with_output(
+                        "t-step",
+                        log_op(ValueExpr::string("t")),
+                        "void",
+                    )],
+                },
+                Block {
+                    steps: vec![make_step_with_output(
+                        "f-step",
+                        log_op(ValueExpr::string("f")),
+                        "void",
+                    )],
+                },
                 Some("merge-1"),
             ),
         ),
@@ -155,7 +169,13 @@ fn test_e004_merge_not_immediately_after() {
         make_step("gap-step", log_op(ValueExpr::string("gap"))),
         make_step_with_output(
             "merge-1",
-            merge_op("branch-1", vec![("true", ValueExpr::string("t")), ("false", ValueExpr::string("f"))]),
+            merge_op(
+                "branch-1",
+                vec![
+                    ("true", ValueExpr::string("t")),
+                    ("false", ValueExpr::string("f")),
+                ],
+            ),
             "string",
         ),
     ]);
@@ -198,8 +218,20 @@ fn test_e005_merge_wrong_branch_id() {
                 ValueExpr::trigger_data("x"),
                 ComparisonOp::Equals,
                 ValueExpr::boolean(true),
-                Block { steps: vec![make_step_with_output("t-step", log_op(ValueExpr::string("t")), "void")] },
-                Block { steps: vec![make_step_with_output("f-step", log_op(ValueExpr::string("f")), "void")] },
+                Block {
+                    steps: vec![make_step_with_output(
+                        "t-step",
+                        log_op(ValueExpr::string("t")),
+                        "void",
+                    )],
+                },
+                Block {
+                    steps: vec![make_step_with_output(
+                        "f-step",
+                        log_op(ValueExpr::string("f")),
+                        "void",
+                    )],
+                },
                 Some("merge-1"),
             ),
         ),
@@ -226,8 +258,20 @@ fn test_e006_reconverge_at_non_merge() {
                 ValueExpr::trigger_data("x"),
                 ComparisonOp::Equals,
                 ValueExpr::boolean(true),
-                Block { steps: vec![make_step_with_output("t-step", log_op(ValueExpr::string("t")), "void")] },
-                Block { steps: vec![make_step_with_output("f-step", log_op(ValueExpr::string("f")), "void")] },
+                Block {
+                    steps: vec![make_step_with_output(
+                        "t-step",
+                        log_op(ValueExpr::string("t")),
+                        "void",
+                    )],
+                },
+                Block {
+                    steps: vec![make_step_with_output(
+                        "f-step",
+                        log_op(ValueExpr::string("f")),
+                        "void",
+                    )],
+                },
                 Some("not-a-merge"),
             ),
         ),
@@ -253,7 +297,10 @@ fn test_e007_secret_in_http_bearer_auth() {
     let errors = validate_ir(&ir);
     assert_has_error(&errors, "E007");
     let e007_count = errors.iter().filter(|e| e.code == "E007").count();
-    assert_eq!(e007_count, 1, "Expected 1 E007 error for undeclared bearer token");
+    assert_eq!(
+        e007_count, 1,
+        "Expected 1 E007 error for undeclared bearer token"
+    );
 }
 
 #[test]
@@ -278,7 +325,11 @@ fn test_e007_secret_inside_branch() {
             ValueExpr::boolean(true),
             Block {
                 steps: vec![
-                    make_step_with_output("secret-1", get_secret_op("BRANCH_SECRET"), "{ value: string }"),
+                    make_step_with_output(
+                        "secret-1",
+                        get_secret_op("BRANCH_SECRET"),
+                        "{ value: string }",
+                    ),
                     make_step("return-t", return_op(ValueExpr::string("t"))),
                 ],
             },
@@ -382,7 +433,13 @@ fn test_e009_budget_worst_branch() {
         ),
         make_step_with_output(
             "merge-1",
-            merge_op("branch-1", vec![("true", ValueExpr::string("t")), ("false", ValueExpr::string("f"))]),
+            merge_op(
+                "branch-1",
+                vec![
+                    ("true", ValueExpr::string("t")),
+                    ("false", ValueExpr::string("f")),
+                ],
+            ),
             "string",
         ),
     ]);
@@ -499,14 +556,32 @@ fn test_e012_merge_then_return() {
                 ValueExpr::trigger_data("x"),
                 ComparisonOp::Equals,
                 ValueExpr::boolean(true),
-                Block { steps: vec![make_step_with_output("t-step", log_op(ValueExpr::string("t")), "void")] },
-                Block { steps: vec![make_step_with_output("f-step", log_op(ValueExpr::string("f")), "void")] },
+                Block {
+                    steps: vec![make_step_with_output(
+                        "t-step",
+                        log_op(ValueExpr::string("t")),
+                        "void",
+                    )],
+                },
+                Block {
+                    steps: vec![make_step_with_output(
+                        "f-step",
+                        log_op(ValueExpr::string("f")),
+                        "void",
+                    )],
+                },
                 Some("merge-1"),
             ),
         ),
         make_step_with_output(
             "merge-1",
-            merge_op("branch-1", vec![("true", ValueExpr::string("t")), ("false", ValueExpr::string("f"))]),
+            merge_op(
+                "branch-1",
+                vec![
+                    ("true", ValueExpr::string("t")),
+                    ("false", ValueExpr::string("f")),
+                ],
+            ),
             "string",
         ),
         // return-final is auto-appended by ir_with_steps

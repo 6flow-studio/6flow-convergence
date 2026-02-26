@@ -50,13 +50,19 @@ impl WorkflowGraph {
                 (None, _) => {
                     errors.push(CompilerError::parse(
                         "P002",
-                        format!("Edge '{}' references unknown source node '{}'", edge.id, edge.source),
+                        format!(
+                            "Edge '{}' references unknown source node '{}'",
+                            edge.id, edge.source
+                        ),
                     ));
                 }
                 (_, None) => {
                     errors.push(CompilerError::parse(
                         "P002",
-                        format!("Edge '{}' references unknown target node '{}'", edge.id, edge.target),
+                        format!(
+                            "Edge '{}' references unknown target node '{}'",
+                            edge.id, edge.target
+                        ),
                     ));
                 }
             }
@@ -66,7 +72,10 @@ impl WorkflowGraph {
             return Err(errors);
         }
 
-        Ok(WorkflowGraph { graph, node_indices })
+        Ok(WorkflowGraph {
+            graph,
+            node_indices,
+        })
     }
 
     pub fn successors(&self, node_id: &str) -> Vec<(&str, &EdgeLabel)> {
@@ -104,5 +113,4 @@ impl WorkflowGraph {
     pub fn outgoing_count(&self, node_id: &str) -> usize {
         self.successors(node_id).len()
     }
-
 }

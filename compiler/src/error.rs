@@ -34,7 +34,11 @@ pub struct CompilerError {
 impl std::fmt::Display for CompilerError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.node_id {
-            Some(id) => write!(f, "[{}:{}] {} (node '{}')", self.phase, self.code, self.message, id),
+            Some(id) => write!(
+                f,
+                "[{}:{}] {} (node '{}')",
+                self.phase, self.code, self.message, id
+            ),
             None => write!(f, "[{}:{}] {}", self.phase, self.code, self.message),
         }
     }

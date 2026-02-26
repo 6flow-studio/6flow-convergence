@@ -172,7 +172,10 @@ fn test_branch_both_terminate() {
             ComparisonOp::Equals,
             ValueExpr::string("ok"),
             Block {
-                steps: vec![make_step("return-ok", return_op(ValueExpr::string("success")))],
+                steps: vec![make_step(
+                    "return-ok",
+                    return_op(ValueExpr::string("success")),
+                )],
             },
             Block {
                 steps: vec![make_step("error-1", error_op(ValueExpr::string("failed")))],

@@ -49,7 +49,8 @@ fn validate_node_inner(node_json: &str, global_config_json: &str) -> Vec<ErrorDt
         }
     };
 
-    let global = match serde_json::from_str::<crate::parse::types::GlobalConfig>(global_config_json) {
+    let global = match serde_json::from_str::<crate::parse::types::GlobalConfig>(global_config_json)
+    {
         Ok(g) => g,
         Err(e) => {
             return vec![ErrorDto {

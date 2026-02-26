@@ -2,15 +2,15 @@
 //!
 //! Public API: `codegen(ir) -> CodegenOutput`
 
-mod writer;
-mod value_expr;
-mod imports;
 mod config_schema;
 mod fetch_fns;
+mod files;
 mod handler;
+mod imports;
 mod operations;
 mod trigger;
-mod files;
+mod value_expr;
+mod writer;
 
 use crate::ir::types::WorkflowIR;
 use writer::CodeWriter;
@@ -40,7 +40,11 @@ pub fn codegen(ir: &WorkflowIR) -> CodegenOutput {
     });
 
     // Generate supporting files
-    let env = if ir.metadata.is_testnet { "staging" } else { "production" };
+    let env = if ir.metadata.is_testnet {
+        "staging"
+    } else {
+        "production"
+    };
     output_files.push(GeneratedFile {
         path: format!("config.{env}.json"),
         content: files::gen_config_json(ir),

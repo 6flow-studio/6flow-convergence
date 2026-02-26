@@ -42,7 +42,10 @@ fn test_http_request_get() {
 fn test_http_request_post() {
     let ir = ir_with_steps(vec![make_step_with_output(
         "http-1",
-        http_post("https://api.example.com/submit", ValueExpr::raw(r#"JSON.stringify({ key: "val" })"#)),
+        http_post(
+            "https://api.example.com/submit",
+            ValueExpr::raw(r#"JSON.stringify({ key: "val" })"#),
+        ),
         "any",
     )]);
     let errors = validate_ir(&ir);
@@ -112,7 +115,11 @@ fn test_evm_write() {
             ),
             make_step_with_output(
                 "evm-write-1",
-                evm_write_op("evmClient_eth", "0xContract", ValueExpr::binding("encode-1", "encoded")),
+                evm_write_op(
+                    "evmClient_eth",
+                    "0xContract",
+                    ValueExpr::binding("encode-1", "encoded"),
+                ),
                 "{ txHash: string }",
             ),
         ],
@@ -137,7 +144,11 @@ fn test_evm_write() {
 #[test]
 fn test_get_secret() {
     let ir = ir_with_steps_and_deps(
-        vec![make_step_with_output("secret-1", get_secret_op("MY_SECRET"), "{ value: string }")],
+        vec![make_step_with_output(
+            "secret-1",
+            get_secret_op("MY_SECRET"),
+            "{ value: string }",
+        )],
         vec![("MY_SECRET", "MY_SECRET_VAR")],
         vec![],
     );
@@ -272,7 +283,10 @@ fn test_abi_decode() {
     }
     // Verify destructure_fields survived round-trip
     let output = rt.handler_body.steps[1].output.as_ref().unwrap();
-    assert_eq!(output.destructure_fields.as_ref().unwrap(), &vec!["from".to_string(), "value".to_string()]);
+    assert_eq!(
+        output.destructure_fields.as_ref().unwrap(),
+        &vec!["from".to_string(), "value".to_string()]
+    );
 }
 
 // =============================================================================
@@ -288,10 +302,16 @@ fn test_branch_no_reconverge() {
             ComparisonOp::Equals,
             ValueExpr::string("active"),
             Block {
-                steps: vec![make_step("return-t", return_op(ValueExpr::string("active")))],
+                steps: vec![make_step(
+                    "return-t",
+                    return_op(ValueExpr::string("active")),
+                )],
             },
             Block {
-                steps: vec![make_step("return-f", return_op(ValueExpr::string("inactive")))],
+                steps: vec![make_step(
+                    "return-f",
+                    return_op(ValueExpr::string("inactive")),
+                )],
             },
             None,
         ),
@@ -417,7 +437,10 @@ fn test_filter_skip() {
 
     let rt = roundtrip(&ir);
     if let Operation::Filter(op) = &rt.handler_body.steps[0].operation {
-        assert!(matches!(&op.non_match_behavior, FilterNonMatchBehavior::Skip));
+        assert!(matches!(
+            &op.non_match_behavior,
+            FilterNonMatchBehavior::Skip
+        ));
     } else {
         panic!("Expected Filter");
     }
@@ -430,7 +453,11 @@ fn test_filter_skip() {
 #[test]
 fn test_ai_call() {
     let ir = ir_with_steps_and_deps(
-        vec![make_step_with_output("ai-1", ai_call_op("openai", "OPENAI_KEY"), "any")],
+        vec![make_step_with_output(
+            "ai-1",
+            ai_call_op("openai", "OPENAI_KEY"),
+            "any",
+        )],
         vec![("OPENAI_KEY", "OPENAI_KEY_VAR")],
         vec![],
     );
@@ -454,9 +481,10 @@ fn test_ai_call() {
 
 #[test]
 fn test_log_and_error() {
-    let mut ir = ir_with_steps(vec![
-        make_step("log-1", log_op(ValueExpr::string("about to fail"))),
-    ]);
+    let mut ir = ir_with_steps(vec![make_step(
+        "log-1",
+        log_op(ValueExpr::string("about to fail")),
+    )]);
     // Replace the auto-appended Return with ErrorThrow
     ir.handler_body.steps.pop();
     ir.handler_body.steps.push(make_step(
@@ -467,6 +495,12 @@ fn test_log_and_error() {
     assert!(errors.is_empty(), "Expected no errors, got: {:?}", errors);
 
     let rt = roundtrip(&ir);
-    assert!(matches!(&rt.handler_body.steps[0].operation, Operation::Log(_)));
-    assert!(matches!(&rt.handler_body.steps[1].operation, Operation::ErrorThrow(_)));
+    assert!(matches!(
+        &rt.handler_body.steps[0].operation,
+        Operation::Log(_)
+    ));
+    assert!(matches!(
+        &rt.handler_body.steps[1].operation,
+        Operation::ErrorThrow(_)
+    ));
 }

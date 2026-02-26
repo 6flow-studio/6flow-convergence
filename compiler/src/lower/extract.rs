@@ -5,7 +5,7 @@
 use std::collections::HashSet;
 
 use crate::ir::types::*;
-use crate::parse::types::{Workflow, WorkflowNode, GlobalConfig};
+use crate::parse::types::{GlobalConfig, Workflow, WorkflowNode};
 
 use super::trigger::make_evm_binding_name;
 
@@ -71,10 +71,7 @@ fn get_chain_selector(node: &WorkflowNode) -> Option<String> {
 
 /// Extract user-configurable fields into config_schema.
 /// This is called after trigger config extraction to add fields from specific node patterns.
-pub fn extract_config_from_nodes(
-    workflow: &Workflow,
-    existing: &mut Vec<ConfigField>,
-) {
+pub fn extract_config_from_nodes(workflow: &Workflow, existing: &mut Vec<ConfigField>) {
     let existing_names: HashSet<String> = existing.iter().map(|f| f.name.clone()).collect();
 
     // Walk nodes looking for common patterns that produce config fields.

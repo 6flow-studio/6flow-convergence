@@ -411,21 +411,31 @@ pub fn evm_read_op(chain: &str, contract: &str, func: &str) -> Operation {
         evm_client_binding: chain.into(),
         contract_address: ValueExpr::string(contract),
         function_name: func.into(),
-        abi_json: format!(r#"[{{"name":"{}","type":"function","inputs":[],"outputs":[]}}]"#, func),
+        abi_json: format!(
+            r#"[{{"name":"{}","type":"function","inputs":[],"outputs":[]}}]"#,
+            func
+        ),
         args: vec![],
         from_address: None,
         block_number: None,
     })
 }
 
-pub fn evm_read_op_with_args(chain: &str, contract: &str, func: &str, args: Vec<EvmArg>) -> Operation {
+pub fn evm_read_op_with_args(
+    chain: &str,
+    contract: &str,
+    func: &str,
+    args: Vec<EvmArg>,
+) -> Operation {
     Operation::EvmRead(EvmReadOp {
         evm_client_binding: chain.into(),
         contract_address: ValueExpr::string(contract),
         function_name: func.into(),
         abi_json: r#"[]"#.into(),
         args,
-        from_address: Some(ValueExpr::string("0x0000000000000000000000000000000000000000")),
+        from_address: Some(ValueExpr::string(
+            "0x0000000000000000000000000000000000000000",
+        )),
         block_number: None,
     })
 }

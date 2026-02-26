@@ -112,13 +112,17 @@ mod tests {
     #[test]
     fn pure_literal() {
         let result = resolve_value_expr("hello world", &HashMap::new());
-        assert!(matches!(result, ValueExpr::Literal(LiteralValue::String { value }) if value == "hello world"));
+        assert!(
+            matches!(result, ValueExpr::Literal(LiteralValue::String { value }) if value == "hello world")
+        );
     }
 
     #[test]
     fn pure_reference() {
         let result = resolve_value_expr("{{http-1.body}}", &HashMap::new());
-        assert!(matches!(result, ValueExpr::Binding(BindingRef { step_id, field_path }) if step_id == "http-1" && field_path == "body"));
+        assert!(
+            matches!(result, ValueExpr::Binding(BindingRef { step_id, field_path }) if step_id == "http-1" && field_path == "body")
+        );
     }
 
     #[test]
@@ -149,6 +153,8 @@ mod tests {
         let mut map = HashMap::new();
         map.insert("mint-1".to_string(), "mint-1___write".to_string());
         let result = resolve_value_expr("{{mint-1.txHash}}", &map);
-        assert!(matches!(result, ValueExpr::Binding(BindingRef { step_id, .. }) if step_id == "mint-1___write"));
+        assert!(
+            matches!(result, ValueExpr::Binding(BindingRef { step_id, .. }) if step_id == "mint-1___write")
+        );
     }
 }

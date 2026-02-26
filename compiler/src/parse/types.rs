@@ -276,10 +276,7 @@ impl WorkflowNode {
     }
 
     pub fn is_terminal(&self) -> bool {
-        matches!(
-            self,
-            WorkflowNode::Return(_) | WorkflowNode::Error(_)
-        )
+        matches!(self, WorkflowNode::Return(_) | WorkflowNode::Error(_))
     }
 }
 

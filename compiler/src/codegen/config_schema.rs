@@ -1,7 +1,7 @@
 //! Emit `configSchema` Zod object and `type Config`.
 
-use crate::ir::types::*;
 use super::writer::CodeWriter;
+use crate::ir::types::*;
 
 /// Emit the configSchema and Config type.
 pub fn emit_config_schema(fields: &[ConfigField], w: &mut CodeWriter) {
@@ -21,7 +21,11 @@ pub fn emit_config_schema(fields: &[ConfigField], w: &mut CodeWriter) {
         };
 
         let with_default = if let Some(default) = &field.default_value {
-            format!("{}.default({})", zod_call, format_default(default, &field.zod_type))
+            format!(
+                "{}.default({})",
+                zod_call,
+                format_default(default, &field.zod_type)
+            )
         } else {
             zod_call
         };

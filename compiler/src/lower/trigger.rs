@@ -4,7 +4,9 @@
 
 use crate::error::CompilerError;
 use crate::ir::types::*;
-use crate::parse::types::{WorkflowNode, CronTriggerConfig, HttpTriggerConfig, EvmLogTriggerConfig};
+use crate::parse::types::{
+    CronTriggerConfig, EvmLogTriggerConfig, HttpTriggerConfig, WorkflowNode,
+};
 
 use super::reference::resolve_value_expr;
 
@@ -59,9 +61,9 @@ fn lower_cron_trigger(
 
 fn lower_http_trigger(config: &HttpTriggerConfig) -> Result<TriggerResult, Vec<CompilerError>> {
     let authorized_keys = match &config.authentication {
-        crate::parse::types::WebhookAuth::EvmSignature { authorized_addresses } => {
-            authorized_addresses.clone()
-        }
+        crate::parse::types::WebhookAuth::EvmSignature {
+            authorized_addresses,
+        } => authorized_addresses.clone(),
         _ => vec![], // No CRE-level auth for non-EVM auth types
     };
 
@@ -72,7 +74,9 @@ fn lower_http_trigger(config: &HttpTriggerConfig) -> Result<TriggerResult, Vec<C
     })
 }
 
-fn lower_evm_log_trigger(config: &EvmLogTriggerConfig) -> Result<TriggerResult, Vec<CompilerError>> {
+fn lower_evm_log_trigger(
+    config: &EvmLogTriggerConfig,
+) -> Result<TriggerResult, Vec<CompilerError>> {
     let binding_name = make_evm_binding_name(&config.chain_selector_name);
 
     let contract_addresses: Vec<ValueExpr> = config
@@ -84,13 +88,22 @@ fn lower_evm_log_trigger(config: &EvmLogTriggerConfig) -> Result<TriggerResult, 
     let mut topic_filters = Vec::new();
     if let Some(filters) = &config.topic_filters {
         if let Some(t1) = &filters.topic1 {
-            topic_filters.push(TopicFilter { index: 1, values: t1.clone() });
+            topic_filters.push(TopicFilter {
+                index: 1,
+                values: t1.clone(),
+            });
         }
         if let Some(t2) = &filters.topic2 {
-            topic_filters.push(TopicFilter { index: 2, values: t2.clone() });
+            topic_filters.push(TopicFilter {
+                index: 2,
+                values: t2.clone(),
+            });
         }
         if let Some(t3) = &filters.topic3 {
-            topic_filters.push(TopicFilter { index: 3, values: t3.clone() });
+            topic_filters.push(TopicFilter {
+                index: 3,
+                values: t3.clone(),
+            });
         }
     }
 

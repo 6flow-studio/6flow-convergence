@@ -126,9 +126,19 @@ fn test_template_with_mixed_parts() {
     if let ValueExpr::Template { parts } = &rt {
         assert_eq!(parts.len(), 4);
         assert!(matches!(&parts[0], TemplatePart::Lit { value } if value == "https://api.com/"));
-        assert!(matches!(&parts[1], TemplatePart::Expr { value: ValueExpr::Binding(_) }));
+        assert!(matches!(
+            &parts[1],
+            TemplatePart::Expr {
+                value: ValueExpr::Binding(_)
+            }
+        ));
         assert!(matches!(&parts[2], TemplatePart::Lit { value } if value == "/status?chain="));
-        assert!(matches!(&parts[3], TemplatePart::Expr { value: ValueExpr::ConfigRef { .. } }));
+        assert!(matches!(
+            &parts[3],
+            TemplatePart::Expr {
+                value: ValueExpr::ConfigRef { .. }
+            }
+        ));
     } else {
         panic!("Expected Template, got {:?}", rt);
     }

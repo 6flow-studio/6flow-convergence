@@ -4,19 +4,19 @@
 //! SYNC NOTE: When node types/configs change in `shared/model/node.ts`,
 //! re-check this orchestrator and the lower submodules for full coverage.
 
+pub mod builder;
+pub mod expand;
+pub mod extract;
+pub mod reference;
 pub mod topo;
 pub mod trigger;
-pub mod extract;
-pub mod expand;
-pub mod reference;
-pub mod builder;
 
 use std::collections::HashMap;
 
 use crate::error::CompilerError;
 use crate::ir::types::*;
-use crate::parse::types::Workflow;
 use crate::parse::graph::WorkflowGraph;
+use crate::parse::types::Workflow;
 
 /// Lower a parsed workflow + graph into a WorkflowIR.
 pub fn lower(workflow: &Workflow, graph: &WorkflowGraph) -> Result<WorkflowIR, Vec<CompilerError>> {
@@ -70,7 +70,9 @@ pub fn lower(workflow: &Workflow, graph: &WorkflowGraph) -> Result<WorkflowIR, V
         config_schema: config_fields,
         required_secrets: secrets,
         evm_chains,
-        user_rpcs: workflow.global_config.rpcs
+        user_rpcs: workflow
+            .global_config
+            .rpcs
             .iter()
             .map(|r| RpcEntry {
                 chain_name: r.chain_name.clone(),
