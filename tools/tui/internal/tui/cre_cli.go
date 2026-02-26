@@ -617,17 +617,17 @@ func UpdateLocalVariable(workflowID, workflowName, target, kind, key, value stri
 		appendLog("project path: " + projectYamlPath)
 		return &SecretsCommandResult{Logs: logs}, nil
 	case "secret_env":
-		secretID := normalizeSecretID(key)
-		if secretID == "" {
+		secretIDInput := strings.TrimSpace(key)
+		if secretIDInput == "" {
 			return &SecretsCommandResult{Logs: logs}, errors.New("secret id is required")
 		}
 		manifest, err := loadSecretsManifest(secretsYamlPath)
 		if err != nil {
 			return &SecretsCommandResult{Logs: logs}, err
 		}
-		envVars, exists := manifest.SecretsNames[secretID]
+		secretID, envVars, exists := resolveSecretByID(manifest, secretIDInput)
 		if !exists {
-			return &SecretsCommandResult{Logs: logs}, fmt.Errorf("secret %q does not exist", secretID)
+			return &SecretsCommandResult{Logs: logs}, fmt.Errorf("secret %q does not exist", secretIDInput)
 		}
 		envVar := ""
 		if len(envVars) > 0 {
@@ -733,20 +733,29 @@ func saveSecretsManifest(secretsYamlPath string, manifest *secretsManifest) erro
 }
 
 func normalizeSecretID(secretID string) string {
+	return strings.TrimSpace(secretID)
+}
+
+func resolveSecretByID(manifest *secretsManifest, secretID string) (string, []string, bool) {
+	if manifest == nil || manifest.SecretsNames == nil {
+		return "", nil, false
+	}
+
 	trimmed := strings.TrimSpace(secretID)
 	if trimmed == "" {
-		return ""
+		return "", nil, false
 	}
-	return strings.ToUpper(strings.ReplaceAll(trimmed, " ", "_"))
+
+	envVars, ok := manifest.SecretsNames[trimmed]
+	return trimmed, envVars, ok
 }
 
 func defaultEnvVarForSecret(secretID string) string {
-	normalized := normalizeSecretID(secretID)
-	normalized = regexp.MustCompile(`[^A-Z0-9_]`).ReplaceAllString(normalized, "_")
-	if normalized == "" {
-		normalized = "SECRET"
+	raw := strings.TrimSpace(secretID)
+	if raw == "" {
+		raw = "SECRET"
 	}
-	return normalized
+	return raw
 }
 
 func listLocalSecretEntries(manifest *secretsManifest, dotEnvPath string) []LocalSecretEntry {
@@ -876,12 +885,15 @@ func upsertLocalSecret(workflowID, workflowName, target, secretID, secretValue s
 		return &SecretsCommandResult{Logs: logs}, err
 	}
 
-	envVars, exists := manifest.SecretsNames[id]
+	resolvedID, envVars, exists := resolveSecretByID(manifest, secretID)
 	if mustExist && !exists {
-		return &SecretsCommandResult{Logs: logs}, fmt.Errorf("secret %q does not exist", id)
+		return &SecretsCommandResult{Logs: logs}, fmt.Errorf("secret %q does not exist", strings.TrimSpace(secretID))
 	}
 	if !mustExist && exists {
-		return &SecretsCommandResult{Logs: logs}, fmt.Errorf("secret %q already exists", id)
+		return &SecretsCommandResult{Logs: logs}, fmt.Errorf("secret %q already exists", resolvedID)
+	}
+	if mustExist && exists {
+		id = resolvedID
 	}
 
 	envVar := ""
@@ -919,7 +931,7 @@ func DeleteLocalSecret(workflowID, workflowName, target, secretID string) (*Secr
 		appendLog(l)
 	}
 
-	id := normalizeSecretID(secretID)
+	id := strings.TrimSpace(secretID)
 	if id == "" {
 		return &SecretsCommandResult{Logs: logs}, errors.New("secret id is required")
 	}
@@ -928,10 +940,11 @@ func DeleteLocalSecret(workflowID, workflowName, target, secretID string) (*Secr
 	if err != nil {
 		return &SecretsCommandResult{Logs: logs}, err
 	}
-	envVars, exists := manifest.SecretsNames[id]
+	resolvedID, envVars, exists := resolveSecretByID(manifest, id)
 	if !exists {
 		return &SecretsCommandResult{Logs: logs}, fmt.Errorf("secret %q does not exist", id)
 	}
+	id = resolvedID
 
 	for _, envVar := range envVars {
 		if err := setDotEnvValue(dotEnvPath, envVar, ""); err != nil {
