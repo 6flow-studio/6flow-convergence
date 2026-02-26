@@ -12,6 +12,7 @@ import {
 } from "@/lib/compiler/compiler-types";
 import { getCompilerWorkerClient } from "@/lib/compiler/compiler-worker-client";
 import { buildWorkflowInput } from "@/lib/compiler/build-workflow-input";
+import { getCompilerVersion } from "@/lib/compiler/get-compiler-version";
 import {
   buildCompiledZipBlob,
   getCompiledZipFileName,
@@ -338,6 +339,7 @@ export function useCompiler(): UseCompilerResult {
         fileName,
         fileSize: blob.size,
         fileCount: result.files.length,
+        compilerVersion: await getCompilerVersion(),
         compiledAt: Date.now(),
       });
 

@@ -69,6 +69,7 @@ export async function GET(
       {
         downloadUrl: artifact.downloadUrl,
         fileName: artifact.fileName,
+        compilerVersion: artifact.compilerVersion,
       },
       {
         status: 200,
