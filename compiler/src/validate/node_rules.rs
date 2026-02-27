@@ -210,15 +210,6 @@ pub fn validate_node_config(node: &WorkflowNode, global: &GlobalConfig) -> Vec<C
                 ));
             }
         }
-        WorkflowNode::Log(n) => {
-            if n.data.config.message_template.trim().is_empty() {
-                errors.push(CompilerError::validate(
-                    "N015",
-                    "Log message template must not be empty",
-                    node_id,
-                ));
-            }
-        }
         WorkflowNode::Error(n) => {
             if n.data.config.error_message.trim().is_empty() {
                 errors.push(CompilerError::validate(

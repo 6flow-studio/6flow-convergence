@@ -25,9 +25,9 @@
         },
         {
             "id": "orphan",
-            "type": "log",
+            "type": "error",
             "position": { "x": 0, "y": 0 },
-            "data": { "label": "Orphan", "config": { "level": "info", "messageTemplate": "hello" } }
+            "data": { "label": "Orphan", "config": { "errorMessage": "unreachable" } }
         }
     ],
     "edges": [

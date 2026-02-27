@@ -37,7 +37,7 @@ fn kyc_minting_ir_serializes_to_json() {
     // Verify the branch structure
     if let Operation::Branch(branch) = &deserialized.handler_body.steps[2].operation {
         assert_eq!(branch.true_branch.steps.len(), 3); // encode, write, return
-        assert_eq!(branch.false_branch.steps.len(), 2); // log, return
+        assert_eq!(branch.false_branch.steps.len(), 1); // return
         assert!(branch.reconverge_at.is_none());
     } else {
         panic!("Step 2 should be a Branch");

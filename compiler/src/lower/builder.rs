@@ -473,7 +473,6 @@ fn lower_node(
         }
         WorkflowNode::Filter(n) => lower_filter(node_id, &n.data.config, id_map),
         WorkflowNode::Ai(n) => lower_ai(node_id, &n.data.config, id_map),
-        WorkflowNode::Log(n) => lower_log(node_id, &n.data.config, id_map),
         WorkflowNode::Error(n) => lower_error(node_id, &n.data.config, id_map),
         WorkflowNode::Return(n) => lower_return(node_id, &n.data.config, id_map),
         WorkflowNode::Merge(n) => lower_merge_standalone(node_id, &n.data.config),
@@ -874,26 +873,6 @@ fn lower_ai(
     });
 
     (op, output)
-}
-
-fn lower_log(
-    _node_id: &str,
-    config: &crate::parse::types::LogConfig,
-    id_map: &HashMap<String, String>,
-) -> (Operation, Option<OutputBinding>) {
-    let level = match config.level.as_str() {
-        "debug" => LogLevel::Debug,
-        "warn" => LogLevel::Warn,
-        "error" => LogLevel::Error,
-        _ => LogLevel::Info,
-    };
-
-    let op = Operation::Log(LogOp {
-        level,
-        message: resolve_value_expr(&config.message_template, id_map),
-    });
-
-    (op, None)
 }
 
 fn lower_error(

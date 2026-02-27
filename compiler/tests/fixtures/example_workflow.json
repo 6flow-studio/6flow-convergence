@@ -90,18 +90,6 @@
             }
         },
         {
-            "id": "log-1",
-            "type": "log",
-            "position": { "x": 900, "y": 300 },
-            "data": {
-                "label": "Log Rejection",
-                "config": {
-                    "level": "warn",
-                    "messageTemplate": "User {{parse-1.walletAddress}} not KYC approved"
-                }
-            }
-        },
-        {
             "id": "return-1",
             "type": "return",
             "position": { "x": 1100, "y": 100 },
@@ -125,9 +113,8 @@
         { "id": "e2", "source": "http-1", "target": "parse-1" },
         { "id": "e3", "source": "parse-1", "target": "condition-1" },
         { "id": "e4", "source": "condition-1", "target": "mint-1", "sourceHandle": "true" },
-        { "id": "e5", "source": "condition-1", "target": "log-1", "sourceHandle": "false" },
-        { "id": "e6", "source": "mint-1", "target": "return-1" },
-        { "id": "e7", "source": "log-1", "target": "return-2" }
+        { "id": "e5", "source": "condition-1", "target": "return-2", "sourceHandle": "false" },
+        { "id": "e6", "source": "mint-1", "target": "return-1" }
     ],
     "createdAt": "2025-01-01T00:00:00Z",
     "updatedAt": "2025-01-01T00:00:00Z"

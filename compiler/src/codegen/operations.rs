@@ -295,24 +295,6 @@ pub fn emit_ai_call(
     }
 }
 
-/// Emit a Log call.
-pub fn emit_log(_step: &Step, op: &LogOp, w: &mut CodeWriter) {
-    let msg = emit_value_expr(&op.message);
-    let prefix = match op.level {
-        LogLevel::Debug => "[DEBUG] ",
-        LogLevel::Info => "",
-        LogLevel::Warn => "[WARN] ",
-        LogLevel::Error => "[ERROR] ",
-    };
-
-    if prefix.is_empty() {
-        w.line(&format!("runtime.log({});", msg));
-    } else {
-        // Wrap in template literal if not already
-        w.line(&format!("runtime.log(`{}${{{}}}`);", prefix, msg));
-    }
-}
-
 /// Emit an ErrorThrow.
 pub fn emit_error_throw(_step: &Step, op: &ErrorThrowOp, w: &mut CodeWriter) {
     let msg = emit_value_expr(&op.message);
@@ -414,31 +396,6 @@ mod tests {
                 "JSON.parse(Buffer.from(step_http_1.body, \"base64\").toString(\"utf-8\"))"
             )
         );
-    }
-
-    #[test]
-    fn test_log_warn() {
-        let step = make_step(
-            "log-1",
-            "Log warning",
-            Operation::Log(LogOp {
-                level: LogLevel::Warn,
-                message: ValueExpr::string("something bad"),
-            }),
-            None,
-        );
-        let mut w = CodeWriter::new();
-        emit_log(
-            &step,
-            match &step.operation {
-                Operation::Log(op) => op,
-                _ => unreachable!(),
-            },
-            &mut w,
-        );
-        let out = w.finish();
-        assert!(out.contains("[WARN]"));
-        assert!(out.contains("runtime.log"));
     }
 
     #[test]

@@ -41,13 +41,13 @@ fn test_e002_dup_id_across_branches() {
             ValueExpr::boolean(true),
             Block {
                 steps: vec![
-                    make_step("dup-step", log_op(ValueExpr::string("true"))),
+                    make_step("dup-step", noop_op()),
                     make_step("return-t", return_op(ValueExpr::string("t"))),
                 ],
             },
             Block {
                 steps: vec![
-                    make_step("dup-step", log_op(ValueExpr::string("false"))), // duplicate!
+                    make_step("dup-step", noop_op()), // duplicate!
                     make_step("return-f", return_op(ValueExpr::string("f"))),
                 ],
             },
@@ -73,7 +73,7 @@ fn test_e003_cross_branch_ref() {
             ValueExpr::boolean(true),
             Block {
                 steps: vec![
-                    make_step_with_output("true-step", log_op(ValueExpr::string("hi")), "void"),
+                    make_step_with_output("true-step", noop_op(), "void"),
                     make_step("return-t", return_op(ValueExpr::string("t"))),
                 ],
             },
@@ -151,14 +151,14 @@ fn test_e004_merge_not_immediately_after() {
                 Block {
                     steps: vec![make_step_with_output(
                         "t-step",
-                        log_op(ValueExpr::string("t")),
+                        noop_op(),
                         "void",
                     )],
                 },
                 Block {
                     steps: vec![make_step_with_output(
                         "f-step",
-                        log_op(ValueExpr::string("f")),
+                        noop_op(),
                         "void",
                     )],
                 },
@@ -166,7 +166,7 @@ fn test_e004_merge_not_immediately_after() {
             ),
         ),
         // Gap: a log step between branch and merge
-        make_step("gap-step", log_op(ValueExpr::string("gap"))),
+        make_step("gap-step", noop_op()),
         make_step_with_output(
             "merge-1",
             merge_op(
@@ -221,14 +221,14 @@ fn test_e005_merge_wrong_branch_id() {
                 Block {
                     steps: vec![make_step_with_output(
                         "t-step",
-                        log_op(ValueExpr::string("t")),
+                        noop_op(),
                         "void",
                     )],
                 },
                 Block {
                     steps: vec![make_step_with_output(
                         "f-step",
-                        log_op(ValueExpr::string("f")),
+                        noop_op(),
                         "void",
                     )],
                 },
@@ -261,14 +261,14 @@ fn test_e006_reconverge_at_non_merge() {
                 Block {
                     steps: vec![make_step_with_output(
                         "t-step",
-                        log_op(ValueExpr::string("t")),
+                        noop_op(),
                         "void",
                     )],
                 },
                 Block {
                     steps: vec![make_step_with_output(
                         "f-step",
-                        log_op(ValueExpr::string("f")),
+                        noop_op(),
                         "void",
                     )],
                 },
@@ -276,7 +276,7 @@ fn test_e006_reconverge_at_non_merge() {
             ),
         ),
         // This is a Log, not a Merge
-        make_step("not-a-merge", log_op(ValueExpr::string("not merge"))),
+        make_step("not-a-merge", noop_op()),
     ]);
     let errors = validate_ir(&ir);
     assert_has_error(&errors, "E006");
@@ -514,7 +514,7 @@ fn test_e012_branch_one_side_missing_return() {
             },
             Block {
                 // No return or error — missing termination
-                steps: vec![make_step("log-f", log_op(ValueExpr::string("f")))],
+                steps: vec![make_step("log-f", noop_op())],
             },
             None,
         ),
@@ -559,14 +559,14 @@ fn test_e012_merge_then_return() {
                 Block {
                     steps: vec![make_step_with_output(
                         "t-step",
-                        log_op(ValueExpr::string("t")),
+                        noop_op(),
                         "void",
                     )],
                 },
                 Block {
                     steps: vec![make_step_with_output(
                         "f-step",
-                        log_op(ValueExpr::string("f")),
+                        noop_op(),
                         "void",
                     )],
                 },

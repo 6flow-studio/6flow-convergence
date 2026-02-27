@@ -49,14 +49,14 @@ fn test_diamond_pattern() {
                 Block {
                     steps: vec![make_step_with_output(
                         "ok-log",
-                        log_op(ValueExpr::string("OK")),
+                        noop_op(),
                         "void",
                     )],
                 },
                 Block {
                     steps: vec![make_step_with_output(
                         "err-log",
-                        log_op(ValueExpr::string("Error")),
+                        noop_op(),
                         "void",
                     )],
                 },
@@ -105,14 +105,14 @@ fn test_nested_branches() {
                                 Block {
                                     steps: vec![make_step_with_output(
                                         "x-step",
-                                        log_op(ValueExpr::string("approved")),
+                                        noop_op(),
                                         "void",
                                     )],
                                 },
                                 Block {
                                     steps: vec![make_step_with_output(
                                         "y-step",
-                                        log_op(ValueExpr::string("denied")),
+                                        noop_op(),
                                         "void",
                                     )],
                                 },
@@ -135,7 +135,7 @@ fn test_nested_branches() {
                 Block {
                     steps: vec![make_step_with_output(
                         "z-step",
-                        log_op(ValueExpr::string("request failed")),
+                        noop_op(),
                         "void",
                     )],
                 },

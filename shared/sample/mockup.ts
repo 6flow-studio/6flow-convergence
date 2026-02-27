@@ -41,34 +41,12 @@ export const mockupWorkflow: Workflow = {
         }
       }
     },
-    {
-      "id": "node_1772086555694_0",
-      "type": "log",
-      "position": {
-        "x": 767.1930041949838,
-        "y": 343.3337669586786
-      },
-      "data": {
-        "label": "Log",
-        "config": {
-          "level": "info",
-          "messageTemplate": "{{node_1772083694834_2.candidates[0].content.parts[0].text}}"
-        }
-      }
-    }
   ],
   "edges": [
     {
       "id": "xy-edge__node_1772084501876_1output-node_1772083694834_2input",
       "source": "node_1772084501876_1",
       "target": "node_1772083694834_2",
-      "sourceHandle": "output",
-      "targetHandle": "input"
-    },
-    {
-      "id": "xy-edge__node_1772083694834_2output-node_1772086555694_0input",
-      "source": "node_1772083694834_2",
-      "target": "node_1772086555694_0",
       "sourceHandle": "output",
       "targetHandle": "input"
     }

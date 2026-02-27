@@ -25,7 +25,6 @@ import {
   GetSecretConfigRenderer,
   JsonParseConfigRenderer,
   ReturnConfigRenderer,
-  LogConfigRenderer,
   ErrorConfigRenderer,
   CheckKycConfigRenderer,
   TokenNodeConfigRenderer,
@@ -78,8 +77,6 @@ function renderNodeConfig(
       return <MergeConfigRenderer config={config as any} onChange={onChange} />;
     case "return":
       return <ReturnConfigRenderer config={config as any} onChange={onChange} />;
-    case "log":
-      return <LogConfigRenderer config={config as any} onChange={onChange} />;
     case "error":
       return <ErrorConfigRenderer config={config as any} onChange={onChange} />;
     case "mintToken":
