@@ -41,6 +41,8 @@ const onCronTrigger = (runtime: Runtime<Config>, triggerData: CronTrigger): stri
   const httpClient = new cre.capabilities.HTTPClient();
   const evmClient_eth_sepolia = new cre.capabilities.EVMClient(getNetwork({ chainFamily: "evm", chainSelectorName: "ethereum-testnet-sepolia", isTestnet: true })!.chainSelector.selector);
 
+  const __stringify = (v: unknown) => JSON.stringify(v, (_, x) => typeof x === "bigint" ? x.toString() : x);
+
   // Fetch KYC status
   const _authSecret_http_1 = runtime.getSecret({ id: "KYC_API_KEY" }).result();
   const _fetchCfg_http_1 = {
@@ -48,8 +50,10 @@ const onCronTrigger = (runtime: Runtime<Config>, triggerData: CronTrigger): stri
     _authToken: _authSecret_http_1.value,
   };
   const step_http_1 = httpClient.sendRequest(runtime, fetch_http_1, consensusIdenticalAggregation())(_fetchCfg_http_1).result();
+  runtime.log(`[Fetch KYC status] ${__stringify(step_http_1)}`);
   // Parse KYC response
   const step_parse_1 = JSON.parse(Buffer.from(step_http_1.body, "base64").toString("utf-8"));
+  runtime.log(`[Parse KYC response] ${__stringify(step_parse_1)}`);
   // Check if KYC approved
   if (step_parse_1.isApproved === true) {
     // ABI encode mint call
@@ -60,15 +64,16 @@ const onCronTrigger = (runtime: Runtime<Config>, triggerData: CronTrigger): stri
         args: [runtime.config.walletAddress, runtime.config.mintAmount],
       }),
     };
+    runtime.log(`[ABI encode mint call] ${__stringify(step_mint_1___encode)}`);
     // Execute mint transaction
     const step_mint_1___write = evmClient_eth_sepolia.write(runtime, {
       receiverAddress: runtime.config.tokenContractAddress,
       gasLimit: BigInt(1000000),
       data: step_mint_1___encode.encoded,
     }).result();
+    runtime.log(`[Execute mint transaction] ${__stringify(step_mint_1___write)}`);
     return "Minted successfully";
   } else {
-    runtime.log(`[WARN] ${`User ${runtime.config.walletAddress} not KYC approved`}`);
     return "KYC not approved";
   }
 };

@@ -241,38 +241,6 @@ expression: ir
           "false_branch": {
             "steps": [
               {
-                "id": "log-1",
-                "source_node_ids": [
-                  "log-1"
-                ],
-                "label": "Log KYC rejection",
-                "operation": {
-                  "type": "Log",
-                  "level": "Warn",
-                  "message": {
-                    "kind": "Template",
-                    "parts": [
-                      {
-                        "part_type": "Lit",
-                        "value": "User "
-                      },
-                      {
-                        "part_type": "Expr",
-                        "value": {
-                          "kind": "ConfigRef",
-                          "field": "walletAddress"
-                        }
-                      },
-                      {
-                        "part_type": "Lit",
-                        "value": " not KYC approved"
-                      }
-                    ]
-                  }
-                },
-                "output": null
-              },
-              {
                 "id": "return-2",
                 "source_node_ids": [
                   "return-2"

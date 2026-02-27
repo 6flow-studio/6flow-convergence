@@ -1,16 +1,31 @@
 import type { Workflow } from '../model/node';
 
 export const mockupWorkflow: Workflow = {
-  "id": "k179c7tanagsa8qz2533p86dhs81wr8b",
-  "name": "gemini random number",
+  "id": "k17dnx68tjya99nmh71cehbe9181z1gj",
+  "name": "ai rock paper scissor",
   "version": "1.0.0",
   "nodes": [
     {
-      "id": "node_1772083694834_2",
+      "id": "node_1772176730524_0",
+      "type": "cronTrigger",
+      "position": {
+        "x": 221,
+        "y": 185
+      },
+      "data": {
+        "label": "Cron Trigger",
+        "config": {
+          "schedule": "0 0 */1 * * *",
+          "timezone": "UTC"
+        }
+      }
+    },
+    {
+      "id": "node_1772176743838_1",
       "type": "ai",
       "position": {
-        "x": 524.3711739992606,
-        "y": 355.8294488855681
+        "x": 451.8609815119554,
+        "y": 182.15484673009522
       },
       "data": {
         "label": "AI",
@@ -18,35 +33,20 @@ export const mockupWorkflow: Workflow = {
           "provider": "google",
           "baseUrl": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
           "model": "gemini-2.5-flash-lite",
-          "apiKeySecret": "GOOGLE_API",
-          "systemPrompt": "You're a helpful assistant",
-          "userPrompt": "return the random number 1-100",
+          "apiKeySecret": "GEMINI_KEY",
+          "systemPrompt": "Let's play the rock, paper, scissor game",
+          "userPrompt": "Choose your move",
           "temperature": 0.7,
           "responseFormat": "text"
         }
       }
-    },
-    {
-      "id": "node_1772084501876_1",
-      "type": "cronTrigger",
-      "position": {
-        "x": 274.9940192939582,
-        "y": 353.2688712135992
-      },
-      "data": {
-        "label": "Cron Trigger",
-        "config": {
-          "schedule": "*/1 * * * * *",
-          "timezone": "UTC"
-        }
-      }
-    },
+    }
   ],
   "edges": [
     {
-      "id": "xy-edge__node_1772084501876_1output-node_1772083694834_2input",
-      "source": "node_1772084501876_1",
-      "target": "node_1772083694834_2",
+      "id": "xy-edge__node_1772176730524_0output-node_1772176743838_1input",
+      "source": "node_1772176730524_0",
+      "target": "node_1772176743838_1",
       "sourceHandle": "output",
       "targetHandle": "input"
     }
@@ -55,12 +55,12 @@ export const mockupWorkflow: Workflow = {
     "isTestnet": true,
     "secrets": [
       {
-        "name": "GOOGLE_API",
-        "envVariable": "GOOGLE_API_KEY"
+        "name": "GEMINI_KEY",
+        "envVariable": "GEMINI_KEY_VALUE"
       }
     ],
     "rpcs": []
   },
-  "createdAt": "2026-02-26T07:23:58.545Z",
-  "updatedAt": "2026-02-26T07:23:58.545Z"
+  "createdAt": "2026-02-27T16:37:03.323Z",
+  "updatedAt": "2026-02-27T16:37:03.323Z"
 };
