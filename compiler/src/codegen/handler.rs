@@ -40,6 +40,10 @@ pub fn emit_handler(
     emit_capability_instantiations(ir, w);
     w.blank();
 
+    // BigInt-safe stringify helper for auto-logging
+    w.line("const __stringify = (v: unknown) => JSON.stringify(v, (_, x) => typeof x === \"bigint\" ? x.toString() : x);");
+    w.blank();
+
     // Emit the block
     emit_block(&ir.handler_body, fetch_contexts, w);
 
@@ -143,15 +147,20 @@ pub fn emit_block(
             Operation::AiCall(op) => {
                 operations::emit_ai_call(step, op, fetch_contexts, w);
             }
-            Operation::Log(op) => {
-                operations::emit_log(step, op, w);
-            }
             Operation::ErrorThrow(op) => {
                 operations::emit_error_throw(step, op, w);
             }
             Operation::Return(op) => {
                 operations::emit_return(step, op, w);
             }
+        }
+
+        // Auto-log output of every step
+        if let Some(ref out) = step.output {
+            w.line(&format!(
+                "runtime.log(`[{}] ${{__stringify({})}}`);",
+                step.label, out.variable_name,
+            ));
         }
 
         i += 1;

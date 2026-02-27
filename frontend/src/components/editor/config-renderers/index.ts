@@ -13,7 +13,6 @@ export { CronTriggerConfigRenderer } from "./CronTriggerConfigRenderer";
 export { GetSecretConfigRenderer } from "./GetSecretConfigRenderer";
 export { JsonParseConfigRenderer } from "./JsonParseConfigRenderer";
 export { ReturnConfigRenderer } from "./ReturnConfigRenderer";
-export { LogConfigRenderer } from "./LogConfigRenderer";
 export { ErrorConfigRenderer } from "./ErrorConfigRenderer";
 export { CheckKycConfigRenderer } from "./CheckKycConfigRenderer";
 export { TokenNodeConfigRenderer } from "./TokenNodeConfigRenderer";

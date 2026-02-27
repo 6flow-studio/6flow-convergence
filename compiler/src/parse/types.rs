@@ -152,8 +152,6 @@ pub enum WorkflowNode {
     // Output
     #[serde(rename = "return")]
     Return(NodeBase<ReturnConfig>),
-    #[serde(rename = "log")]
-    Log(NodeBase<LogConfig>),
     #[serde(rename = "error")]
     Error(NodeBase<ErrorConfig>),
 
@@ -200,7 +198,6 @@ impl WorkflowNode {
             WorkflowNode::If(n) => &n.id,
             WorkflowNode::Ai(n) => &n.id,
             WorkflowNode::Return(n) => &n.id,
-            WorkflowNode::Log(n) => &n.id,
             WorkflowNode::Error(n) => &n.id,
             WorkflowNode::MintToken(n) => &n.id,
             WorkflowNode::BurnToken(n) => &n.id,
@@ -228,7 +225,6 @@ impl WorkflowNode {
             WorkflowNode::If(n) => &n.data.label,
             WorkflowNode::Ai(n) => &n.data.label,
             WorkflowNode::Return(n) => &n.data.label,
-            WorkflowNode::Log(n) => &n.data.label,
             WorkflowNode::Error(n) => &n.data.label,
             WorkflowNode::MintToken(n) => &n.data.label,
             WorkflowNode::BurnToken(n) => &n.data.label,
@@ -256,7 +252,6 @@ impl WorkflowNode {
             WorkflowNode::If(_) => "if",
             WorkflowNode::Ai(_) => "ai",
             WorkflowNode::Return(_) => "return",
-            WorkflowNode::Log(_) => "log",
             WorkflowNode::Error(_) => "error",
             WorkflowNode::MintToken(_) => "mintToken",
             WorkflowNode::BurnToken(_) => "burnToken",
@@ -569,13 +564,6 @@ pub struct AiNodeConfig {
 #[serde(rename_all = "camelCase")]
 pub struct ReturnConfig {
     pub return_expression: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LogConfig {
-    pub level: String,
-    pub message_template: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

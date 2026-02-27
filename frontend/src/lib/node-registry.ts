@@ -251,16 +251,6 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     defaultConfig: { returnExpression: "result" },
   },
   {
-    type: "log",
-    label: "Log",
-    category: "output",
-    color: CATEGORY_COLORS.output,
-    icon: "Terminal",
-    inputs: [{ name: "input" }],
-    outputs: [{ name: "output" }],
-    defaultConfig: { level: "info", messageTemplate: "" },
-  },
-  {
     type: "error",
     label: "Error",
     category: "output",

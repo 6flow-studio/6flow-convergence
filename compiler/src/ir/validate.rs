@@ -243,9 +243,6 @@ fn collect_binding_refs_from_operation(op: &Operation, refs: &mut Vec<BindingRef
             collect_binding_refs_from_value_expr(&o.system_prompt, refs);
             collect_binding_refs_from_value_expr(&o.user_prompt, refs);
         }
-        Operation::Log(o) => {
-            collect_binding_refs_from_value_expr(&o.message, refs);
-        }
         Operation::ErrorThrow(o) => {
             collect_binding_refs_from_value_expr(&o.message, refs);
         }
@@ -612,16 +609,6 @@ mod tests {
             handler_body: Block {
                 steps: vec![
                     Step {
-                        id: "log-1".into(),
-                        source_node_ids: vec!["log-1".into()],
-                        label: "Log trigger".into(),
-                        operation: Operation::Log(LogOp {
-                            level: LogLevel::Info,
-                            message: ValueExpr::string("Triggered"),
-                        }),
-                        output: None,
-                    },
-                    Step {
                         id: "return-1".into(),
                         source_node_ids: vec!["return-1".into()],
                         label: "Return success".into(),
@@ -653,7 +640,16 @@ mod tests {
     #[test]
     fn duplicate_step_id_fails() {
         let mut ir = minimal_valid_ir();
-        ir.handler_body.steps[1].id = "log-1".into(); // duplicate
+        // Add a second step with the same ID to create a duplicate
+        ir.handler_body.steps.push(Step {
+            id: "return-1".into(),
+            source_node_ids: vec!["return-1".into()],
+            label: "Dup".into(),
+            operation: Operation::Return(ReturnOp {
+                expression: ValueExpr::string("dup"),
+            }),
+            output: None,
+        });
         let errors = validate_ir(&ir);
         assert!(errors.iter().any(|e| e.code == "E002"));
     }
@@ -797,8 +793,19 @@ mod tests {
     #[test]
     fn missing_return_fails() {
         let mut ir = minimal_valid_ir();
-        // Remove the return step
-        ir.handler_body.steps.pop();
+        // Replace the return step with a non-terminating step
+        ir.handler_body.steps = vec![Step {
+            id: "code-1".into(),
+            source_node_ids: vec!["code-1".into()],
+            label: "Noop".into(),
+            operation: Operation::CodeNode(CodeNodeOp {
+                code: "/* noop */".into(),
+                input_bindings: vec![],
+                execution_mode: CodeExecutionMode::RunOnceForAll,
+                timeout_ms: None,
+            }),
+            output: None,
+        }];
         let errors = validate_ir(&ir);
         assert!(errors.iter().any(|e| e.code == "E012"));
     }

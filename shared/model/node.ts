@@ -471,18 +471,6 @@ export type ReturnNode = BaseNode<"return", ReturnConfig>;
 
 // -----------------------------------------------------------------------------
 
-/** Log - debug logging */
-export type LogLevel = "debug" | "info" | "warn" | "error";
-
-export interface LogConfig {
-  level: LogLevel; // Default 'info'
-  messageTemplate: string;
-}
-
-export type LogNode = BaseNode<"log", LogConfig>;
-
-// -----------------------------------------------------------------------------
-
 /** Error - terminate with error */
 export interface ErrorConfig {
   errorMessage: string; // Error message template
@@ -601,7 +589,6 @@ export type NodeType =
   | "ai"
   // Output
   | "return"
-  | "log"
   | "error"
   // Tokenization
   | "mintToken"
@@ -646,7 +633,6 @@ export const NODE_TYPE_TO_CATEGORY: Record<NodeType, NodeCategory> = {
   ai: "ai",
   // Output
   return: "output",
-  log: "output",
   error: "output",
   // Tokenization
   mintToken: "tokenization",
@@ -686,7 +672,6 @@ export type WorkflowNode =
   | AINode
   // Output
   | ReturnNode
-  | LogNode
   | ErrorNode
   // Tokenization
   | MintTokenNode
@@ -733,7 +718,7 @@ export function isAINode(node: WorkflowNode): boolean {
 
 /** Check if a node is an output node (termination) */
 export function isOutputNode(node: WorkflowNode): boolean {
-  return ["return", "log", "error"].includes(node.type);
+  return ["return", "error"].includes(node.type);
 }
 
 /** Check if a node is a tokenization-specific node */
@@ -770,9 +755,9 @@ export type { ChainSelectorName } from "../supportedChain";
  *                                                                |
  *                                                    true -------+------- false
  *                                                      |                    |
- *                                              [Mint Token]              [Log]
- *                                                      |                    |
- *                                               [Return]              [Return]
+ *                                              [Mint Token]            [Return]
+ *                                                      |
+ *                                               [Return]
  */
 export const exampleWorkflow: Workflow = {
   id: "example-tokenization-workflow",
@@ -866,18 +851,6 @@ export const exampleWorkflow: Workflow = {
       },
     },
     {
-      id: "log-1",
-      type: "log",
-      position: { x: 900, y: 300 },
-      data: {
-        label: "Log Rejection",
-        config: {
-          level: "warn",
-          messageTemplate: "User {{parse-1.walletAddress}} not KYC approved",
-        },
-      },
-    },
-    {
       id: "return-1",
       type: "return",
       position: { x: 1100, y: 100 },
@@ -901,9 +874,8 @@ export const exampleWorkflow: Workflow = {
     { id: "e2", source: "http-1", target: "parse-1" },
     { id: "e3", source: "parse-1", target: "condition-1" },
     { id: "e4", source: "condition-1", target: "mint-1", sourceHandle: "true" },
-    { id: "e5", source: "condition-1", target: "log-1", sourceHandle: "false" },
+    { id: "e5", source: "condition-1", target: "return-2", sourceHandle: "false" },
     { id: "e6", source: "mint-1", target: "return-1" },
-    { id: "e7", source: "log-1", target: "return-2" },
   ],
   createdAt: "2025-01-01T00:00:00Z",
   updatedAt: "2025-01-01T00:00:00Z",

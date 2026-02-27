@@ -179,28 +179,6 @@ pub fn kyc_minting_ir() -> WorkflowIR {
                         false_branch: Block {
                             steps: vec![
                                 Step {
-                                    id: "log-1".into(),
-                                    source_node_ids: vec!["log-1".into()],
-                                    label: "Log KYC rejection".into(),
-                                    operation: Operation::Log(LogOp {
-                                        level: LogLevel::Warn,
-                                        message: ValueExpr::Template {
-                                            parts: vec![
-                                                TemplatePart::Lit {
-                                                    value: "User ".into(),
-                                                },
-                                                TemplatePart::Expr {
-                                                    value: ValueExpr::config("walletAddress"),
-                                                },
-                                                TemplatePart::Lit {
-                                                    value: " not KYC approved".into(),
-                                                },
-                                            ],
-                                        },
-                                    }),
-                                    output: None,
-                                },
-                                Step {
                                     id: "return-2".into(),
                                     source_node_ids: vec!["return-2".into()],
                                     label: "Return rejection".into(),
@@ -554,10 +532,13 @@ pub fn branch_op(
     })
 }
 
-pub fn log_op(msg: ValueExpr) -> Operation {
-    Operation::Log(LogOp {
-        level: LogLevel::Info,
-        message: msg,
+/// Lightweight noop operation for use as a placeholder in tests.
+pub fn noop_op() -> Operation {
+    Operation::CodeNode(CodeNodeOp {
+        code: "/* noop */".into(),
+        input_bindings: vec![],
+        execution_mode: CodeExecutionMode::RunOnceForAll,
+        timeout_ms: None,
     })
 }
 

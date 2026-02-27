@@ -10,8 +10,8 @@ fn parse_example_workflow() {
     let workflow = parse::parse(json).expect("Should parse successfully");
     assert_eq!(workflow.id, "example-tokenization-workflow");
     assert_eq!(workflow.name, "KYC-Gated Token Minting");
-    assert_eq!(workflow.nodes.len(), 8);
-    assert_eq!(workflow.edges.len(), 7);
+    assert_eq!(workflow.nodes.len(), 7);
+    assert_eq!(workflow.edges.len(), 6);
     assert!(workflow.global_config.is_testnet);
 }
 
@@ -44,7 +44,6 @@ fn parse_node_types_correct() {
     assert!(types.contains(&"jsonParse"));
     assert!(types.contains(&"if"));
     assert!(types.contains(&"mintToken"));
-    assert!(types.contains(&"log"));
     assert!(types.contains(&"return"));
 }
 
@@ -53,7 +52,7 @@ fn build_graph_from_example() {
     let json = include_str!("fixtures/example_workflow.json");
     let workflow = parse::parse(json).expect("Should parse");
     let graph = parse::WorkflowGraph::build(&workflow).expect("Should build graph");
-    assert_eq!(graph.node_indices.len(), 8);
+    assert_eq!(graph.node_indices.len(), 7);
     // trigger-1 should have 1 successor
     assert_eq!(graph.outgoing_count("trigger-1"), 1);
     // condition-1 (if) should have 2 successors

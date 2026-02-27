@@ -345,7 +345,6 @@ pub enum Operation {
     AiCall(AiCallOp),
 
     // --- Output ---
-    Log(LogOp),
     ErrorThrow(ErrorThrowOp),
     Return(ReturnOp),
 }
@@ -674,21 +673,6 @@ pub enum AiResponseFormat {
 // =============================================================================
 // OUTPUT / SIDE EFFECTS
 // =============================================================================
-
-/// `runtime.log(message)` — no output binding.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LogOp {
-    pub level: LogLevel,
-    pub message: ValueExpr,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum LogLevel {
-    Debug,
-    Info,
-    Warn,
-    Error,
-}
 
 /// `throw new Error(message)` — terminates execution.
 #[derive(Debug, Clone, Serialize, Deserialize)]

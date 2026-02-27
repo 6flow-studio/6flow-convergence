@@ -348,14 +348,14 @@ fn test_branch_with_merge() {
                 Block {
                     steps: vec![make_step_with_output(
                         "log-t",
-                        log_op(ValueExpr::string("high")),
+                        noop_op(),
                         "void",
                     )],
                 },
                 Block {
                     steps: vec![make_step_with_output(
                         "log-f",
-                        log_op(ValueExpr::string("low")),
+                        noop_op(),
                         "void",
                     )],
                 },
@@ -476,31 +476,22 @@ fn test_ai_call() {
 }
 
 // =============================================================================
-// LOG + ERROR THROW
+// ERROR THROW
 // =============================================================================
 
 #[test]
-fn test_log_and_error() {
-    let mut ir = ir_with_steps(vec![make_step(
-        "log-1",
-        log_op(ValueExpr::string("about to fail")),
-    )]);
-    // Replace the auto-appended Return with ErrorThrow
-    ir.handler_body.steps.pop();
-    ir.handler_body.steps.push(make_step(
+fn test_error_throw() {
+    let mut ir = base_ir();
+    ir.handler_body.steps = vec![make_step(
         "error-1",
         error_op(ValueExpr::string("something went wrong")),
-    ));
+    )];
     let errors = validate_ir(&ir);
     assert!(errors.is_empty(), "Expected no errors, got: {:?}", errors);
 
     let rt = roundtrip(&ir);
     assert!(matches!(
         &rt.handler_body.steps[0].operation,
-        Operation::Log(_)
-    ));
-    assert!(matches!(
-        &rt.handler_body.steps[1].operation,
         Operation::ErrorThrow(_)
     ));
 }
