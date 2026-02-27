@@ -169,7 +169,7 @@ export default function Home() {
         }`}
       >
         <Image
-          src="/logo/6flow_logo.svg"
+          src="/logo/6flow_white.png"
           alt="6Flow Logo"
           width={120}
           height={32}
@@ -212,46 +212,21 @@ export default function Home() {
             variants={fadeUp}
             className="font-mono text-sm tracking-widest text-accent-blue uppercase mb-6"
           >
-            Visual IDE for Smart Contracts
+            next-gen IDE for Smart Contract Engineers
           </motion.p>
           <motion.h1
             variants={fadeUp}
             className="font-display text-5xl sm:text-6xl md:text-7xl font-bold leading-[1.1] tracking-tight mb-6"
           >
-            Design Workflows.{" "}
-            <span className="text-accent-blue">Compile to Chain.</span>
+            Like n8n,{" "}
+            <span className="text-accent-blue">for CRE</span>
           </motion.h1>
           <motion.p
             variants={fadeUp}
             className="text-lg sm:text-xl text-zinc-400 max-w-xl mx-auto mb-10 leading-relaxed"
           >
-            Build tokenization workflows visually, compile them to deployable
-            Chainlink CRE bundles with a single click. No runtime servers — just
-            native on-chain execution.
+            6Flow Studio is Tokenization Workflow Platform. We provide a programmable, low-code orchestration layer for the Chainlink Runtime Environment (CRE). We empower corporate developers to visually design complex workflows for their use cases.
           </motion.p>
-          <motion.div variants={fadeUp}>
-            <Link
-              href="/login"
-              className="inline-flex items-center gap-2 rounded-lg bg-accent-blue px-8 py-3.5 text-base font-semibold text-white hover:brightness-110 transition-all shadow-[0_0_24px_rgba(58,154,255,0.3)] hover:shadow-[0_0_40px_rgba(58,154,255,0.5)]"
-            >
-              Start Building
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-                className="ml-1"
-              >
-                <path
-                  d="M3 8h10m0 0L9 4m4 4L9 12"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </Link>
-          </motion.div>
         </motion.div>
       </section>
 
