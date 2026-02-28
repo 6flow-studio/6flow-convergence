@@ -36,6 +36,9 @@ RUN npm install
 COPY compiler/ ./compiler/
 COPY frontend/ ./frontend/
 
+# Generate Convex TypeScript types from local schema/functions (no network required)
+RUN cd frontend && npx convex codegen
+
 # prebuild (wasm-pack → public/compiler/) then next build
 RUN cd frontend && npm run build
 
