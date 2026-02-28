@@ -1,0 +1,7 @@
+node_modules
+frontend/node_modules
+frontend/.next
+.git
+cre-test
+tools
+compiler/target
