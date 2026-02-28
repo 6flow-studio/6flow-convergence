@@ -1,41 +1,41 @@
 import type { Workflow } from '../model/node';
 
 export const mockupWorkflow: Workflow = {
-  "id": "k17dnx68tjya99nmh71cehbe9181z1gj",
-  "name": "ai rock paper scissor",
+  "id": "k1757pf7fpab0k6x231nt0sg5n821rrp",
+  "name": "claude",
   "version": "1.0.0",
   "nodes": [
     {
-      "id": "node_1772176730524_0",
+      "id": "node_1772290478148_0",
       "type": "cronTrigger",
       "position": {
-        "x": 221,
-        "y": 185
+        "x": 346,
+        "y": 290
       },
       "data": {
         "label": "Cron Trigger",
         "config": {
-          "schedule": "0 0 */1 * * *",
+          "schedule": "0 */10 * * * *",
           "timezone": "UTC"
         }
       }
     },
     {
-      "id": "node_1772176743838_1",
+      "id": "node_1772290494095_1",
       "type": "ai",
       "position": {
-        "x": 451.8609815119554,
-        "y": 182.15484673009522
+        "x": 594,
+        "y": 292
       },
       "data": {
         "label": "AI",
         "config": {
-          "provider": "google",
-          "baseUrl": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
-          "model": "gemini-2.5-flash-lite",
-          "apiKeySecret": "GEMINI_KEY",
-          "systemPrompt": "Let's play the rock, paper, scissor game",
-          "userPrompt": "Choose your move",
+          "provider": "openai",
+          "baseUrl": "https://api.openai.com/v1/chat/completions",
+          "model": "gpt-5-nano",
+          "apiKeySecret": "OPENAI_KEY",
+          "systemPrompt": "you are helpful",
+          "userPrompt": "hi",
           "temperature": 0.7,
           "responseFormat": "text"
         }
@@ -44,9 +44,9 @@ export const mockupWorkflow: Workflow = {
   ],
   "edges": [
     {
-      "id": "xy-edge__node_1772176730524_0output-node_1772176743838_1input",
-      "source": "node_1772176730524_0",
-      "target": "node_1772176743838_1",
+      "id": "xy-edge__node_1772290478148_0output-node_1772290494095_1input",
+      "source": "node_1772290478148_0",
+      "target": "node_1772290494095_1",
       "sourceHandle": "output",
       "targetHandle": "input"
     }
@@ -55,12 +55,16 @@ export const mockupWorkflow: Workflow = {
     "isTestnet": true,
     "secrets": [
       {
-        "name": "GEMINI_KEY",
-        "envVariable": "GEMINI_KEY_VALUE"
+        "name": "CLAUDE_KEY",
+        "envVariable": "CLAUDE_API_KEY"
+      },
+      {
+        "name": "OPENAI_KEY",
+        "envVariable": "OPENAI_API_KEY"
       }
     ],
     "rpcs": []
   },
-  "createdAt": "2026-02-27T16:37:03.323Z",
-  "updatedAt": "2026-02-27T16:37:03.323Z"
+  "createdAt": "2026-02-28T15:15:39.130Z",
+  "updatedAt": "2026-02-28T15:15:39.130Z"
 };

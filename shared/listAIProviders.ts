@@ -30,7 +30,7 @@ export const AI_PROVIDERS = [
     provider: "Anthropic",
   },
   {
-    value: "claude-haiku-4-5",
+    value: "claude-haiku-4-5-20251001",
     label: "Claude Haiku 4.5",
     baseUrl: "https://api.anthropic.com/v1/messages",
     provider: "Anthropic",

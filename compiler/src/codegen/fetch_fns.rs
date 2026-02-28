@@ -370,7 +370,25 @@ fn emit_ai_fetch_fn(fn_name: &str, op: &AiCallOp, w: &mut CodeWriter) {
     w.line("throw new Error(`AI call failed with status: ${resp.statusCode}`);");
     w.block_close();
     w.blank();
-    w.line("return JSON.parse(Buffer.from(resp.body, \"base64\").toString(\"utf-8\"));");
+    w.line("const parsed = JSON.parse(Buffer.from(resp.body, \"base64\").toString(\"utf-8\"));");
+
+    // Extract only the text content per provider to avoid null values
+    // (e.g. Anthropic's stop_sequence: null) that crash CRE's WASM runtime
+    match provider {
+        "google" => {
+            w.line(
+                "const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text ?? \"\";",
+            );
+        }
+        "anthropic" => {
+            w.line("const text = parsed.content?.[0]?.text ?? \"\";");
+        }
+        _ => {
+            // OpenAI-compatible
+            w.line("const text = parsed.choices?.[0]?.message?.content ?? \"\";");
+        }
+    }
+    w.line("return { text };");
 
     w.block_close_semi();
 }
@@ -393,9 +411,6 @@ fn emit_openai_body(
     w.line(&format!("{{ role: \"user\", content: {} }},", user_prompt));
     w.dedent();
     w.line("],");
-    if let Some(temp) = op.temperature {
-        w.line(&format!("temperature: {},", temp));
-    }
     if let Some(max) = op.max_tokens {
         w.line(&format!("max_tokens: {},", max));
     }
@@ -419,12 +434,9 @@ fn emit_anthropic_body(
     w.line(&format!("{{ role: \"user\", content: {} }},", user_prompt));
     w.dedent();
     w.line("],");
-    if let Some(temp) = op.temperature {
-        w.line(&format!("temperature: {},", temp));
-    }
-    if let Some(max) = op.max_tokens {
-        w.line(&format!("max_tokens: {},", max));
-    }
+    // Anthropic API requires max_tokens — default to 1024 if not set
+    let max = op.max_tokens.unwrap_or(1024);
+    w.line(&format!("max_tokens: {},", max));
     w.dedent();
     w.line("};");
     w.blank();
@@ -452,16 +464,10 @@ fn emit_google_body(
     ));
     w.dedent();
     w.line("],");
-    // Google nests temperature/maxOutputTokens under generationConfig
-    let has_config = op.temperature.is_some() || op.max_tokens.is_some();
-    if has_config {
+    // Google nests maxOutputTokens under generationConfig
+    if let Some(max) = op.max_tokens {
         w.block_open("generationConfig:");
-        if let Some(temp) = op.temperature {
-            w.line(&format!("temperature: {},", temp));
-        }
-        if let Some(max) = op.max_tokens {
-            w.line(&format!("maxOutputTokens: {},", max));
-        }
+        w.line(&format!("maxOutputTokens: {},", max));
         w.dedent();
         w.line("},");
     }
