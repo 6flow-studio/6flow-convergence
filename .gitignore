@@ -3,6 +3,4 @@ node_modules/
 .DS_Store
 .claude/
 
-# Convex generated
-frontend/convex/_generated/
 .env.local
