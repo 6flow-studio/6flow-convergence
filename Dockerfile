@@ -36,9 +36,11 @@ RUN npm install
 COPY compiler/ ./compiler/
 COPY frontend/ ./frontend/
 
-# Generate Convex TypeScript types (requires CONVEX_DEPLOYMENT build arg from Railway)
-ARG CONVEX_DEPLOYMENT
-RUN cd frontend && npx convex codegen
+# Expose public env vars at build time (Next.js bakes NEXT_PUBLIC_* at build)
+ARG NEXT_PUBLIC_CONVEX_URL
+ENV NEXT_PUBLIC_CONVEX_URL=$NEXT_PUBLIC_CONVEX_URL
+ARG NEXT_PUBLIC_CONVEX_SITE_URL
+ENV NEXT_PUBLIC_CONVEX_SITE_URL=$NEXT_PUBLIC_CONVEX_SITE_URL
 
 # prebuild (wasm-pack → public/compiler/) then next build
 RUN cd frontend && npm run build
