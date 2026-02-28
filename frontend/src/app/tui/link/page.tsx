@@ -2,7 +2,7 @@
 
 import { useAuthActions, useAuthToken } from "@convex-dev/auth/react";
 import { useConvexAuth } from "convex/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 type LinkState = "loading" | "authenticating" | "sending" | "success" | "error";
@@ -14,7 +14,7 @@ function isLocalCallback(url: URL): boolean {
   );
 }
 
-export default function TuiLinkPage() {
+function TuiLinkContent() {
   const params = useSearchParams();
   const callback = params.get("callback");
   const nonce = params.get("nonce");
@@ -117,5 +117,13 @@ export default function TuiLinkPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function TuiLinkPage() {
+  return (
+    <Suspense>
+      <TuiLinkContent />
+    </Suspense>
   );
 }

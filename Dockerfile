@@ -1,5 +1,5 @@
 # ---- Builder ----
-FROM rust:1.82-slim AS builder
+FROM rust:slim AS builder
 
 # Install Node.js 20 and build essentials
 RUN apt-get update && apt-get install -y \
@@ -11,21 +11,29 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install wasm-pack
-RUN cargo install wasm-pack
+RUN cargo install wasm-pack --locked
 
 WORKDIR /app
 
-# Copy workspace manifests first for layer caching
-COPY package.json package-lock.json turbo.json ./
-COPY shared/package.json ./shared/package.json
-COPY frontend/package.json ./frontend/package.json
-COPY tools/tui/package.json ./tools/tui/package.json
+# Copy root workspace manifest so Turbopack detects workspace root at /app
+# (without this, Turbopack sets root to /app/frontend and refuses to follow
+# the @6flow/shared symlink which resolves outside /app/frontend)
+COPY package.json ./
 
+# Copy workspace packages needed for npm install
+COPY shared/ ./shared/
+COPY frontend/package.json ./frontend/package.json
+
+# Stub tools/tui workspace (listed in root workspaces but not needed for frontend build)
+RUN mkdir -p tools/tui && \
+    printf '{"name":"@6flow/tui","version":"0.0.1","private":true}' > tools/tui/package.json
+
+# Install from root so workspace symlinks (node_modules/@6flow/shared -> ./shared)
+# are created at /app level, inside the workspace root Turbopack detects
 RUN npm install
 
-# Copy source
+# Copy remaining source
 COPY compiler/ ./compiler/
-COPY shared/ ./shared/
 COPY frontend/ ./frontend/
 
 # prebuild (wasm-pack → public/compiler/) then next build
