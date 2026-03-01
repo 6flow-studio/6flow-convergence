@@ -7,7 +7,7 @@ import { useCompiler } from "@/lib/use-compiler";
 import { useEditorStore } from "@/lib/editor-store";
 import { Canvas } from "./Canvas";
 import { NodePalette } from "./NodePalette";
-import { ConfigPanel } from "./ConfigPanel";
+import { NodeDetailsModal } from "./NodeDetailsModal";
 import { Toolbar } from "./Toolbar";
 import { StatusBar } from "./StatusBar";
 import { CompilerErrorsPanel } from "./CompilerErrorsPanel";
@@ -71,7 +71,6 @@ export function WorkflowEditor({ workflowId }: WorkflowEditorProps) {
           <div className="flex-1 relative">
             <Canvas />
           </div>
-          <ConfigPanel />
         </div>
         <CompilerErrorsPanel />
         <StatusBar
@@ -95,6 +94,7 @@ export function WorkflowEditor({ workflowId }: WorkflowEditorProps) {
           downloadFileName={compiledZipDownload?.fileName ?? null}
           onClose={onCloseCompileModal}
         />
+        <NodeDetailsModal />
       </div>
     </ReactFlowProvider>
   );

@@ -103,7 +103,7 @@ pub struct NodeData<C> {
 }
 
 // =============================================================================
-// WORKFLOW NODE — tagged union over 18 node types
+// WORKFLOW NODE — tagged union over 17 node types
 // =============================================================================
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -124,8 +124,6 @@ pub enum WorkflowNode {
     EvmRead(NodeBase<EvmReadConfig>),
     #[serde(rename = "evmWrite")]
     EvmWrite(NodeBase<EvmWriteConfig>),
-    #[serde(rename = "getSecret")]
-    GetSecret(NodeBase<GetSecretConfig>),
 
     // Transforms
     #[serde(rename = "codeNode")]
@@ -174,7 +172,6 @@ impl WorkflowNode {
             WorkflowNode::HttpRequest(n) => &n.id,
             WorkflowNode::EvmRead(n) => &n.id,
             WorkflowNode::EvmWrite(n) => &n.id,
-            WorkflowNode::GetSecret(n) => &n.id,
             WorkflowNode::CodeNode(n) => &n.id,
             WorkflowNode::JsonParse(n) => &n.id,
             WorkflowNode::AbiEncode(n) => &n.id,
@@ -196,7 +193,6 @@ impl WorkflowNode {
             WorkflowNode::HttpRequest(n) => &n.data.label,
             WorkflowNode::EvmRead(n) => &n.data.label,
             WorkflowNode::EvmWrite(n) => &n.data.label,
-            WorkflowNode::GetSecret(n) => &n.data.label,
             WorkflowNode::CodeNode(n) => &n.data.label,
             WorkflowNode::JsonParse(n) => &n.data.label,
             WorkflowNode::AbiEncode(n) => &n.data.label,
@@ -218,7 +214,6 @@ impl WorkflowNode {
             WorkflowNode::HttpRequest(_) => "httpRequest",
             WorkflowNode::EvmRead(_) => "evmRead",
             WorkflowNode::EvmWrite(_) => "evmWrite",
-            WorkflowNode::GetSecret(_) => "getSecret",
             WorkflowNode::CodeNode(_) => "codeNode",
             WorkflowNode::JsonParse(_) => "jsonParse",
             WorkflowNode::AbiEncode(_) => "abiEncode",
@@ -402,12 +397,6 @@ pub struct EvmWriteConfig {
     pub value: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GetSecretConfig {
-    pub secret_name: String,
-}
-
 // =============================================================================
 // TRANSFORM CONFIGS
 // =============================================================================
@@ -542,4 +531,3 @@ pub struct ReturnConfig {
 pub struct ErrorConfig {
     pub error_message: String,
 }
-

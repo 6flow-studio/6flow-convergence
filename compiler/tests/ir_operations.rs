@@ -138,32 +138,6 @@ fn test_evm_write() {
 }
 
 // =============================================================================
-// GET SECRET
-// =============================================================================
-
-#[test]
-fn test_get_secret() {
-    let ir = ir_with_steps_and_deps(
-        vec![make_step_with_output(
-            "secret-1",
-            get_secret_op("MY_SECRET"),
-            "{ value: string }",
-        )],
-        vec![("MY_SECRET", "MY_SECRET_VAR")],
-        vec![],
-    );
-    let errors = validate_ir(&ir);
-    assert!(errors.is_empty(), "Expected no errors, got: {:?}", errors);
-
-    let rt = roundtrip(&ir);
-    if let Operation::GetSecret(op) = &rt.handler_body.steps[0].operation {
-        assert_eq!(op.secret_name, "MY_SECRET");
-    } else {
-        panic!("Expected GetSecret");
-    }
-}
-
-// =============================================================================
 // CODE NODE
 // =============================================================================
 
@@ -346,18 +320,10 @@ fn test_branch_with_merge() {
                 ComparisonOp::Gt,
                 ValueExpr::integer(100),
                 Block {
-                    steps: vec![make_step_with_output(
-                        "log-t",
-                        noop_op(),
-                        "void",
-                    )],
+                    steps: vec![make_step_with_output("log-t", noop_op(), "void")],
                 },
                 Block {
-                    steps: vec![make_step_with_output(
-                        "log-f",
-                        noop_op(),
-                        "void",
-                    )],
+                    steps: vec![make_step_with_output("log-f", noop_op(), "void")],
                 },
                 Some("merge-1"),
             ),

@@ -86,7 +86,9 @@ pub fn branching_workflow_ir() -> WorkflowIR {
                     }),
                     output: Some(OutputBinding {
                         variable_name: "step_http_1".into(),
-                        ts_type: "{ statusCode: number; body: string; headers: Record<string, string> }".into(),
+                        ts_type:
+                            "{ statusCode: number; body: string; headers: Record<string, string> }"
+                                .into(),
                         destructure_fields: None,
                     }),
                 },
@@ -147,17 +149,15 @@ pub fn branching_workflow_ir() -> WorkflowIR {
                             ],
                         },
                         false_branch: Block {
-                            steps: vec![
-                                Step {
-                                    id: "return-2".into(),
-                                    source_node_ids: vec!["return-2".into()],
-                                    label: "Return rejection".into(),
-                                    operation: Operation::Return(ReturnOp {
-                                        expression: ValueExpr::string("KYC not approved"),
-                                    }),
-                                    output: None,
-                                },
-                            ],
+                            steps: vec![Step {
+                                id: "return-2".into(),
+                                source_node_ids: vec!["return-2".into()],
+                                label: "Return rejection".into(),
+                                operation: Operation::Return(ReturnOp {
+                                    expression: ValueExpr::string("KYC not approved"),
+                                }),
+                                output: None,
+                            }],
                         },
                         reconverge_at: None,
                     }),
@@ -395,12 +395,6 @@ pub fn evm_write_op(chain: &str, receiver: &str, data: ValueExpr) -> Operation {
         gas_limit: ValueExpr::integer(500_000),
         encoded_data: data,
         value_wei: None,
-    })
-}
-
-pub fn get_secret_op(name: &str) -> Operation {
-    Operation::GetSecret(GetSecretOp {
-        secret_name: name.into(),
     })
 }
 

@@ -1,8 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import {
   SelectField,
-  TextField,
   TextareaField,
   NumberField,
   CollapsibleSection,
@@ -16,34 +16,43 @@ interface Props {
   secretNames?: string[];
 }
 
-const CUSTOM_VALUE = "__custom__";
-
-const MODEL_OPTIONS = [
-  ...AI_PROVIDERS.map((p) => ({
-    value: p.value,
-    label: `${p.label} (${p.provider})`,
-  })),
-  { value: CUSTOM_VALUE, label: "Custom" },
-];
+const MODEL_OPTIONS = AI_PROVIDERS.map((p) => ({
+  value: p.value,
+  label: `${p.label} (${p.provider})`,
+}));
 
 const RESPONSE_FORMAT_OPTIONS = [
   { value: "text", label: "Text" },
   { value: "json", label: "JSON" },
 ];
 
-function isCustomModel(model: string) {
-  return !AI_PROVIDERS.some((p) => p.value === model);
+function getModelPreset(model: string) {
+  return AI_PROVIDERS.find((p) => p.value === model);
 }
 
 export function AIConfigRenderer({ config, onChange, secretNames = [] }: Props) {
-  const isCustom = isCustomModel(config.model);
-  const selectValue = isCustom ? CUSTOM_VALUE : config.model;
+  const selectedPreset = getModelPreset(config.model);
+
+  useEffect(() => {
+    const targetPreset = selectedPreset ?? AI_PROVIDERS[0];
+    if (!targetPreset) return;
+
+    const normalizedProvider = targetPreset.provider.toLowerCase();
+    const isNormalized =
+      config.model === targetPreset.value &&
+      config.provider === normalizedProvider &&
+      config.baseUrl === targetPreset.baseUrl;
+
+    if (isNormalized) return;
+
+    onChange({
+      provider: normalizedProvider,
+      model: targetPreset.value,
+      baseUrl: targetPreset.baseUrl,
+    });
+  }, [config.baseUrl, config.model, config.provider, onChange, selectedPreset]);
 
   const handleModelSelect = (value: string) => {
-    if (value === CUSTOM_VALUE) {
-      onChange({ provider: "custom", model: "", baseUrl: "" });
-      return;
-    }
     const preset = AI_PROVIDERS.find((p) => p.value === value);
     if (preset) {
       onChange({
@@ -58,35 +67,10 @@ export function AIConfigRenderer({ config, onChange, secretNames = [] }: Props) 
     <div className="space-y-3">
       <SelectField
         label="Model"
-        value={selectValue}
+        value={selectedPreset?.value ?? AI_PROVIDERS[0]?.value ?? ""}
         onChange={handleModelSelect}
         options={MODEL_OPTIONS}
       />
-
-      {isCustom && (
-        <>
-          <TextField
-            label="Provider"
-            value={config.provider}
-            onChange={(provider) => onChange({ provider })}
-            placeholder="openai"
-          />
-          <TextField
-            label="Model ID"
-            value={config.model}
-            onChange={(model) => onChange({ model })}
-            placeholder="gpt-4"
-            mono
-          />
-          <TextField
-            label="Base URL"
-            value={config.baseUrl}
-            onChange={(baseUrl) => onChange({ baseUrl })}
-            placeholder="https://api.openai.com/v1/chat/completions"
-            mono
-          />
-        </>
-      )}
 
       <SelectField
         label="API Key Secret"

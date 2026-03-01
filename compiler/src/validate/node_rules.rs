@@ -108,29 +108,6 @@ pub fn validate_node_config(node: &WorkflowNode, global: &GlobalConfig) -> Vec<C
                 }
             }
         }
-        WorkflowNode::GetSecret(n) => {
-            if n.data.config.secret_name.trim().is_empty() {
-                errors.push(CompilerError::validate(
-                    "N007",
-                    "Secret name must not be empty",
-                    node_id.clone(),
-                ));
-            }
-            if !global
-                .secrets
-                .iter()
-                .any(|s| s.name == n.data.config.secret_name)
-            {
-                errors.push(CompilerError::validate(
-                    "N007",
-                    format!(
-                        "Secret '{}' not declared in globalConfig.secrets",
-                        n.data.config.secret_name
-                    ),
-                    node_id,
-                ));
-            }
-        }
         WorkflowNode::CodeNode(n) => {
             if n.data.config.code.trim().is_empty() {
                 errors.push(CompilerError::validate(

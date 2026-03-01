@@ -118,16 +118,6 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
       dataMapping: [],
     },
   },
-  {
-    type: "getSecret",
-    label: "Get Secret",
-    category: "action",
-    color: CATEGORY_COLORS.action,
-    icon: "KeyRound",
-    inputs: [{ name: "input" }],
-    outputs: [{ name: "output" }],
-    defaultConfig: { secretName: "" },
-  },
 
   // Transforms
   {

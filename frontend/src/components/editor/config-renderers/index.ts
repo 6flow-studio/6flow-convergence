@@ -1,6 +1,6 @@
 /**
  * SYNC NOTE: Keep renderer exports aligned with `NodeType` + config interfaces
- * in `shared/model/node.ts` and `renderNodeConfig` in `ConfigPanel.tsx`.
+ * in `shared/model/node.ts` and `renderNodeConfig` in `NodeDetailsModal.tsx`.
  */
 export { CodeNodeConfigRenderer } from "./CodeNodeConfigRenderer";
 export { HttpRequestConfigRenderer } from "./HttpRequestConfigRenderer";
@@ -10,7 +10,6 @@ export { FilterConfigRenderer } from "./FilterConfigRenderer";
 export { AIConfigRenderer } from "./AIConfigRenderer";
 export { GenericConfigRenderer } from "./GenericConfigRenderer";
 export { CronTriggerConfigRenderer } from "./CronTriggerConfigRenderer";
-export { GetSecretConfigRenderer } from "./GetSecretConfigRenderer";
 export { JsonParseConfigRenderer } from "./JsonParseConfigRenderer";
 export { ReturnConfigRenderer } from "./ReturnConfigRenderer";
 export { ErrorConfigRenderer } from "./ErrorConfigRenderer";

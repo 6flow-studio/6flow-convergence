@@ -129,9 +129,6 @@ pub fn emit_block(
             Operation::EvmWrite(op) => {
                 operations::emit_evm_write(step, op, w);
             }
-            Operation::GetSecret(op) => {
-                operations::emit_get_secret(step, op, w);
-            }
             Operation::CodeNode(op) => {
                 operations::emit_code_node(step, op, w);
             }

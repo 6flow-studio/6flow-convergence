@@ -149,18 +149,10 @@ fn test_e004_merge_not_immediately_after() {
                 ComparisonOp::Equals,
                 ValueExpr::boolean(true),
                 Block {
-                    steps: vec![make_step_with_output(
-                        "t-step",
-                        noop_op(),
-                        "void",
-                    )],
+                    steps: vec![make_step_with_output("t-step", noop_op(), "void")],
                 },
                 Block {
-                    steps: vec![make_step_with_output(
-                        "f-step",
-                        noop_op(),
-                        "void",
-                    )],
+                    steps: vec![make_step_with_output("f-step", noop_op(), "void")],
                 },
                 Some("merge-1"),
             ),
@@ -219,18 +211,10 @@ fn test_e005_merge_wrong_branch_id() {
                 ComparisonOp::Equals,
                 ValueExpr::boolean(true),
                 Block {
-                    steps: vec![make_step_with_output(
-                        "t-step",
-                        noop_op(),
-                        "void",
-                    )],
+                    steps: vec![make_step_with_output("t-step", noop_op(), "void")],
                 },
                 Block {
-                    steps: vec![make_step_with_output(
-                        "f-step",
-                        noop_op(),
-                        "void",
-                    )],
+                    steps: vec![make_step_with_output("f-step", noop_op(), "void")],
                 },
                 Some("merge-1"),
             ),
@@ -259,18 +243,10 @@ fn test_e006_reconverge_at_non_merge() {
                 ComparisonOp::Equals,
                 ValueExpr::boolean(true),
                 Block {
-                    steps: vec![make_step_with_output(
-                        "t-step",
-                        noop_op(),
-                        "void",
-                    )],
+                    steps: vec![make_step_with_output("t-step", noop_op(), "void")],
                 },
                 Block {
-                    steps: vec![make_step_with_output(
-                        "f-step",
-                        noop_op(),
-                        "void",
-                    )],
+                    steps: vec![make_step_with_output("f-step", noop_op(), "void")],
                 },
                 Some("not-a-merge"),
             ),
@@ -326,9 +302,9 @@ fn test_e007_secret_inside_branch() {
             Block {
                 steps: vec![
                     make_step_with_output(
-                        "secret-1",
-                        get_secret_op("BRANCH_SECRET"),
-                        "{ value: string }",
+                        "http-1",
+                        http_get_with_bearer("https://example.com", "BRANCH_SECRET"),
+                        "any",
                     ),
                     make_step("return-t", return_op(ValueExpr::string("t"))),
                 ],
@@ -557,18 +533,10 @@ fn test_e012_merge_then_return() {
                 ComparisonOp::Equals,
                 ValueExpr::boolean(true),
                 Block {
-                    steps: vec![make_step_with_output(
-                        "t-step",
-                        noop_op(),
-                        "void",
-                    )],
+                    steps: vec![make_step_with_output("t-step", noop_op(), "void")],
                 },
                 Block {
-                    steps: vec![make_step_with_output(
-                        "f-step",
-                        noop_op(),
-                        "void",
-                    )],
+                    steps: vec![make_step_with_output("f-step", noop_op(), "void")],
                 },
                 Some("merge-1"),
             ),

@@ -141,17 +141,6 @@ pub fn emit_evm_write(step: &Step, op: &EvmWriteOp, w: &mut CodeWriter) {
     }
 }
 
-/// Emit a GetSecret call.
-pub fn emit_get_secret(step: &Step, op: &GetSecretOp, w: &mut CodeWriter) {
-    if let Some(ref out) = step.output {
-        w.line(&format!("// {}", step.label));
-        w.line(&format!(
-            "const {} = runtime.getSecret({{ id: \"{}\" }}).result();",
-            out.variable_name, op.secret_name,
-        ));
-    }
-}
-
 /// Emit a CodeNode (IIFE with injected bindings).
 pub fn emit_code_node(step: &Step, op: &CodeNodeOp, w: &mut CodeWriter) {
     w.line(&format!("// {}", step.label));
@@ -336,33 +325,6 @@ mod tests {
             operation: op,
             output,
         }
-    }
-
-    #[test]
-    fn test_get_secret() {
-        let step = make_step(
-            "secret-1",
-            "Get API key",
-            Operation::GetSecret(GetSecretOp {
-                secret_name: "API_KEY".into(),
-            }),
-            Some(OutputBinding {
-                variable_name: "step_secret_1".into(),
-                ts_type: "{ value: string }".into(),
-                destructure_fields: None,
-            }),
-        );
-        let mut w = CodeWriter::new();
-        emit_get_secret(
-            &step,
-            match &step.operation {
-                Operation::GetSecret(op) => op,
-                _ => unreachable!(),
-            },
-            &mut w,
-        );
-        let out = w.finish();
-        assert!(out.contains("runtime.getSecret({ id: \"API_KEY\" }).result()"));
     }
 
     #[test]

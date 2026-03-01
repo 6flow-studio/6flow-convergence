@@ -125,7 +125,7 @@ Execution model:
 
 ### Operation families
 
-- CRE capabilities: `HttpRequest`, `EvmRead`, `EvmWrite`, `GetSecret`
+- CRE capabilities: `HttpRequest`, `EvmRead`, `EvmWrite`
 - Transforms: `CodeNode`, `JsonParse`, `AbiEncode`, `AbiDecode`
 - Control flow: `Branch`, `Filter`, `Merge`
 - AI: `AiCall`

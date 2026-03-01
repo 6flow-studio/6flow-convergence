@@ -55,6 +55,43 @@ export interface NodeSettings {
   executeOnce?: boolean; // Only process first item (for batch scenarios)
 }
 
+export type DataSchemaType =
+  | "object"
+  | "array"
+  | "string"
+  | "number"
+  | "boolean"
+  | "null"
+  | "unknown";
+
+export interface DataSchema {
+  type: DataSchemaType;
+  path: string;
+  fields?: DataSchemaField[];
+  itemSchema?: DataSchema;
+}
+
+export interface DataSchemaField {
+  key: string;
+  path: string;
+  schema: DataSchema;
+  optional?: boolean;
+}
+
+export interface NodeExecutionPreview {
+  raw: unknown;
+  normalized: unknown;
+  warnings?: string[];
+  truncated?: boolean;
+}
+
+export interface NodeEditorMetadata {
+  lastExecution?: NodeExecutionPreview;
+  outputSchema?: DataSchema;
+  schemaSource?: "executed" | "declared" | "derived";
+  executedAt?: string;
+}
+
 /** Generic base node - all nodes extend this */
 export interface BaseNode<T extends NodeType, C> {
   id: string;
@@ -63,6 +100,7 @@ export interface BaseNode<T extends NodeType, C> {
   data: {
     label: string;
     config: C;
+    editor?: NodeEditorMetadata;
   };
   settings?: NodeSettings;
 }
@@ -288,17 +326,6 @@ export interface EvmWriteOutput {
 
 // -----------------------------------------------------------------------------
 
-/** Get Secret - retrieve secure credentials */
-export interface GetSecretConfig {
-  secretName: string; // Logical name from secrets.yaml
-}
-
-export type GetSecretNode = BaseNode<"getSecret", GetSecretConfig>;
-
-export interface GetSecretOutput {
-  value: string;
-}
-
 // =============================================================================
 // TRANSFORM NODES (Data Processing)
 // =============================================================================
@@ -443,7 +470,7 @@ export type IfNode = BaseNode<"if", IfConfig>;
 
 /** AI Node - call an AI model for inference */
 export interface AINodeConfig {
-  provider: string; // "openai" | "anthropic" | "custom"
+  provider: string; // e.g. "openai" | "anthropic" | "google"
   baseUrl: string;
   model: string;
   apiKeySecret: string; // References secret name
@@ -492,7 +519,6 @@ export type NodeType =
   | "httpRequest"
   | "evmRead"
   | "evmWrite"
-  | "getSecret"
   // Transforms
   | "codeNode"
   | "jsonParse"
@@ -527,7 +553,6 @@ export const NODE_TYPE_TO_CATEGORY: Record<NodeType, NodeCategory> = {
   httpRequest: "action",
   evmRead: "action",
   evmWrite: "action",
-  getSecret: "action",
   // Transforms
   codeNode: "transform",
   jsonParse: "transform",
@@ -559,7 +584,6 @@ export type WorkflowNode =
   | HttpRequestNode
   | EvmReadNode
   | EvmWriteNode
-  | GetSecretNode
   // Transforms
   | CodeNodeNode
   | JsonParseNode
@@ -588,9 +612,7 @@ export function isTriggerNode(
 
 /** Check if a node is an action node (capability) */
 export function isActionNode(node: WorkflowNode): boolean {
-  return ["httpRequest", "evmRead", "evmWrite", "getSecret"].includes(
-    node.type,
-  );
+  return ["httpRequest", "evmRead", "evmWrite"].includes(node.type);
 }
 
 /** Check if a node is a transform node */

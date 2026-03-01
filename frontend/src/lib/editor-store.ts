@@ -9,7 +9,11 @@ import {
   applyEdgeChanges,
   addEdge,
 } from "@xyflow/react";
-import type { GlobalConfig, NodeType } from "@6flow/shared/model/node";
+import type {
+  GlobalConfig,
+  NodeEditorMetadata,
+  NodeType,
+} from "@6flow/shared/model/node";
 import type { CompilerUiError } from "./compiler/compiler-types";
 import { getNodeEntry } from "./node-registry";
 import {
@@ -21,6 +25,7 @@ export interface WorkflowNodeData {
   label: string;
   nodeType: NodeType;
   config: Record<string, unknown>;
+  editor?: NodeEditorMetadata;
   [key: string]: unknown;
 }
 
@@ -45,6 +50,7 @@ interface EditorState {
   removeNode: (id: string) => void;
   removeEdge: (id: string) => void;
   updateNodeConfig: (id: string, config: Record<string, unknown>) => void;
+  updateNodeEditor: (id: string, editor: Partial<NodeEditorMetadata>) => void;
   updateNodeLabel: (id: string, label: string) => void;
   selectNode: (id: string | null) => void;
   clearSelection: () => void;
@@ -125,6 +131,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({
       nodes: get().nodes.map((n) =>
         n.id === id ? { ...n, data: { ...n.data, config: { ...n.data.config, ...config } } } : n
+      ),
+    });
+  },
+
+  updateNodeEditor: (id, editor) => {
+    set({
+      nodes: get().nodes.map((n) =>
+        n.id === id
+          ? { ...n, data: { ...n.data, editor: { ...n.data.editor, ...editor } } }
+          : n
       ),
     });
   },

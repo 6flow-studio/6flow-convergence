@@ -328,7 +328,6 @@ pub enum Operation {
     HttpRequest(HttpRequestOp),
     EvmRead(EvmReadOp),
     EvmWrite(EvmWriteOp),
-    GetSecret(GetSecretOp),
 
     // --- Transforms (inline TypeScript) ---
     CodeNode(CodeNodeOp),
@@ -450,15 +449,6 @@ pub struct EvmWriteOp {
     /// Pre-encoded calldata (from AbiEncode or RawExpr).
     pub encoded_data: ValueExpr,
     pub value_wei: Option<ValueExpr>,
-}
-
-// =============================================================================
-// GET SECRET
-// =============================================================================
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GetSecretOp {
-    pub secret_name: String,
 }
 
 // =============================================================================

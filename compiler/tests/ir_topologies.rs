@@ -47,18 +47,10 @@ fn test_diamond_pattern() {
                 ComparisonOp::Equals,
                 ValueExpr::integer(200),
                 Block {
-                    steps: vec![make_step_with_output(
-                        "ok-log",
-                        noop_op(),
-                        "void",
-                    )],
+                    steps: vec![make_step_with_output("ok-log", noop_op(), "void")],
                 },
                 Block {
-                    steps: vec![make_step_with_output(
-                        "err-log",
-                        noop_op(),
-                        "void",
-                    )],
+                    steps: vec![make_step_with_output("err-log", noop_op(), "void")],
                 },
                 Some("merge-1"),
             ),
@@ -103,18 +95,10 @@ fn test_nested_branches() {
                                 ComparisonOp::Contains,
                                 ValueExpr::string("approved"),
                                 Block {
-                                    steps: vec![make_step_with_output(
-                                        "x-step",
-                                        noop_op(),
-                                        "void",
-                                    )],
+                                    steps: vec![make_step_with_output("x-step", noop_op(), "void")],
                                 },
                                 Block {
-                                    steps: vec![make_step_with_output(
-                                        "y-step",
-                                        noop_op(),
-                                        "void",
-                                    )],
+                                    steps: vec![make_step_with_output("y-step", noop_op(), "void")],
                                 },
                                 Some("inner-merge"),
                             ),
@@ -133,11 +117,7 @@ fn test_nested_branches() {
                     ],
                 },
                 Block {
-                    steps: vec![make_step_with_output(
-                        "z-step",
-                        noop_op(),
-                        "void",
-                    )],
+                    steps: vec![make_step_with_output("z-step", noop_op(), "void")],
                 },
                 Some("outer-merge"),
             ),

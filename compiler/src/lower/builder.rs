@@ -462,7 +462,6 @@ fn lower_node(
         WorkflowNode::HttpRequest(n) => lower_http_request(node_id, &n.data.config, id_map),
         WorkflowNode::EvmRead(n) => lower_evm_read(node_id, &n.data.config, id_map),
         WorkflowNode::EvmWrite(n) => lower_evm_write(node_id, &n.data.config, id_map),
-        WorkflowNode::GetSecret(n) => lower_get_secret(node_id, &n.data.config),
         WorkflowNode::CodeNode(n) => lower_code_node(node_id, &n.data.config, id_map),
         WorkflowNode::JsonParse(n) => {
             lower_json_parse(node_id, &n.data.config, graph, node_map, id_map)
@@ -664,23 +663,6 @@ fn lower_evm_write(
     let output = Some(OutputBinding {
         variable_name: format!("step_{}", node_id.replace('-', "_")),
         ts_type: "{ txHash: string; status: string }".into(),
-        destructure_fields: None,
-    });
-
-    (op, output)
-}
-
-fn lower_get_secret(
-    node_id: &str,
-    config: &crate::parse::types::GetSecretConfig,
-) -> (Operation, Option<OutputBinding>) {
-    let op = Operation::GetSecret(GetSecretOp {
-        secret_name: config.secret_name.clone(),
-    });
-
-    let output = Some(OutputBinding {
-        variable_name: format!("step_{}", node_id.replace('-', "_")),
-        ts_type: "{ value: string }".into(),
         destructure_fields: None,
     });
 
