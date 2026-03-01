@@ -10,7 +10,6 @@ export { FilterConfigRenderer } from "./FilterConfigRenderer";
 export { AIConfigRenderer } from "./AIConfigRenderer";
 export { GenericConfigRenderer } from "./GenericConfigRenderer";
 export { CronTriggerConfigRenderer } from "./CronTriggerConfigRenderer";
-export { GetSecretConfigRenderer } from "./GetSecretConfigRenderer";
 export { JsonParseConfigRenderer } from "./JsonParseConfigRenderer";
 export { ReturnConfigRenderer } from "./ReturnConfigRenderer";
 export { ErrorConfigRenderer } from "./ErrorConfigRenderer";

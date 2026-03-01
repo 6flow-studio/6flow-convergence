@@ -198,7 +198,6 @@ fn collect_binding_refs_from_operation(op: &Operation, refs: &mut Vec<BindingRef
                 collect_binding_refs_from_value_expr(v, refs);
             }
         }
-        Operation::GetSecret(_) => {}
         Operation::CodeNode(o) => {
             for binding in &o.input_bindings {
                 collect_binding_refs_from_value_expr(&binding.value, refs);
@@ -370,7 +369,6 @@ fn validate_block_secret_refs(
 fn collect_secret_refs_from_step(step: &Step) -> Vec<String> {
     let mut secrets = Vec::new();
     match &step.operation {
-        Operation::GetSecret(o) => secrets.push(o.secret_name.clone()),
         Operation::HttpRequest(o) => {
             if let Some(auth) = &o.authentication {
                 secrets.push(auth.token_secret.clone());
@@ -607,17 +605,15 @@ mod tests {
             evm_chains: vec![],
             user_rpcs: vec![],
             handler_body: Block {
-                steps: vec![
-                    Step {
-                        id: "return-1".into(),
-                        source_node_ids: vec!["return-1".into()],
-                        label: "Return success".into(),
-                        operation: Operation::Return(ReturnOp {
-                            expression: ValueExpr::string("Done"),
-                        }),
-                        output: None,
-                    },
-                ],
+                steps: vec![Step {
+                    id: "return-1".into(),
+                    source_node_ids: vec!["return-1".into()],
+                    label: "Return success".into(),
+                    operation: Operation::Return(ReturnOp {
+                        expression: ValueExpr::string("Done"),
+                    }),
+                    output: None,
+                }],
             },
         }
     }
@@ -772,15 +768,27 @@ mod tests {
         ir.handler_body.steps.insert(
             0,
             Step {
-                id: "secret-1".into(),
-                source_node_ids: vec!["secret-1".into()],
-                label: "Get API key".into(),
-                operation: Operation::GetSecret(GetSecretOp {
-                    secret_name: "API_KEY".into(),
+                id: "http-1".into(),
+                source_node_ids: vec!["http-1".into()],
+                label: "Fetch protected data".into(),
+                operation: Operation::HttpRequest(HttpRequestOp {
+                    method: HttpMethod::Get,
+                    url: ValueExpr::string("https://example.com"),
+                    headers: vec![],
+                    query_params: vec![],
+                    body: None,
+                    authentication: Some(HttpAuth {
+                        token_secret: "API_KEY".into(),
+                    }),
+                    cache_max_age_seconds: None,
+                    timeout_ms: None,
+                    expected_status_codes: vec![200],
+                    response_format: HttpResponseFormat::Json,
+                    consensus: ConsensusStrategy::Identical,
                 }),
                 output: Some(OutputBinding {
-                    variable_name: "step_secret_1".into(),
-                    ts_type: "{ value: string }".into(),
+                    variable_name: "step_http_1".into(),
+                    ts_type: "{ statusCode: number; body: string }".into(),
                     destructure_fields: None,
                 }),
             },

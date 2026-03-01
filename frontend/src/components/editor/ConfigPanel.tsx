@@ -22,7 +22,6 @@ import {
   AIConfigRenderer,
   GenericConfigRenderer,
   CronTriggerConfigRenderer,
-  GetSecretConfigRenderer,
   JsonParseConfigRenderer,
   ReturnConfigRenderer,
   ErrorConfigRenderer,
@@ -117,14 +116,6 @@ function renderNodeConfig(
           config={typedConfig<Parameters<typeof EvmWriteConfigRenderer>[0]["config"]>(config)}
           onChange={onChange}
           isTestnet={isTestnet}
-        />
-      );
-    case "getSecret":
-      return (
-        <GetSecretConfigRenderer
-          config={typedConfig<Parameters<typeof GetSecretConfigRenderer>[0]["config"]>(config)}
-          onChange={onChange}
-          secretNames={secretNames}
         />
       );
     case "jsonParse":

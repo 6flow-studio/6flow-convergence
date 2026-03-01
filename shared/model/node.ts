@@ -326,17 +326,6 @@ export interface EvmWriteOutput {
 
 // -----------------------------------------------------------------------------
 
-/** Get Secret - retrieve secure credentials */
-export interface GetSecretConfig {
-  secretName: string; // Logical name from secrets.yaml
-}
-
-export type GetSecretNode = BaseNode<"getSecret", GetSecretConfig>;
-
-export interface GetSecretOutput {
-  value: string;
-}
-
 // =============================================================================
 // TRANSFORM NODES (Data Processing)
 // =============================================================================
@@ -530,7 +519,6 @@ export type NodeType =
   | "httpRequest"
   | "evmRead"
   | "evmWrite"
-  | "getSecret"
   // Transforms
   | "codeNode"
   | "jsonParse"
@@ -565,7 +553,6 @@ export const NODE_TYPE_TO_CATEGORY: Record<NodeType, NodeCategory> = {
   httpRequest: "action",
   evmRead: "action",
   evmWrite: "action",
-  getSecret: "action",
   // Transforms
   codeNode: "transform",
   jsonParse: "transform",
@@ -597,7 +584,6 @@ export type WorkflowNode =
   | HttpRequestNode
   | EvmReadNode
   | EvmWriteNode
-  | GetSecretNode
   // Transforms
   | CodeNodeNode
   | JsonParseNode
@@ -626,9 +612,7 @@ export function isTriggerNode(
 
 /** Check if a node is an action node (capability) */
 export function isActionNode(node: WorkflowNode): boolean {
-  return ["httpRequest", "evmRead", "evmWrite", "getSecret"].includes(
-    node.type,
-  );
+  return ["httpRequest", "evmRead", "evmWrite"].includes(node.type);
 }
 
 /** Check if a node is a transform node */
