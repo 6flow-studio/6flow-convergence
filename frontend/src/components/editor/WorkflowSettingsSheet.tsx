@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { AlertTriangle, Plus, Trash2 } from "lucide-react";
 import type {
   GlobalConfig,
   RpcEntry,
   SecretReference,
 } from "@6flow/shared/model/node";
-import { SUPPORTED_CHAINS } from "@6flow/shared/supportedChain";
 import {
   Sheet,
   SheetContent,
@@ -42,22 +41,6 @@ function cloneRpcs(rpcs: RpcEntry[]): RpcEntry[] {
     chainName: rpc.chainName,
     url: rpc.url,
   }));
-}
-
-function getFilteredChains(isTestnet: boolean) {
-  return SUPPORTED_CHAINS.filter((chain) => chain.isTestnet === isTestnet);
-}
-
-function getDefaultUrl(chainSelectorName: string): string {
-  return (
-    SUPPORTED_CHAINS.find((c) => c.chainSelectorName === chainSelectorName)
-      ?.defaultRPCUrl ?? ""
-  );
-}
-
-function getEffectiveUrl(chainSelectorName: string, rpcs: RpcEntry[]): string {
-  const override = rpcs.find((r) => r.chainName === chainSelectorName);
-  return override?.url ?? getDefaultUrl(chainSelectorName);
 }
 
 export function WorkflowSettingsSheet({
@@ -112,29 +95,6 @@ export function WorkflowSettingsSheet({
     }));
   }
 
-  function updateRpcUrl(chainSelectorName: string, url: string) {
-    setDraft((previous) => {
-      const exists = previous.rpcs.some(
-        (r) => r.chainName === chainSelectorName
-      );
-      const nextRpcs = exists
-        ? previous.rpcs.map((r) =>
-            r.chainName === chainSelectorName ? { ...r, url } : r
-          )
-        : [...previous.rpcs, { chainName: chainSelectorName, url }];
-      return { ...previous, rpcs: nextRpcs };
-    });
-  }
-
-  function resetRpcUrl(chainSelectorName: string) {
-    setDraft((previous) => ({
-      ...previous,
-      rpcs: previous.rpcs.filter((r) => r.chainName !== chainSelectorName),
-    }));
-  }
-
-  const filteredChains = getFilteredChains(draft.isTestnet);
-
   const secretNameConflicts = draft.secrets.map(
     (secret) =>
       secret.name.trim().length > 0 &&
@@ -151,17 +111,10 @@ export function WorkflowSettingsSheet({
       }))
       .filter((secret) => secret.name.length > 0 && secret.envVariable.length > 0);
 
-    const normalizedRpcs = draft.rpcs
-      .map((rpc) => ({ chainName: rpc.chainName, url: rpc.url.trim() }))
-      .filter(
-        (rpc) =>
-          rpc.url.length > 0 && rpc.url !== getDefaultUrl(rpc.chainName)
-      );
-
     onSave({
       isTestnet: draft.isTestnet,
       secrets: normalizedSecrets,
-      rpcs: normalizedRpcs,
+      rpcs: cloneRpcs(value.rpcs),
     });
 
     onOpenChange(false);
@@ -249,57 +202,6 @@ export function WorkflowSettingsSheet({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <FieldLabel
-              label="RPC URLs"
-              description="Override default public RPC endpoints per chain"
-            />
-            <div className="space-y-2">
-              {filteredChains.map((chain) => {
-                const effectiveUrl = getEffectiveUrl(
-                  chain.chainSelectorName,
-                  draft.rpcs
-                );
-                const isOverridden = effectiveUrl !== chain.defaultRPCUrl;
-                return (
-                  <div
-                    key={chain.chainSelectorName}
-                    className="space-y-1"
-                  >
-                    <span className="text-[11px] text-zinc-400">
-                      {chain.name}
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <Input
-                        value={effectiveUrl}
-                        onChange={(event) =>
-                          updateRpcUrl(
-                            chain.chainSelectorName,
-                            event.target.value
-                          )
-                        }
-                        placeholder={chain.defaultRPCUrl}
-                        className={`h-8 bg-surface-2 text-zinc-300 text-[12px] font-mono border-edge-dim ${isOverridden ? "border-accent-blue/40" : ""}`}
-                      />
-                      {isOverridden && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 shrink-0 text-zinc-500 hover:text-zinc-200"
-                          onClick={() =>
-                            resetRpcUrl(chain.chainSelectorName)
-                          }
-                          title="Reset to default"
-                        >
-                          <RotateCcw size={12} />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
         </div>
 
         <SheetFooter className="border-t border-edge-dim px-4 py-3 flex-row justify-end gap-2">
