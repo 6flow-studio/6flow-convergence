@@ -7,7 +7,6 @@ import type {
 
 export const EXECUTION_PREVIEW_NODE_TYPES = [
   "httpRequest",
-  "ai",
   "evmRead",
   "evmWrite",
 ] as const;

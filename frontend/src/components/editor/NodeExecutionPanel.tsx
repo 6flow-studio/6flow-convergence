@@ -267,19 +267,6 @@ function getExecuteDisabledReason(node: WorkflowNode): string | null {
       return typeof node.data.config.url === "string" && node.data.config.url.trim()
         ? null
         : "HTTP URL is required before execution preview can run.";
-    case "ai": {
-      const { model, baseUrl, apiKeySecret } = node.data.config;
-      if (typeof model !== "string" || !model.trim()) {
-        return "AI model is required before execution preview can run.";
-      }
-      if (typeof baseUrl !== "string" || !baseUrl.trim()) {
-        return "AI base URL is required before execution preview can run.";
-      }
-      if (typeof apiKeySecret !== "string" || !apiKeySecret.trim()) {
-        return "AI API key secret is required before execution preview can run.";
-      }
-      return null;
-    }
     case "evmRead": {
       const { contractAddress, functionName, abi, chainSelectorName, args } =
         node.data.config;

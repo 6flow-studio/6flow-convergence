@@ -470,7 +470,7 @@ export type IfNode = BaseNode<"if", IfConfig>;
 
 /** AI Node - call an AI model for inference */
 export interface AINodeConfig {
-  provider: string; // "openai" | "anthropic" | "custom"
+  provider: string; // e.g. "openai" | "anthropic" | "google"
   baseUrl: string;
   model: string;
   apiKeySecret: string; // References secret name
