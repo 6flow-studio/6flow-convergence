@@ -103,7 +103,7 @@ pub struct NodeData<C> {
 }
 
 // =============================================================================
-// WORKFLOW NODE — tagged union over 23 node types
+// WORKFLOW NODE — tagged union over 18 node types
 // =============================================================================
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -154,20 +154,6 @@ pub enum WorkflowNode {
     Return(NodeBase<ReturnConfig>),
     #[serde(rename = "error")]
     Error(NodeBase<ErrorConfig>),
-
-    // Tokenization
-    #[serde(rename = "mintToken")]
-    MintToken(NodeBase<MintTokenConfig>),
-    #[serde(rename = "burnToken")]
-    BurnToken(NodeBase<BurnTokenConfig>),
-    #[serde(rename = "transferToken")]
-    TransferToken(NodeBase<TransferTokenConfig>),
-
-    // Regulation
-    #[serde(rename = "checkKyc")]
-    CheckKyc(NodeBase<CheckKycConfig>),
-    #[serde(rename = "checkBalance")]
-    CheckBalance(NodeBase<CheckBalanceConfig>),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -199,11 +185,6 @@ impl WorkflowNode {
             WorkflowNode::Ai(n) => &n.id,
             WorkflowNode::Return(n) => &n.id,
             WorkflowNode::Error(n) => &n.id,
-            WorkflowNode::MintToken(n) => &n.id,
-            WorkflowNode::BurnToken(n) => &n.id,
-            WorkflowNode::TransferToken(n) => &n.id,
-            WorkflowNode::CheckKyc(n) => &n.id,
-            WorkflowNode::CheckBalance(n) => &n.id,
         }
     }
 
@@ -226,11 +207,6 @@ impl WorkflowNode {
             WorkflowNode::Ai(n) => &n.data.label,
             WorkflowNode::Return(n) => &n.data.label,
             WorkflowNode::Error(n) => &n.data.label,
-            WorkflowNode::MintToken(n) => &n.data.label,
-            WorkflowNode::BurnToken(n) => &n.data.label,
-            WorkflowNode::TransferToken(n) => &n.data.label,
-            WorkflowNode::CheckKyc(n) => &n.data.label,
-            WorkflowNode::CheckBalance(n) => &n.data.label,
         }
     }
 
@@ -253,11 +229,6 @@ impl WorkflowNode {
             WorkflowNode::Ai(_) => "ai",
             WorkflowNode::Return(_) => "return",
             WorkflowNode::Error(_) => "error",
-            WorkflowNode::MintToken(_) => "mintToken",
-            WorkflowNode::BurnToken(_) => "burnToken",
-            WorkflowNode::TransferToken(_) => "transferToken",
-            WorkflowNode::CheckKyc(_) => "checkKyc",
-            WorkflowNode::CheckBalance(_) => "checkBalance",
         }
     }
 
@@ -572,60 +543,3 @@ pub struct ErrorConfig {
     pub error_message: String,
 }
 
-// =============================================================================
-// TOKENIZATION CONFIGS
-// =============================================================================
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MintTokenConfig {
-    pub chain_selector_name: String,
-    pub token_contract_address: String,
-    pub token_abi: AbiFunction,
-    pub recipient_source: String,
-    pub amount_source: String,
-    pub gas_limit: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct BurnTokenConfig {
-    pub chain_selector_name: String,
-    pub token_contract_address: String,
-    pub token_abi: AbiFunction,
-    pub from_source: String,
-    pub amount_source: String,
-    pub gas_limit: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TransferTokenConfig {
-    pub chain_selector_name: String,
-    pub token_contract_address: String,
-    pub token_abi: AbiFunction,
-    pub to_source: String,
-    pub amount_source: String,
-    pub gas_limit: String,
-}
-
-// =============================================================================
-// REGULATION CONFIGS
-// =============================================================================
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CheckKycConfig {
-    pub provider_url: String,
-    pub api_key_secret_name: String,
-    pub wallet_address_source: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CheckBalanceConfig {
-    pub chain_selector_name: String,
-    pub token_contract_address: String,
-    pub token_abi: AbiFunction,
-    pub address_source: String,
-}

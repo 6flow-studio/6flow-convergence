@@ -479,89 +479,6 @@ export interface ErrorConfig {
 export type ErrorNode = BaseNode<"error", ErrorConfig>;
 
 // =============================================================================
-// TOKENIZATION-SPECIFIC NODES (Convenience Wrappers)
-// =============================================================================
-
-/** Mint Token - convenience wrapper for token minting */
-export interface MintTokenConfig {
-  chainSelectorName: ChainSelectorName;
-  tokenContractAddress: string;
-  tokenAbi: AbiFunction; // mint(address,uint256) ABI
-  recipientSource: string; // "{{kycNode.walletAddress}}"
-  amountSource: string; // "{{calculateNode.amount}}"
-  gasLimit: string;
-}
-
-export type MintTokenNode = BaseNode<"mintToken", MintTokenConfig>;
-
-// Compiler expands this to: ABI Encode -> EVM Write
-
-// -----------------------------------------------------------------------------
-
-/** Burn Token - convenience wrapper for token burning */
-export interface BurnTokenConfig {
-  chainSelectorName: ChainSelectorName;
-  tokenContractAddress: string;
-  tokenAbi: AbiFunction; // burn(address,uint256) ABI
-  fromSource: string;
-  amountSource: string;
-  gasLimit: string;
-}
-
-export type BurnTokenNode = BaseNode<"burnToken", BurnTokenConfig>;
-
-// -----------------------------------------------------------------------------
-
-/** Transfer Token - convenience wrapper for token transfer */
-export interface TransferTokenConfig {
-  chainSelectorName: ChainSelectorName;
-  tokenContractAddress: string;
-  tokenAbi: AbiFunction; // transfer(address,uint256) ABI
-  toSource: string;
-  amountSource: string;
-  gasLimit: string;
-}
-
-export type TransferTokenNode = BaseNode<"transferToken", TransferTokenConfig>;
-
-// =============================================================================
-// REGULATION NODES
-// =============================================================================
-
-/** Check KYC - verify user KYC status */
-export interface CheckKycConfig {
-  providerUrl: string; // KYC API endpoint
-  apiKeySecretName: string; // Secret reference for API key
-  walletAddressSource: string; // Where to get wallet address
-}
-
-export type CheckKycNode = BaseNode<"checkKyc", CheckKycConfig>;
-
-export interface CheckKycOutput {
-  isApproved: boolean;
-  kycLevel: number;
-  expiresAt?: string;
-}
-
-// Compiler expands this to: Get Secret -> HTTP POST -> JSON Parse -> Transform
-
-// -----------------------------------------------------------------------------
-
-/** Check Balance - check token balance */
-export interface CheckBalanceConfig {
-  chainSelectorName: ChainSelectorName;
-  tokenContractAddress: string;
-  tokenAbi: AbiFunction; // balanceOf(address) ABI
-  addressSource: string;
-}
-
-export type CheckBalanceNode = BaseNode<"checkBalance", CheckBalanceConfig>;
-
-export interface CheckBalanceOutput {
-  balance: string; // bigint as string
-}
-
-// =============================================================================
 // NODE TYPE UNION
 // =============================================================================
 
@@ -589,14 +506,7 @@ export type NodeType =
   | "ai"
   // Output
   | "return"
-  | "error"
-  // Tokenization
-  | "mintToken"
-  | "burnToken"
-  | "transferToken"
-  // Regulation
-  | "checkKyc"
-  | "checkBalance";
+  | "error";
 
 /** Category groupings for React Flow component lookup */
 export type NodeCategory =
@@ -605,9 +515,7 @@ export type NodeCategory =
   | "transform"
   | "controlFlow"
   | "ai"
-  | "output"
-  | "tokenization"
-  | "regulation";
+  | "output";
 
 /** Maps each NodeType to its NodeCategory */
 export const NODE_TYPE_TO_CATEGORY: Record<NodeType, NodeCategory> = {
@@ -634,13 +542,6 @@ export const NODE_TYPE_TO_CATEGORY: Record<NodeType, NodeCategory> = {
   // Output
   return: "output",
   error: "output",
-  // Tokenization
-  mintToken: "tokenization",
-  burnToken: "tokenization",
-  transferToken: "tokenization",
-  // Regulation
-  checkKyc: "regulation",
-  checkBalance: "regulation",
 };
 
 /** Get the category for a given NodeType */
@@ -672,14 +573,7 @@ export type WorkflowNode =
   | AINode
   // Output
   | ReturnNode
-  | ErrorNode
-  // Tokenization
-  | MintTokenNode
-  | BurnTokenNode
-  | TransferTokenNode
-  // Regulation
-  | CheckKycNode
-  | CheckBalanceNode;
+  | ErrorNode;
 
 // =============================================================================
 // TYPE GUARDS
@@ -721,16 +615,6 @@ export function isOutputNode(node: WorkflowNode): boolean {
   return ["return", "error"].includes(node.type);
 }
 
-/** Check if a node is a tokenization-specific node */
-export function isTokenizationNode(node: WorkflowNode): boolean {
-  return ["mintToken", "burnToken", "transferToken"].includes(node.type);
-}
-
-/** Check if a node is a regulation node */
-export function isRegulationNode(node: WorkflowNode): boolean {
-  return ["checkKyc", "checkBalance"].includes(node.type);
-}
-
 // =============================================================================
 // VALIDATION HELPERS
 // =============================================================================
@@ -749,15 +633,15 @@ export type { ChainSelectorName } from "../supportedChain";
 // =============================================================================
 
 /**
- * Example: A simple tokenization workflow
+ * Example: A conditional EVM write workflow
  *
- * [Cron Trigger] -> [HTTP Request (KYC API)] -> [JSON Parse] -> [If (isApproved)]
- *                                                                |
- *                                                    true -------+------- false
- *                                                      |                    |
- *                                              [Mint Token]            [Return]
- *                                                      |
- *                                               [Return]
+ * [Cron Trigger] -> [HTTP Request] -> [JSON Parse] -> [If (isApproved)]
+ *                                                       |
+ *                                           true -------+------- false
+ *                                             |                    |
+ *                                        [EVM Write]          [Return]
+ *                                             |
+ *                                         [Return]
  */
 export const exampleWorkflow: Workflow = {
   id: "example-tokenization-workflow",
@@ -826,27 +710,31 @@ export const exampleWorkflow: Workflow = {
       },
     },
     {
-      id: "mint-1",
-      type: "mintToken",
+      id: "write-1",
+      type: "evmWrite",
       position: { x: 900, y: 100 },
       data: {
-        label: "Mint Tokens",
+        label: "Write to Contract",
         config: {
           chainSelectorName: "ethereum-testnet-sepolia",
-          tokenContractAddress: "0x...",
-          tokenAbi: {
-            type: "function",
-            name: "mint",
-            inputs: [
-              { name: "to", type: "address" },
-              { name: "amount", type: "uint256" },
-            ],
-            outputs: [],
-            stateMutability: "nonpayable",
-          },
-          recipientSource: "{{parse-1.walletAddress}}",
-          amountSource: "{{parse-1.tokenAmount}}",
+          receiverAddress: "0x1234567890abcdef1234567890abcdef12345678",
           gasLimit: "500000",
+          abiParams: [
+            { name: "to", type: "address" },
+            { name: "amount", type: "uint256" },
+          ],
+          dataMapping: [
+            {
+              type: "reference",
+              value: "{{parse-1.walletAddress}}",
+              abiType: "address",
+            },
+            {
+              type: "reference",
+              value: "{{parse-1.tokenAmount}}",
+              abiType: "uint256",
+            },
+          ],
         },
       },
     },
@@ -873,9 +761,9 @@ export const exampleWorkflow: Workflow = {
     { id: "e1", source: "trigger-1", target: "http-1" },
     { id: "e2", source: "http-1", target: "parse-1" },
     { id: "e3", source: "parse-1", target: "condition-1" },
-    { id: "e4", source: "condition-1", target: "mint-1", sourceHandle: "true" },
+    { id: "e4", source: "condition-1", target: "write-1", sourceHandle: "true" },
     { id: "e5", source: "condition-1", target: "return-2", sourceHandle: "false" },
-    { id: "e6", source: "mint-1", target: "return-1" },
+    { id: "e6", source: "write-1", target: "return-1" },
   ],
   createdAt: "2025-01-01T00:00:00Z",
   updatedAt: "2025-01-01T00:00:00Z",

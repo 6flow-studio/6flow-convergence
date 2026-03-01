@@ -11,7 +11,7 @@ Workflow JSON → Parse → Validate → Lower → IR Validate → Codegen → C
 | Phase | Entry point | Input → Output |
 | --- | --- | --- |
 | **Parse** | `parse::parse(json)` | JSON string → `Workflow` + `WorkflowGraph` |
-| **Validate** | `validate::validate_graph(workflow, graph)` | Graph-level (V001–V010, with V007 reserved) + per-node (N001–N021) checks |
+| **Validate** | `validate::validate_graph(workflow, graph)` | Graph-level (V001–V010, with V007 reserved) + per-node (N001–N016) checks |
 | **Lower** | `lower::lower(workflow, graph)` | `Workflow` → `WorkflowIR` (expand convenience nodes, resolve refs, detect branches) |
 | **IR Validate** | `ir::validate_ir(ir)` | Structural/semantic IR invariants (E001–E012) |
 | **Codegen** | `codegen::codegen(ir)` | `WorkflowIR` → 7-file CRE project bundle |
@@ -29,13 +29,13 @@ src/
   validate/
     mod.rs               # validate_graph(), validate_node()
     structural.rs        # Graph invariants V001–V010
-    node_rules.rs        # Per-node config validation N001–N021
+    node_rules.rs        # Per-node config validation N001–N016
   lower/
     mod.rs               # lower() orchestrator
     topo.rs              # Topological sort
     trigger.rs           # Trigger node → TriggerDef + TriggerParam
     extract.rs           # config_schema, secrets, evm_chains extraction
-    expand.rs            # Convenience node expansion (mintToken, checkKyc, etc.)
+    expand.rs            # Convenience node expansion framework (no nodes currently defined)
     reference.rs         # {{nodeId.field}} → ValueExpr parser
     builder.rs           # Step sequence assembly, branch/merge detection
   ir/
@@ -58,7 +58,7 @@ src/
 
 ## Parse
 
-Deserializes frontend workflow JSON into Rust types. `WorkflowNode` is a `#[serde(tag = "type")]` enum with 23 variants, each wrapping `NodeBase<XxxConfig>`. `WorkflowGraph` wraps `petgraph::DiGraph` and provides adjacency lookups used by validation and lowering.
+Deserializes frontend workflow JSON into Rust types. `WorkflowNode` is a `#[serde(tag = "type")]` enum with 18 variants, each wrapping `NodeBase<XxxConfig>`. `WorkflowGraph` wraps `petgraph::DiGraph` and provides adjacency lookups used by validation and lowering.
 
 ## Graph Validation (pre-IR)
 
@@ -79,7 +79,7 @@ Two layers of checks before lowering:
 | V009 | `merge` node has ≥2 incoming edges |
 | V010 | No self-loops |
 
-### Per-node config rules (N001–N021)
+### Per-node config rules (N001–N016)
 
 Required fields present and non-empty, value range checks (gasLimit ≤ 5M), secret references exist in `globalConfig.secrets`, template references syntactically valid.
 
@@ -90,12 +90,7 @@ The most complex phase. Algorithm:
 1. **Topological sort** — petgraph `toposort()`, trigger always first
 2. **Trigger mapping** — trigger config → `TriggerDef` + `TriggerParam`
 3. **Global extraction** — collect `config_schema`, `required_secrets`, `evm_chains`
-4. **Convenience expansion** — sugar nodes expand to primitives using `{nodeId}___sub` IDs:
-   - `mintToken` → `{id}___encode` (AbiEncode) + `{id}___write` (EvmWrite)
-   - `burnToken` → `{id}___encode` + `{id}___write`
-   - `transferToken` → `{id}___encode` + `{id}___write`
-   - `checkKyc` → `{id}___secret` (GetSecret) + `{id}___http` (HttpRequest) + `{id}___parse` (JsonParse)
-   - `checkBalance` → single EvmRead (no expansion)
+4. **Convenience expansion** — sugar nodes expand to primitives using `{nodeId}___sub` IDs. No convenience nodes are currently defined, but the expansion framework remains in `src/lower/expand.rs`.
 5. **Reference resolution** — `{{nodeId.field}}` → `ValueExpr` (Binding, ConfigRef, TriggerDataRef, Template)
 6. **Step building** — walk topo order, build `Block`/`Step` structures, detect `if` → branch/merge diamond patterns via reachability analysis
 7. **Assembly** — combine into `WorkflowIR`
@@ -196,7 +191,7 @@ All errors carry `node_id` for React Flow highlighting.
 | `tests/helpers/mod.rs` | — | Shared test builders (`base_ir`, `ir_with_steps`, `make_step`, operation constructors) |
 | `tests/parse_basic.rs` | 5 | Parse round-trips, graph construction, node type checks |
 | `tests/validate_graph.rs` | 6 | Graph-level validation rules (V001/V004/V005/V008/V010) |
-| `tests/lower_basic.rs` | 3 | Linear lowering, convenience expansion (mintToken), example workflow lowering |
+| `tests/lower_basic.rs` | 3 | Linear lowering, example workflow lowering, auto-return insertion |
 | `tests/ir_triggers.rs` | 3 | Every `TriggerDef` variant serde round-trip |
 | `tests/ir_value_expr.rs` | 11 | Every `ValueExpr` variant serde round-trip |
 | `tests/ir_operations.rs` | 15 | Every `Operation` variant: construct, validate, serde round-trip |
@@ -204,11 +199,10 @@ All errors carry `node_id` for React Flow highlighting.
 | `tests/ir_validate.rs` | 19 | Exhaustive positive + negative tests for every IR error code (E002–E012) |
 | `tests/codegen_basic.rs` | 6 | Codegen output: file count, snapshot tests for main.ts, config.json, secrets.yaml, package.json |
 | `tests/e2e_pipeline.rs` | 1 | Full Parse → Validate → Lower → IR Validate → Codegen pipeline |
-| `tests/e2e_kyc_minting.rs` | 5 | Canonical KYC-gated minting IR: validation, JSON round-trip, snapshot (`insta`), undeclared secret/chain |
 
 ### Test fixtures
 
-JSON fixtures live in `tests/fixtures/` — example workflow, linear workflow, mint convenience, and broken graphs for each validation rule.
+JSON fixtures live in `tests/fixtures/` — example workflow, linear workflow, and broken graphs for each validation rule.
 
 ### Running tests
 
@@ -225,7 +219,6 @@ cargo test --test ir_topologies  # Workflow shape tests
 cargo test --test ir_validate    # IR validation E-codes
 cargo test --test codegen_basic  # Codegen snapshots
 cargo test --test e2e_pipeline   # Full pipeline test
-cargo test --test e2e_kyc_minting # Canonical KYC example
 cargo test -- --list             # List all test names
 cargo build --target wasm32-unknown-unknown  # Verify WASM build
 ```

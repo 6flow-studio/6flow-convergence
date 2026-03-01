@@ -43,7 +43,7 @@ fn parse_node_types_correct() {
     assert!(types.contains(&"httpRequest"));
     assert!(types.contains(&"jsonParse"));
     assert!(types.contains(&"if"));
-    assert!(types.contains(&"mintToken"));
+    assert!(types.contains(&"evmWrite"));
     assert!(types.contains(&"return"));
 }
 

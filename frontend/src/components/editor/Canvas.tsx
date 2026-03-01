@@ -20,9 +20,7 @@ import { ActionNode } from "./nodes/ActionNode";
 import { TransformNode } from "./nodes/TransformNode";
 import { ControlFlowNode } from "./nodes/ControlFlowNode";
 import { OutputNode } from "./nodes/OutputNode";
-import { TokenizationNode } from "./nodes/TokenizationNode";
 import { AINode } from "./nodes/AINode";
-import { RegulationNode } from "./nodes/RegulationNode";
 import { DeletableEdge } from "./edges/DeletableEdge";
 
 const nodeTypes: NodeTypes = {
@@ -31,9 +29,7 @@ const nodeTypes: NodeTypes = {
   transform: TransformNode,
   controlFlow: ControlFlowNode,
   output: OutputNode,
-  tokenization: TokenizationNode,
   ai: AINode,
-  regulation: RegulationNode,
 };
 
 const edgeTypes: EdgeTypes = {

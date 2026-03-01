@@ -5,8 +5,8 @@ mod helpers;
 use compiler::codegen::codegen;
 
 #[test]
-fn kyc_minting_codegen_main_ts_snapshot() {
-    let ir = helpers::kyc_minting_ir();
+fn branching_workflow_codegen_main_ts_snapshot() {
+    let ir = helpers::branching_workflow_ir();
     let output = codegen(&ir);
 
     let main_ts = output
@@ -15,12 +15,12 @@ fn kyc_minting_codegen_main_ts_snapshot() {
         .find(|f| f.path == "main.ts")
         .expect("main.ts should be generated");
 
-    insta::assert_snapshot!("kyc_minting_main_ts", main_ts.content);
+    insta::assert_snapshot!("branching_workflow_main_ts", main_ts.content);
 }
 
 #[test]
-fn kyc_minting_codegen_config_json_snapshot() {
-    let ir = helpers::kyc_minting_ir();
+fn branching_workflow_codegen_config_json_snapshot() {
+    let ir = helpers::branching_workflow_ir();
     let output = codegen(&ir);
 
     let config = output
@@ -29,12 +29,12 @@ fn kyc_minting_codegen_config_json_snapshot() {
         .find(|f| f.path == "config.staging.json")
         .expect("config.staging.json should be generated");
 
-    insta::assert_snapshot!("kyc_minting_config_json", config.content);
+    insta::assert_snapshot!("branching_workflow_config_json", config.content);
 }
 
 #[test]
-fn kyc_minting_codegen_secrets_yaml_snapshot() {
-    let ir = helpers::kyc_minting_ir();
+fn branching_workflow_codegen_secrets_yaml_snapshot() {
+    let ir = helpers::branching_workflow_ir();
     let output = codegen(&ir);
 
     let secrets = output
@@ -43,12 +43,12 @@ fn kyc_minting_codegen_secrets_yaml_snapshot() {
         .find(|f| f.path == "secrets.yaml")
         .expect("secrets.yaml should be generated");
 
-    insta::assert_snapshot!("kyc_minting_secrets_yaml", secrets.content);
+    insta::assert_snapshot!("branching_workflow_secrets_yaml", secrets.content);
 }
 
 #[test]
-fn kyc_minting_codegen_package_json_snapshot() {
-    let ir = helpers::kyc_minting_ir();
+fn branching_workflow_codegen_package_json_snapshot() {
+    let ir = helpers::branching_workflow_ir();
     let output = codegen(&ir);
 
     let pkg = output
@@ -57,12 +57,12 @@ fn kyc_minting_codegen_package_json_snapshot() {
         .find(|f| f.path == "package.json")
         .expect("package.json should be generated");
 
-    insta::assert_snapshot!("kyc_minting_package_json", pkg.content);
+    insta::assert_snapshot!("branching_workflow_package_json", pkg.content);
 }
 
 #[test]
-fn kyc_minting_codegen_produces_all_files() {
-    let ir = helpers::kyc_minting_ir();
+fn branching_workflow_codegen_produces_all_files() {
+    let ir = helpers::branching_workflow_ir();
     let output = codegen(&ir);
 
     let paths: Vec<&str> = output.files.iter().map(|f| f.path.as_str()).collect();

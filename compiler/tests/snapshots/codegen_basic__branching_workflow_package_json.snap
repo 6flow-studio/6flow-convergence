@@ -3,7 +3,7 @@ source: tests/codegen_basic.rs
 expression: pkg.content
 ---
 {
-  "name": "kyc-gated-minting",
+  "name": "branching-workflow",
   "version": "1.0.0",
   "main": "dist/main.js",
   "private": true,
