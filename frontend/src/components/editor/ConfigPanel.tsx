@@ -4,7 +4,7 @@
  * SYNC NOTE: The `renderNodeConfig` switch must stay aligned with
  * node types/configs in `shared/model/node.ts` (see checklist there).
  */
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback } from "react";
 import { useEditorStore } from "@/lib/editor-store";
 import { getNodeEntry, CATEGORY_COLORS } from "@/lib/node-registry";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,7 @@ import {
   AbiDecodeConfigRenderer,
   MergeConfigRenderer,
 } from "./config-renderers";
+import { NodeExecutionPanel } from "./NodeExecutionPanel";
 
 function renderNodeConfig(
   nodeType: NodeType,
@@ -41,41 +42,133 @@ function renderNodeConfig(
   isTestnet?: boolean,
   secretNames?: string[]
 ) {
+  const typedConfig = <T,>(value: Record<string, unknown>) => value as unknown as T;
+
   switch (nodeType) {
     case "codeNode":
-      return <CodeNodeConfigRenderer config={config as any} onChange={onChange} />;
+      return (
+        <CodeNodeConfigRenderer
+          config={typedConfig<Parameters<typeof CodeNodeConfigRenderer>[0]["config"]>(config)}
+          onChange={onChange}
+        />
+      );
     case "httpRequest":
-      return <HttpRequestConfigRenderer config={config as any} onChange={onChange} />;
+      return (
+        <HttpRequestConfigRenderer
+          config={typedConfig<Parameters<typeof HttpRequestConfigRenderer>[0]["config"]>(config)}
+          onChange={onChange}
+        />
+      );
     case "httpTrigger":
-      return <HttpTriggerConfigRenderer config={config as any} onChange={onChange} />;
+      return (
+        <HttpTriggerConfigRenderer
+          config={typedConfig<Parameters<typeof HttpTriggerConfigRenderer>[0]["config"]>(config)}
+          onChange={onChange}
+        />
+      );
     case "if":
-      return <IfConfigRenderer config={config as any} onChange={onChange} />;
+      return (
+        <IfConfigRenderer
+          config={typedConfig<Parameters<typeof IfConfigRenderer>[0]["config"]>(config)}
+          onChange={onChange}
+        />
+      );
     case "filter":
-      return <FilterConfigRenderer config={config as any} onChange={onChange} />;
+      return (
+        <FilterConfigRenderer
+          config={typedConfig<Parameters<typeof FilterConfigRenderer>[0]["config"]>(config)}
+          onChange={onChange}
+        />
+      );
     case "ai":
-      return <AIConfigRenderer config={config as any} onChange={onChange} secretNames={secretNames} />;
+      return (
+        <AIConfigRenderer
+          config={typedConfig<Parameters<typeof AIConfigRenderer>[0]["config"]>(config)}
+          onChange={onChange}
+          secretNames={secretNames}
+        />
+      );
     case "cronTrigger":
-      return <CronTriggerConfigRenderer config={config as any} onChange={onChange} />;
+      return (
+        <CronTriggerConfigRenderer
+          config={typedConfig<Parameters<typeof CronTriggerConfigRenderer>[0]["config"]>(config)}
+          onChange={onChange}
+        />
+      );
     case "evmLogTrigger":
-      return <EvmLogTriggerConfigRenderer config={config as any} onChange={onChange} isTestnet={isTestnet} />;
+      return (
+        <EvmLogTriggerConfigRenderer
+          config={typedConfig<Parameters<typeof EvmLogTriggerConfigRenderer>[0]["config"]>(config)}
+          onChange={onChange}
+          isTestnet={isTestnet}
+        />
+      );
     case "evmRead":
-      return <EvmReadConfigRenderer config={config as any} onChange={onChange} isTestnet={isTestnet} />;
+      return (
+        <EvmReadConfigRenderer
+          config={typedConfig<Parameters<typeof EvmReadConfigRenderer>[0]["config"]>(config)}
+          onChange={onChange}
+          isTestnet={isTestnet}
+        />
+      );
     case "evmWrite":
-      return <EvmWriteConfigRenderer config={config as any} onChange={onChange} isTestnet={isTestnet} />;
+      return (
+        <EvmWriteConfigRenderer
+          config={typedConfig<Parameters<typeof EvmWriteConfigRenderer>[0]["config"]>(config)}
+          onChange={onChange}
+          isTestnet={isTestnet}
+        />
+      );
     case "getSecret":
-      return <GetSecretConfigRenderer config={config as any} onChange={onChange} secretNames={secretNames} />;
+      return (
+        <GetSecretConfigRenderer
+          config={typedConfig<Parameters<typeof GetSecretConfigRenderer>[0]["config"]>(config)}
+          onChange={onChange}
+          secretNames={secretNames}
+        />
+      );
     case "jsonParse":
-      return <JsonParseConfigRenderer config={config as any} onChange={onChange} />;
+      return (
+        <JsonParseConfigRenderer
+          config={typedConfig<Parameters<typeof JsonParseConfigRenderer>[0]["config"]>(config)}
+          onChange={onChange}
+        />
+      );
     case "abiEncode":
-      return <AbiEncodeConfigRenderer config={config as any} onChange={onChange} />;
+      return (
+        <AbiEncodeConfigRenderer
+          config={typedConfig<Parameters<typeof AbiEncodeConfigRenderer>[0]["config"]>(config)}
+          onChange={onChange}
+        />
+      );
     case "abiDecode":
-      return <AbiDecodeConfigRenderer config={config as any} onChange={onChange} />;
+      return (
+        <AbiDecodeConfigRenderer
+          config={typedConfig<Parameters<typeof AbiDecodeConfigRenderer>[0]["config"]>(config)}
+          onChange={onChange}
+        />
+      );
     case "merge":
-      return <MergeConfigRenderer config={config as any} onChange={onChange} />;
+      return (
+        <MergeConfigRenderer
+          config={typedConfig<Parameters<typeof MergeConfigRenderer>[0]["config"]>(config)}
+          onChange={onChange}
+        />
+      );
     case "return":
-      return <ReturnConfigRenderer config={config as any} onChange={onChange} />;
+      return (
+        <ReturnConfigRenderer
+          config={typedConfig<Parameters<typeof ReturnConfigRenderer>[0]["config"]>(config)}
+          onChange={onChange}
+        />
+      );
     case "error":
-      return <ErrorConfigRenderer config={config as any} onChange={onChange} />;
+      return (
+        <ErrorConfigRenderer
+          config={typedConfig<Parameters<typeof ErrorConfigRenderer>[0]["config"]>(config)}
+          onChange={onChange}
+        />
+      );
     default:
       return <GenericConfigRenderer config={config} onChange={onChange} />;
   }
@@ -225,6 +318,8 @@ export function ConfigPanel() {
               workflowGlobalConfig.secrets.map((s) => s.name).filter(Boolean)
             )}
           </div>
+
+          <NodeExecutionPanel node={node} />
 
           {/* Delete */}
           <div className="pt-2">

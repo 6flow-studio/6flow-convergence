@@ -55,6 +55,43 @@ export interface NodeSettings {
   executeOnce?: boolean; // Only process first item (for batch scenarios)
 }
 
+export type DataSchemaType =
+  | "object"
+  | "array"
+  | "string"
+  | "number"
+  | "boolean"
+  | "null"
+  | "unknown";
+
+export interface DataSchema {
+  type: DataSchemaType;
+  path: string;
+  fields?: DataSchemaField[];
+  itemSchema?: DataSchema;
+}
+
+export interface DataSchemaField {
+  key: string;
+  path: string;
+  schema: DataSchema;
+  optional?: boolean;
+}
+
+export interface NodeExecutionPreview {
+  raw: unknown;
+  normalized: unknown;
+  warnings?: string[];
+  truncated?: boolean;
+}
+
+export interface NodeEditorMetadata {
+  lastExecution?: NodeExecutionPreview;
+  outputSchema?: DataSchema;
+  schemaSource?: "executed" | "declared" | "derived";
+  executedAt?: string;
+}
+
 /** Generic base node - all nodes extend this */
 export interface BaseNode<T extends NodeType, C> {
   id: string;
@@ -63,6 +100,7 @@ export interface BaseNode<T extends NodeType, C> {
   data: {
     label: string;
     config: C;
+    editor?: NodeEditorMetadata;
   };
   settings?: NodeSettings;
 }
