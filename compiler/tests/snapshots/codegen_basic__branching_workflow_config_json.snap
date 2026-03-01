@@ -5,6 +5,5 @@ expression: config.content
 {
   "schedule": "TZ=UTC 0 */10 * * * *",
   "walletAddress": "",
-  "tokenContractAddress": "",
-  "mintAmount": ""
+  "receiverAddress": ""
 }

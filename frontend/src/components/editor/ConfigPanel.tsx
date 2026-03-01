@@ -26,9 +26,6 @@ import {
   JsonParseConfigRenderer,
   ReturnConfigRenderer,
   ErrorConfigRenderer,
-  CheckKycConfigRenderer,
-  TokenNodeConfigRenderer,
-  CheckBalanceConfigRenderer,
   EvmLogTriggerConfigRenderer,
   EvmReadConfigRenderer,
   EvmWriteConfigRenderer,
@@ -79,16 +76,6 @@ function renderNodeConfig(
       return <ReturnConfigRenderer config={config as any} onChange={onChange} />;
     case "error":
       return <ErrorConfigRenderer config={config as any} onChange={onChange} />;
-    case "mintToken":
-      return <TokenNodeConfigRenderer variant="mint" config={config as any} onChange={onChange} isTestnet={isTestnet} />;
-    case "burnToken":
-      return <TokenNodeConfigRenderer variant="burn" config={config as any} onChange={onChange} isTestnet={isTestnet} />;
-    case "transferToken":
-      return <TokenNodeConfigRenderer variant="transfer" config={config as any} onChange={onChange} isTestnet={isTestnet} />;
-    case "checkKyc":
-      return <CheckKycConfigRenderer config={config as any} onChange={onChange} />;
-    case "checkBalance":
-      return <CheckBalanceConfigRenderer config={config as any} onChange={onChange} isTestnet={isTestnet} />;
     default:
       return <GenericConfigRenderer config={config} onChange={onChange} />;
   }

@@ -61,10 +61,6 @@ fn get_chain_selector(node: &WorkflowNode) -> Option<String> {
     match node {
         WorkflowNode::EvmRead(n) => Some(n.data.config.chain_selector_name.clone()),
         WorkflowNode::EvmWrite(n) => Some(n.data.config.chain_selector_name.clone()),
-        WorkflowNode::MintToken(n) => Some(n.data.config.chain_selector_name.clone()),
-        WorkflowNode::BurnToken(n) => Some(n.data.config.chain_selector_name.clone()),
-        WorkflowNode::TransferToken(n) => Some(n.data.config.chain_selector_name.clone()),
-        WorkflowNode::CheckBalance(n) => Some(n.data.config.chain_selector_name.clone()),
         _ => None,
     }
 }

@@ -7,14 +7,14 @@ use compiler::ir::*;
 // Canonical Test IRs
 // =============================================================================
 
-/// KYC-Gated Token Minting workflow IR (canonical example).
-pub fn kyc_minting_ir() -> WorkflowIR {
+/// Branching workflow IR with HTTP + JSON parse + conditional EVM write.
+pub fn branching_workflow_ir() -> WorkflowIR {
     WorkflowIR {
         metadata: WorkflowMetadata {
-            id: "kyc-gated-minting".into(),
-            name: "KYC-Gated Token Minting".into(),
+            id: "branching-workflow".into(),
+            name: "Branching Workflow".into(),
             description: Some(
-                "Periodically checks KYC status and mints tokens for approved users".into(),
+                "Periodically checks a condition and writes to an EVM contract if approved".into(),
             ),
             version: "1.0.0".into(),
             is_testnet: true,
@@ -35,19 +35,13 @@ pub fn kyc_minting_ir() -> WorkflowIR {
                 name: "walletAddress".into(),
                 zod_type: ZodType::String,
                 default_value: None,
-                description: Some("Wallet address to check KYC for".into()),
+                description: Some("Wallet address to check".into()),
             },
             ConfigField {
-                name: "tokenContractAddress".into(),
+                name: "receiverAddress".into(),
                 zod_type: ZodType::String,
                 default_value: None,
-                description: Some("ERC-20 token contract address".into()),
-            },
-            ConfigField {
-                name: "mintAmount".into(),
-                zod_type: ZodType::String,
-                default_value: None,
-                description: Some("Amount to mint (in wei)".into()),
+                description: Some("Receiver contract address".into()),
             },
         ],
         required_secrets: vec![SecretDeclaration {
@@ -65,7 +59,7 @@ pub fn kyc_minting_ir() -> WorkflowIR {
                 Step {
                     id: "http-1".into(),
                     source_node_ids: vec!["http-1".into()],
-                    label: "Fetch KYC status".into(),
+                    label: "Fetch status".into(),
                     operation: Operation::HttpRequest(HttpRequestOp {
                         method: HttpMethod::Get,
                         url: ValueExpr::Template {
@@ -99,7 +93,7 @@ pub fn kyc_minting_ir() -> WorkflowIR {
                 Step {
                     id: "parse-1".into(),
                     source_node_ids: vec!["parse-1".into()],
-                    label: "Parse KYC response".into(),
+                    label: "Parse response".into(),
                     operation: Operation::JsonParse(JsonParseOp {
                         input: ValueExpr::binding("http-1", "body"),
                         source_path: None,
@@ -114,7 +108,7 @@ pub fn kyc_minting_ir() -> WorkflowIR {
                 Step {
                     id: "condition-1".into(),
                     source_node_ids: vec!["condition-1".into()],
-                    label: "Check if KYC approved".into(),
+                    label: "Check if approved".into(),
                     operation: Operation::Branch(BranchOp {
                         conditions: vec![ConditionIR {
                             field: ValueExpr::binding("parse-1", "isApproved"),
@@ -125,42 +119,18 @@ pub fn kyc_minting_ir() -> WorkflowIR {
                         true_branch: Block {
                             steps: vec![
                                 Step {
-                                    id: "mint-1___encode".into(),
-                                    source_node_ids: vec!["mint-1".into()],
-                                    label: "ABI encode mint call".into(),
-                                    operation: Operation::AbiEncode(AbiEncodeOp {
-                                        function_name: Some("mint".into()),
-                                        abi_json: r#"{"name":"mint","type":"function","inputs":[{"name":"to","type":"address"},{"name":"amount","type":"uint256"}],"outputs":[],"stateMutability":"nonpayable"}"#.into(),
-                                        data_mappings: vec![
-                                            AbiDataMapping {
-                                                param_name: "to".into(),
-                                                value: ValueExpr::config("walletAddress"),
-                                            },
-                                            AbiDataMapping {
-                                                param_name: "amount".into(),
-                                                value: ValueExpr::config("mintAmount"),
-                                            },
-                                        ],
-                                    }),
-                                    output: Some(OutputBinding {
-                                        variable_name: "step_mint_1___encode".into(),
-                                        ts_type: "{ encoded: string }".into(),
-                                        destructure_fields: None,
-                                    }),
-                                },
-                                Step {
-                                    id: "mint-1___write".into(),
-                                    source_node_ids: vec!["mint-1".into()],
-                                    label: "Execute mint transaction".into(),
+                                    id: "write-1".into(),
+                                    source_node_ids: vec!["write-1".into()],
+                                    label: "Write to contract".into(),
                                     operation: Operation::EvmWrite(EvmWriteOp {
                                         evm_client_binding: "evmClient_eth_sepolia".into(),
-                                        receiver_address: ValueExpr::config("tokenContractAddress"),
-                                        gas_limit: ValueExpr::integer(1_000_000),
-                                        encoded_data: ValueExpr::binding("mint-1___encode", "encoded"),
+                                        receiver_address: ValueExpr::config("receiverAddress"),
+                                        gas_limit: ValueExpr::integer(500_000),
+                                        encoded_data: ValueExpr::binding("parse-1", "data"),
                                         value_wei: None,
                                     }),
                                     output: Some(OutputBinding {
-                                        variable_name: "step_mint_1___write".into(),
+                                        variable_name: "step_write_1".into(),
                                         ts_type: "{ txHash: string; status: string }".into(),
                                         destructure_fields: None,
                                     }),
@@ -168,7 +138,7 @@ pub fn kyc_minting_ir() -> WorkflowIR {
                                 Step {
                                     id: "return-1".into(),
                                     source_node_ids: vec!["return-1".into()],
-                                    label: "Return mint success".into(),
+                                    label: "Return success".into(),
                                     operation: Operation::Return(ReturnOp {
                                         expression: ValueExpr::string("Minted successfully"),
                                     }),

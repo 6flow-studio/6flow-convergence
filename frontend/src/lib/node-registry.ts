@@ -23,8 +23,6 @@ export const CATEGORY_COLORS: Record<NodeCategory, string> = {
   controlFlow: "#f97316",
   ai: "#22c55e",
   output: "#6b7280",
-  tokenization: "#eab308",
-  regulation: "#14b8a6",
 };
 
 export const CATEGORY_LABELS: Record<NodeCategory, string> = {
@@ -34,8 +32,6 @@ export const CATEGORY_LABELS: Record<NodeCategory, string> = {
   controlFlow: "Control Flow",
   ai: "AI",
   output: "Output",
-  tokenization: "Tokenization",
-  regulation: "Regulation",
 };
 
 export const NODE_REGISTRY: NodeRegistryEntry[] = [
@@ -261,75 +257,6 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     defaultConfig: { errorMessage: "" },
   },
 
-  // Tokenization
-  {
-    type: "mintToken",
-    label: "Mint Token",
-    category: "tokenization",
-    color: CATEGORY_COLORS.tokenization,
-    icon: "Coins",
-    inputs: [{ name: "input" }],
-    outputs: [{ name: "output" }],
-    defaultConfig: {
-      chainSelectorName: "ethereum-testnet-sepolia",
-      tokenContractAddress: "",
-      gasLimit: "500000",
-    },
-  },
-  {
-    type: "burnToken",
-    label: "Burn Token",
-    category: "tokenization",
-    color: CATEGORY_COLORS.tokenization,
-    icon: "Flame",
-    inputs: [{ name: "input" }],
-    outputs: [{ name: "output" }],
-    defaultConfig: {
-      chainSelectorName: "ethereum-testnet-sepolia",
-      tokenContractAddress: "",
-      gasLimit: "500000",
-    },
-  },
-  {
-    type: "transferToken",
-    label: "Transfer Token",
-    category: "tokenization",
-    color: CATEGORY_COLORS.tokenization,
-    icon: "ArrowRightLeft",
-    inputs: [{ name: "input" }],
-    outputs: [{ name: "output" }],
-    defaultConfig: {
-      chainSelectorName: "ethereum-testnet-sepolia",
-      tokenContractAddress: "",
-      gasLimit: "500000",
-    },
-  },
-
-  // Regulation
-  {
-    type: "checkKyc",
-    label: "Check KYC",
-    category: "regulation",
-    color: CATEGORY_COLORS.regulation,
-    icon: "ShieldCheck",
-    inputs: [{ name: "input" }],
-    outputs: [{ name: "output" }],
-    defaultConfig: { providerUrl: "", apiKeySecretName: "", walletAddressSource: "" },
-  },
-  {
-    type: "checkBalance",
-    label: "Check Balance",
-    category: "regulation",
-    color: CATEGORY_COLORS.regulation,
-    icon: "Wallet",
-    inputs: [{ name: "input" }],
-    outputs: [{ name: "output" }],
-    defaultConfig: {
-      chainSelectorName: "ethereum-testnet-sepolia",
-      tokenContractAddress: "",
-      addressSource: "",
-    },
-  },
 ];
 
 export function getNodeEntry(type: NodeType): NodeRegistryEntry | undefined {

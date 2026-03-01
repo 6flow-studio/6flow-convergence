@@ -54,7 +54,7 @@ cd ../cre-test && bun load-output.mjs && cre workflow simulate cre-testing-workf
 
 # Compiler
 - Compiler direction: use a 4-phase pipeline (Parse -> Validate -> IR -> Codegen) where visual workflow JSON is converted into a semantic IR before generating CRE output.
-- Treat convenience nodes (e.g., mintToken, checkKyc) as syntax sugar expanded in IR into primitive CRE capabilities, so codegen only emits canonical CRE patterns (initWorkflow, handlers, capabilities, consensus).
+- The compiler supports convenience nodes as syntax sugar expanded in IR into primitive CRE capabilities. No convenience nodes are currently defined, but the expansion framework remains in `compiler/src/lower/expand.rs`.
 - Expose three WASM APIs for frontend use: validate_workflow (graph-level checks), validate_node (live node checks), and compile_workflow (full build), with all errors carrying node_id for React Flow highlighting.
 - Compiler output must be a complete deployable CRE project bundle (main.ts, config.json, workflow.yaml, project.yaml, secrets.yaml, package.json), not just a single source file.
 

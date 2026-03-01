@@ -57,36 +57,8 @@ fn lower_example_workflow_produces_valid_ir() {
     assert_eq!(ir.required_secrets[0].name, "KYC_API_KEY");
 
     // The handler body should contain:
-    // http-1, parse-1, condition-1 (branch with expanded mint-1 inside true, log+return in false)
+    // http-1, parse-1, condition-1 (branch with write-1 inside true, return in false)
     assert!(!ir.handler_body.steps.is_empty());
-}
-
-#[test]
-fn lower_convenience_node_expansion() {
-    // Workflow with mintToken → should expand to AbiEncode + EvmWrite
-    let json = include_str!("fixtures/mint_convenience.json");
-    let workflow = parse::parse(json).unwrap();
-    let graph = parse::WorkflowGraph::build(&workflow).unwrap();
-    let ir = lower::lower(&workflow, &graph).expect("Should lower");
-
-    // Should have: mint-1___encode, mint-1___write, r1
-    let step_ids: Vec<&str> = ir
-        .handler_body
-        .steps
-        .iter()
-        .map(|s| s.id.as_str())
-        .collect();
-    assert!(
-        step_ids.contains(&"mint-1___encode"),
-        "Steps: {:?}",
-        step_ids
-    );
-    assert!(
-        step_ids.contains(&"mint-1___write"),
-        "Steps: {:?}",
-        step_ids
-    );
-    assert!(step_ids.contains(&"r1"), "Steps: {:?}", step_ids);
 }
 
 #[test]

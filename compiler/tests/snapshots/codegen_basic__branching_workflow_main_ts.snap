@@ -3,14 +3,12 @@ source: tests/codegen_basic.rs
 expression: main_ts.content
 ---
 import { cre, ok, consensusIdenticalAggregation, getNetwork, Runner, type Runtime, type HTTPSendRequester, type CronTrigger } from "@chainlink/cre-sdk";
-import { encodeFunctionData } from "viem";
 import { z } from "zod";
 
 const configSchema = z.object({
   schedule: z.string().default("TZ=UTC 0 */10 * * * *"),
   walletAddress: z.string(),
-  tokenContractAddress: z.string(),
-  mintAmount: z.string(),
+  receiverAddress: z.string(),
 });
 
 type Config = z.infer<typeof configSchema>;
@@ -43,35 +41,26 @@ const onCronTrigger = (runtime: Runtime<Config>, triggerData: CronTrigger): stri
 
   const __stringify = (v: unknown) => JSON.stringify(v, (_, x) => typeof x === "bigint" ? x.toString() : x);
 
-  // Fetch KYC status
+  // Fetch status
   const _authSecret_http_1 = runtime.getSecret({ id: "KYC_API_KEY" }).result();
   const _fetchCfg_http_1 = {
     ...runtime.config,
     _authToken: _authSecret_http_1.value,
   };
   const step_http_1 = httpClient.sendRequest(runtime, fetch_http_1, consensusIdenticalAggregation())(_fetchCfg_http_1).result();
-  runtime.log(`[Fetch KYC status] ${__stringify(step_http_1)}`);
-  // Parse KYC response
+  runtime.log(`[Fetch status] ${__stringify(step_http_1)}`);
+  // Parse response
   const step_parse_1 = JSON.parse(Buffer.from(step_http_1.body, "base64").toString("utf-8"));
-  runtime.log(`[Parse KYC response] ${__stringify(step_parse_1)}`);
-  // Check if KYC approved
+  runtime.log(`[Parse response] ${__stringify(step_parse_1)}`);
+  // Check if approved
   if (step_parse_1.isApproved === true) {
-    // ABI encode mint call
-    const step_mint_1___encode = {
-      encoded: encodeFunctionData({
-        abi: [{"name":"mint","type":"function","inputs":[{"name":"to","type":"address"},{"name":"amount","type":"uint256"}],"outputs":[],"stateMutability":"nonpayable"}],
-        functionName: "mint",
-        args: [runtime.config.walletAddress, runtime.config.mintAmount],
-      }),
-    };
-    runtime.log(`[ABI encode mint call] ${__stringify(step_mint_1___encode)}`);
-    // Execute mint transaction
-    const step_mint_1___write = evmClient_eth_sepolia.write(runtime, {
-      receiverAddress: runtime.config.tokenContractAddress,
-      gasLimit: BigInt(1000000),
-      data: step_mint_1___encode.encoded,
+    // Write to contract
+    const step_write_1 = evmClient_eth_sepolia.write(runtime, {
+      receiverAddress: runtime.config.receiverAddress,
+      gasLimit: BigInt(500000),
+      data: step_parse_1.data,
     }).result();
-    runtime.log(`[Execute mint transaction] ${__stringify(step_mint_1___write)}`);
+    runtime.log(`[Write to contract] ${__stringify(step_write_1)}`);
     return "Minted successfully";
   } else {
     return "KYC not approved";

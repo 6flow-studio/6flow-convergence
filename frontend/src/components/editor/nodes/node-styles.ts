@@ -59,22 +59,6 @@ export const CATEGORY_NODE_STYLES: Record<
     bodyText: "text-zinc-400/70",
     glow: "shadow-zinc-500/10",
   },
-  tokenization: {
-    bg: "bg-[#1a1708]",
-    border: "border-amber-500/30",
-    headerBg: "bg-gradient-to-r from-amber-600 to-yellow-500",
-    headerText: "text-black",
-    bodyText: "text-amber-300/70",
-    glow: "shadow-amber-500/10",
-  },
-  regulation: {
-    bg: "bg-[#081a18]",
-    border: "border-teal-500/30",
-    headerBg: "bg-gradient-to-r from-teal-600 to-teal-500",
-    headerText: "text-white",
-    bodyText: "text-teal-300/70",
-    glow: "shadow-teal-500/10",
-  },
 };
 
 export const HANDLE_STYLE = {

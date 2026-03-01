@@ -65,27 +65,23 @@
             }
         },
         {
-            "id": "mint-1",
-            "type": "mintToken",
+            "id": "write-1",
+            "type": "evmWrite",
             "position": { "x": 900, "y": 100 },
             "data": {
-                "label": "Mint Tokens",
+                "label": "Write to Contract",
                 "config": {
                     "chainSelectorName": "ethereum-testnet-sepolia",
-                    "tokenContractAddress": "0x1234567890abcdef1234567890abcdef12345678",
-                    "tokenAbi": {
-                        "type": "function",
-                        "name": "mint",
-                        "inputs": [
-                            { "name": "to", "type": "address" },
-                            { "name": "amount", "type": "uint256" }
-                        ],
-                        "outputs": [],
-                        "stateMutability": "nonpayable"
-                    },
-                    "recipientSource": "{{parse-1.walletAddress}}",
-                    "amountSource": "{{parse-1.tokenAmount}}",
-                    "gasLimit": "500000"
+                    "receiverAddress": "0x1234567890abcdef1234567890abcdef12345678",
+                    "gasLimit": "500000",
+                    "abiParams": [
+                        { "name": "to", "type": "address" },
+                        { "name": "amount", "type": "uint256" }
+                    ],
+                    "dataMapping": [
+                        { "type": "reference", "value": "{{parse-1.walletAddress}}", "abiType": "address" },
+                        { "type": "reference", "value": "{{parse-1.tokenAmount}}", "abiType": "uint256" }
+                    ]
                 }
             }
         },
@@ -112,9 +108,9 @@
         { "id": "e1", "source": "trigger-1", "target": "http-1" },
         { "id": "e2", "source": "http-1", "target": "parse-1" },
         { "id": "e3", "source": "parse-1", "target": "condition-1" },
-        { "id": "e4", "source": "condition-1", "target": "mint-1", "sourceHandle": "true" },
+        { "id": "e4", "source": "condition-1", "target": "write-1", "sourceHandle": "true" },
         { "id": "e5", "source": "condition-1", "target": "return-2", "sourceHandle": "false" },
-        { "id": "e6", "source": "mint-1", "target": "return-1" }
+        { "id": "e6", "source": "write-1", "target": "return-1" }
     ],
     "createdAt": "2025-01-01T00:00:00Z",
     "updatedAt": "2025-01-01T00:00:00Z"
