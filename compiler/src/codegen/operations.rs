@@ -299,11 +299,36 @@ pub fn emit_ai_call(
             secret_var, secret_name,
         ));
 
-        // Pass secret value as third argument to sendRequest
-        w.line(&format!(
-            "const {} = httpClient.sendRequest(runtime, {}, {})(runtime.config, {}.value).result();",
-            out.variable_name, fetch_fn_name, consensus_expr, secret_var,
-        ));
+        let ctx = fetch_contexts.get(&step.id);
+        let has_dynamic = ctx.map_or(false, |c| !c.dynamic_refs.is_empty());
+
+        if has_dynamic {
+            // Build augmented config with upstream refs
+            let cfg_var = format!("_fetchCfg_{}", step.id.replace('-', "_"));
+            w.block_open(&format!("const {} =", cfg_var));
+            w.line("...runtime.config,");
+            if let Some(c) = ctx {
+                for dyn_ref in &c.dynamic_refs {
+                    w.line(&format!(
+                        "{}: {},",
+                        dyn_ref.config_key,
+                        emit_value_expr(&dyn_ref.handler_expr),
+                    ));
+                }
+            }
+            w.dedent();
+            w.line("};");
+            w.line(&format!(
+                "const {} = httpClient.sendRequest(runtime, {}, {})({}, {}.value).result();",
+                out.variable_name, fetch_fn_name, consensus_expr, cfg_var, secret_var,
+            ));
+        } else {
+            // No dynamic refs — pass runtime.config directly
+            w.line(&format!(
+                "const {} = httpClient.sendRequest(runtime, {}, {})(runtime.config, {}.value).result();",
+                out.variable_name, fetch_fn_name, consensus_expr, secret_var,
+            ));
+        }
     }
 }
 

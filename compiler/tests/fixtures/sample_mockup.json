@@ -7,8 +7,8 @@
             "id": "node_1772451937785_0",
             "type": "cronTrigger",
             "position": {
-                "x": 278,
-                "y": 224
+                "x": 272.34559225816463,
+                "y": 286.90528612791843
             },
             "data": {
                 "label": "Cron Trigger",
@@ -19,11 +19,11 @@
             }
         },
         {
-            "id": "node_1772451941969_1",
+            "id": "getoffchainreserves_1",
             "type": "httpRequest",
             "position": {
-                "x": 507.1131603830647,
-                "y": 222.86656728508015
+                "x": 502.8723545766883,
+                "y": 218.6257614787036
             },
             "data": {
                 "label": "getOffChainReserves",
@@ -37,23 +37,23 @@
                         "raw": {
                             "statusCode": 200,
                             "headers": {
-                                "apigw-requestid": "Zl_TgiszCYcEP-w=",
+                                "apigw-requestid": "ZmLvaiuKiYcEPLA=",
                                 "connection": "keep-alive",
                                 "content-length": "410",
                                 "content-type": "application/json",
-                                "date": "Mon, 02 Mar 2026 11:47:46 GMT",
-                                "via": "1.1 cf40c55059848a32e2e055e331dd1eb6.cloudfront.net (CloudFront)",
-                                "x-amz-cf-id": "SzYsKsj15o1CviqFNhgkzgnVQSSa1ELylAtBJtrbIRZ4mA0pGjvKzA==",
+                                "date": "Mon, 02 Mar 2026 13:12:40 GMT",
+                                "via": "1.1 ba8d8ed107bf844dc316ae0f8c191068.cloudfront.net (CloudFront)",
+                                "x-amz-cf-id": "92C7QYkczV1UQNOYFbYUS-oY7WkhX06PGP2UauPLmbrsgFTGkqVDXA==",
                                 "x-amz-cf-pop": "MRS52-P6",
                                 "x-cache": "Miss from cloudfront"
                             },
-                            "body": "{\"accountName\":\"TrueUSD\",\"totalTrust\":501928900.88,\"totalToken\":494515082.75,\"updatedAt\":\"2026-03-02T11:47:35.666Z\",\"token\":[{\"tokenName\":\"TUSD (ETH)\",\"totalTokenByChain\":315125540.9523497},{\"tokenName\":\"TUSD (AVAX)\",\"totalTokenByChain\":845723.78},{\"tokenName\":\"TUSD (TRON)\",\"totalTokenByChain\":168513454.1376503},{\"tokenName\":\"TUSD (BSC)\",\"totalTokenByChain\":10030363.88}],\"ripcord\":false,\"ripcordDetails\":[]}"
+                            "body": "{\"accountName\":\"TrueUSD\",\"totalTrust\":501928900.88,\"totalToken\":494515082.75,\"updatedAt\":\"2026-03-02T13:12:35.628Z\",\"token\":[{\"tokenName\":\"TUSD (ETH)\",\"totalTokenByChain\":315125540.9523497},{\"tokenName\":\"TUSD (AVAX)\",\"totalTokenByChain\":845723.78},{\"tokenName\":\"TUSD (TRON)\",\"totalTokenByChain\":168513454.1376503},{\"tokenName\":\"TUSD (BSC)\",\"totalTokenByChain\":10030363.88}],\"ripcord\":false,\"ripcordDetails\":[]}"
                         },
                         "normalized": {
                             "accountName": "TrueUSD",
                             "totalTrust": 501928900.88,
                             "totalToken": "[redacted]",
-                            "updatedAt": "2026-03-02T11:47:35.666Z",
+                            "updatedAt": "2026-03-02T13:12:35.628Z",
                             "token": "[redacted]",
                             "ripcord": false,
                             "ripcordDetails": []
@@ -128,12 +128,12 @@
                         ]
                     },
                     "schemaSource": "executed",
-                    "executedAt": "2026-03-02T11:47:47.039Z"
+                    "executedAt": "2026-03-02T13:12:40.828Z"
                 }
             }
         },
         {
-            "id": "node_1772452114820_3",
+            "id": "getonchainsupply_3",
             "type": "evmRead",
             "position": {
                 "x": 506,
@@ -304,7 +304,151 @@
                         ]
                     },
                     "schemaSource": "executed",
-                    "executedAt": "2026-03-02T13:03:47.625Z"
+                    "executedAt": "2026-03-02T13:13:11.967Z"
+                }
+            }
+        },
+        {
+            "id": "node_1772461505671_1",
+            "type": "ai",
+            "position": {
+                "x": 754.3685093534245,
+                "y": 281.7758258087044
+            },
+            "data": {
+                "label": "getRiskScore",
+                "config": {
+                    "provider": "google",
+                    "baseUrl": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent",
+                    "model": "gemini-3-flash-preview",
+                    "apiKeySecret": "GEMINI_KEY",
+                    "systemPrompt": "You are a risk analyst. You will receive two numbers:\n- TotalSupply: total token supply, scaled to 18 decimal places (raw integer).\n- TotalReserveScaled: total reserved/collateral amount, scaled to 18 decimal places (raw integer).\n\nCompute coverage as: coverage = TotalReserveScaled / TotalSupply (both are same scale, so this is the reserve-to-supply ratio).\n\nApply this risk scale exactly:\n- If coverage >= 1.2: riskScore = 0\n- Else: riskScore = min(100, round(((1.2 - coverage) / 1.2) * 100))\n\nRespond with the risk score as structured JSON only, no other text or markdown.\n\nOutput format (valid JSON only):\n{\"riskScore\": <integer>}",
+                    "userPrompt": "TotalSupply: {{getonchainsupply_3.value}}\nTotalReserveScaled: {{getoffchainreserves_1.token}}",
+                    "temperature": 0.7,
+                    "responseFormat": "text"
+                },
+                "editor": {
+                    "outputSchema": {
+                        "type": "object",
+                        "path": "",
+                        "fields": [
+                            {
+                                "key": "candidates",
+                                "path": "candidates",
+                                "schema": {
+                                    "type": "array",
+                                    "path": "candidates",
+                                    "itemSchema": {
+                                        "type": "object",
+                                        "path": "candidates[]",
+                                        "fields": [
+                                            {
+                                                "key": "content",
+                                                "path": "candidates[0][0].content",
+                                                "schema": {
+                                                    "type": "object",
+                                                    "path": "candidates[0][0].content",
+                                                    "fields": [
+                                                        {
+                                                            "key": "parts",
+                                                            "path": "candidates[0][0].content.parts",
+                                                            "schema": {
+                                                                "type": "array",
+                                                                "path": "candidates[0][0].content.parts",
+                                                                "itemSchema": {
+                                                                    "type": "object",
+                                                                    "path": "candidates[0][0].content.parts[]",
+                                                                    "fields": [
+                                                                        {
+                                                                            "key": "text",
+                                                                            "path": "candidates[0][0].content.parts[0][0].text",
+                                                                            "schema": {
+                                                                                "type": "string",
+                                                                                "path": "candidates[0][0].content.parts[0][0].text"
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            }
+                                                        },
+                                                        {
+                                                            "key": "role",
+                                                            "path": "candidates[0][0].content.role",
+                                                            "schema": {
+                                                                "type": "string",
+                                                                "path": "candidates[0][0].content.role"
+                                                            }
+                                                        }
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                "key": "finishReason",
+                                                "path": "candidates[0][0].finishReason",
+                                                "schema": {
+                                                    "type": "string",
+                                                    "path": "candidates[0][0].finishReason"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            },
+                            {
+                                "key": "promptFeedback",
+                                "path": "promptFeedback",
+                                "schema": {
+                                    "type": "object",
+                                    "path": "promptFeedback",
+                                    "fields": [
+                                        {
+                                            "key": "blockReason",
+                                            "path": "promptFeedback.blockReason",
+                                            "schema": {
+                                                "type": "string",
+                                                "path": "promptFeedback.blockReason"
+                                            }
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "key": "usageMetadata",
+                                "path": "usageMetadata",
+                                "schema": {
+                                    "type": "object",
+                                    "path": "usageMetadata",
+                                    "fields": [
+                                        {
+                                            "key": "promptTokenCount",
+                                            "path": "usageMetadata.promptTokenCount",
+                                            "schema": {
+                                                "type": "string",
+                                                "path": "usageMetadata.promptTokenCount"
+                                            }
+                                        },
+                                        {
+                                            "key": "candidatesTokenCount",
+                                            "path": "usageMetadata.candidatesTokenCount",
+                                            "schema": {
+                                                "type": "string",
+                                                "path": "usageMetadata.candidatesTokenCount"
+                                            }
+                                        },
+                                        {
+                                            "key": "totalTokenCount",
+                                            "path": "usageMetadata.totalTokenCount",
+                                            "schema": {
+                                                "type": "string",
+                                                "path": "usageMetadata.totalTokenCount"
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
+                    },
+                    "schemaSource": "declared"
                 }
             }
         }
@@ -313,23 +457,42 @@
         {
             "id": "xy-edge__node_1772451937785_0output-node_1772451941969_1input",
             "source": "node_1772451937785_0",
-            "target": "node_1772451941969_1",
+            "target": "getoffchainreserves_1",
             "sourceHandle": "output",
             "targetHandle": "input"
         },
         {
             "id": "xy-edge__node_1772451937785_0output-node_1772452114820_3input",
             "source": "node_1772451937785_0",
-            "target": "node_1772452114820_3",
+            "target": "getonchainsupply_3",
+            "sourceHandle": "output",
+            "targetHandle": "input"
+        },
+        {
+            "id": "xy-edge__node_1772451941969_1output-node_1772461505671_1input",
+            "source": "getoffchainreserves_1",
+            "target": "node_1772461505671_1",
+            "sourceHandle": "output",
+            "targetHandle": "input"
+        },
+        {
+            "id": "xy-edge__node_1772452114820_3output-node_1772461505671_1input",
+            "source": "getonchainsupply_3",
+            "target": "node_1772461505671_1",
             "sourceHandle": "output",
             "targetHandle": "input"
         }
     ],
     "globalConfig": {
         "isTestnet": true,
-        "secrets": [],
+        "secrets": [
+            {
+                "name": "GEMINI_KEY",
+                "envVariable": "GEMINI_KEY_VALUE"
+            }
+        ],
         "rpcs": []
     },
-    "createdAt": "2026-03-02T13:09:00.446Z",
-    "updatedAt": "2026-03-02T13:09:00.446Z"
+    "createdAt": "2026-03-02T15:11:11.230Z",
+    "updatedAt": "2026-03-02T15:11:11.230Z"
 }

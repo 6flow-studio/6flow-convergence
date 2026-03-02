@@ -168,6 +168,25 @@ fn subst_expr(expr: &ValueExpr, mapping: &HashMap<String, String>) -> ValueExpr 
     }
 }
 
+/// Build the FetchContext for an AI fetch function.
+/// Scans for handler-scoped ValueExprs (Binding, TriggerDataRef) in AI-specific fields.
+pub fn build_ai_fetch_context(op: &AiCallOp) -> FetchContext {
+    let mut refs: Vec<DynamicRef> = Vec::new();
+    let mut seen: HashMap<String, String> = HashMap::new();
+    let mut counter = 0;
+
+    scan_expr(&op.base_url, &mut refs, &mut seen, &mut counter);
+    scan_expr(&op.model, &mut refs, &mut seen, &mut counter);
+    scan_expr(&op.system_prompt, &mut refs, &mut seen, &mut counter);
+    scan_expr(&op.user_prompt, &mut refs, &mut seen, &mut counter);
+
+    FetchContext {
+        dynamic_refs: refs,
+        has_auth: true,
+        ai_api_key_secret: Some(op.api_key_secret.clone()),
+    }
+}
+
 /// Build the substitution mapping from handler expr → config key.
 fn build_subst_map(ctx: &FetchContext) -> HashMap<String, String> {
     ctx.dynamic_refs
@@ -194,15 +213,9 @@ pub fn emit_fetch_fns(
                 contexts.insert(f.step_id.clone(), ctx);
             }
             FetchFnKind::Ai(op) => {
-                emit_ai_fetch_fn(&f.fn_name, op, w);
-                contexts.insert(
-                    f.step_id.clone(),
-                    FetchContext {
-                        dynamic_refs: Vec::new(),
-                        has_auth: true,
-                        ai_api_key_secret: Some(op.api_key_secret.clone()),
-                    },
-                );
+                let ctx = build_ai_fetch_context(op);
+                emit_ai_fetch_fn(&f.fn_name, op, &ctx, w);
+                contexts.insert(f.step_id.clone(), ctx);
             }
         }
         w.blank();
@@ -314,17 +327,19 @@ fn emit_http_fetch_fn(fn_name: &str, op: &HttpRequestOp, ctx: &FetchContext, w: 
     w.block_close_semi();
 }
 
-fn emit_ai_fetch_fn(fn_name: &str, op: &AiCallOp, w: &mut CodeWriter) {
+fn emit_ai_fetch_fn(fn_name: &str, op: &AiCallOp, ctx: &FetchContext, w: &mut CodeWriter) {
     // AI fetch functions receive apiKey as a third parameter (passed from handler)
     w.block_open(&format!(
         "const {} = (sendRequester: HTTPSendRequester, config: any, apiKey: string) =>",
         fn_name
     ));
 
-    let base_url = emit_value_expr_init(&op.base_url);
-    let model = emit_value_expr_init(&op.model);
-    let system_prompt = emit_value_expr_init(&op.system_prompt);
-    let user_prompt = emit_value_expr_init(&op.user_prompt);
+    let subst = build_subst_map(ctx);
+
+    let base_url = emit_value_expr_init(&subst_expr(&op.base_url, &subst));
+    let model = emit_value_expr_init(&subst_expr(&op.model, &subst));
+    let system_prompt = emit_value_expr_init(&subst_expr(&op.system_prompt, &subst));
+    let user_prompt = emit_value_expr_init(&subst_expr(&op.user_prompt, &subst));
 
     let provider = op.provider.as_str();
 

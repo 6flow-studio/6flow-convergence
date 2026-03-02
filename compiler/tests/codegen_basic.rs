@@ -3,6 +3,7 @@
 mod helpers;
 
 use compiler::codegen::codegen;
+use compiler::ir::*;
 
 #[test]
 fn branching_workflow_codegen_main_ts_snapshot() {
@@ -95,4 +96,62 @@ fn minimal_workflow_codegen() {
     assert!(main_ts.content.contains("initWorkflow"));
     assert!(main_ts.content.contains("Runner.newRunner"));
     assert!(main_ts.content.contains("main()"));
+}
+
+#[test]
+fn ai_call_with_upstream_refs_uses_augmented_config() {
+    let ir = helpers::ir_with_steps_and_deps(
+        vec![
+            helpers::make_step_with_output("http-1", helpers::http_get("https://api.example.com/data"), "any"),
+            helpers::make_step_with_output(
+                "parse-1",
+                helpers::json_parse_op(ValueExpr::binding("http-1", "body")),
+                "any",
+            ),
+            helpers::make_step_with_output(
+                "ai-1",
+                helpers::ai_call_op_with_refs(
+                    "openai",
+                    "OPENAI_KEY",
+                    ValueExpr::string("You are a helpful assistant."),
+                    ValueExpr::Template {
+                        parts: vec![
+                            TemplatePart::Lit { value: "Analyze: ".into() },
+                            TemplatePart::Expr { value: ValueExpr::binding("parse-1", "value") },
+                        ],
+                    },
+                ),
+                "any",
+            ),
+        ],
+        vec![("OPENAI_KEY", "OPENAI_KEY_VAR")],
+        vec![],
+    );
+    let output = codegen(&ir);
+    let main_ts = output
+        .files
+        .iter()
+        .find(|f| f.path == "main.ts")
+        .expect("main.ts should be generated");
+
+    // The fetch function should use config._dyn0 instead of free variable
+    assert!(
+        main_ts.content.contains("config._dyn0"),
+        "AI fetch fn should substitute upstream ref with config._dyn0, got:\n{}",
+        main_ts.content
+    );
+    // The handler should build an augmented config
+    assert!(
+        main_ts.content.contains("_fetchCfg_ai_1"),
+        "Handler should build augmented config for AI call, got:\n{}",
+        main_ts.content
+    );
+    // The augmented config should contain the upstream ref
+    assert!(
+        main_ts.content.contains("step_parse_1.value"),
+        "Augmented config should pass upstream step value, got:\n{}",
+        main_ts.content
+    );
+    // Should NOT contain free variable reference in fetch function
+    // (the fetch fn uses config._dyn0, not step_parse_1.value)
 }

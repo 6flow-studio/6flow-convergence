@@ -458,6 +458,26 @@ pub fn ai_call_op(provider: &str, secret: &str) -> Operation {
     })
 }
 
+pub fn ai_call_op_with_refs(
+    provider: &str,
+    secret: &str,
+    system_prompt: ValueExpr,
+    user_prompt: ValueExpr,
+) -> Operation {
+    Operation::AiCall(AiCallOp {
+        provider: provider.into(),
+        base_url: ValueExpr::string("https://api.openai.com/v1"),
+        model: ValueExpr::string("gpt-4"),
+        api_key_secret: secret.into(),
+        system_prompt,
+        user_prompt,
+        temperature: Some(0.7),
+        max_tokens: Some(256),
+        response_format: AiResponseFormat::Text,
+        consensus: ConsensusStrategy::Identical,
+    })
+}
+
 pub fn filter_op(
     field: ValueExpr,
     op: ComparisonOp,
