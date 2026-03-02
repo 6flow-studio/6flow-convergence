@@ -71,7 +71,13 @@ pub fn emit_http_request(
     }
 }
 
-/// Emit an EvmRead call.
+/// Emit an EvmRead call using `encodeFunctionData` + `encodeCallMsg` + `callContract`.
+///
+/// The CRE SDK's `EVMClient` does not have a `.read()` method.
+/// The correct pattern is:
+///   1. `encodeFunctionData({ abi, functionName, args? })` (from viem) to ABI-encode the call
+///   2. `encodeCallMsg({ from, to, data })` (from CRE SDK) to wrap the call message
+///   3. `evmClient.callContract(runtime, { call })` to execute the read
 pub fn emit_evm_read(step: &Step, op: &EvmReadOp, w: &mut CodeWriter) {
     w.line(&format!("// {}", step.label));
 
@@ -80,27 +86,17 @@ pub fn emit_evm_read(step: &Step, op: &EvmReadOp, w: &mut CodeWriter) {
     let abi = &op.abi_json;
 
     if let Some(ref out) = step.output {
-        if let Some(ref fields) = out.destructure_fields {
-            w.line(&format!(
-                "const {{ {} }} = {}.read(runtime, {{",
-                fields.join(", "),
-                binding,
-            ));
-        } else {
-            w.line(&format!(
-                "const {} = {}.read(runtime, {{",
-                out.variable_name, binding,
-            ));
-        }
+        // 1. encodeFunctionData
+        let calldata_var = format!("_calldata_{}", step.id.replace('-', "_"));
+        w.line(&format!("const {} = encodeFunctionData({{", calldata_var));
         w.indent();
-        w.line(&format!("contractAddress: {},", contract));
-        w.line(&format!("functionName: \"{}\",", op.function_name));
         // Wrap in array if not already one (single ABI item → [item])
         if abi.starts_with('[') {
-            w.line(&format!("abi: {},", abi));
+            w.line(&format!("abi: {} as const,", abi));
         } else {
-            w.line(&format!("abi: [{}],", abi));
+            w.line(&format!("abi: [{}] as const,", abi));
         }
+        w.line(&format!("functionName: \"{}\",", op.function_name));
         if !op.args.is_empty() {
             w.line(&format!(
                 "args: [{}],",
@@ -111,6 +107,33 @@ pub fn emit_evm_read(step: &Step, op: &EvmReadOp, w: &mut CodeWriter) {
                     .join(", ")
             ));
         }
+        w.dedent();
+        w.line("});");
+
+        // 2. callContract with encodeCallMsg
+        let from_addr = op
+            .from_address
+            .as_ref()
+            .map(|a| emit_value_expr(a))
+            .unwrap_or_else(|| "\"0x0000000000000000000000000000000000000000\"".to_string());
+
+        if let Some(ref fields) = out.destructure_fields {
+            w.line(&format!(
+                "const {{ {} }} = {}.callContract(runtime, {{",
+                fields.join(", "),
+                binding,
+            ));
+        } else {
+            w.line(&format!(
+                "const {} = {}.callContract(runtime, {{",
+                out.variable_name, binding,
+            ));
+        }
+        w.indent();
+        w.line(&format!(
+            "call: encodeCallMsg({{ from: {}, to: {}, data: {} }}),",
+            from_addr, contract, calldata_var,
+        ));
         w.dedent();
         w.line("}).result();");
     }

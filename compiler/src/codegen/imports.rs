@@ -18,6 +18,7 @@ pub struct ImportSet {
     pub http_payload_type: bool,
     pub evm_log_type: bool,
     pub get_network: bool,
+    pub encode_call_msg: bool,
     pub bytes_to_hex: bool,
 
     // viem
@@ -94,6 +95,10 @@ fn scan_operation(op: &Operation, imports: &mut ImportSet) {
                 ConsensusStrategy::Custom { .. } => {}
             }
         }
+        Operation::EvmRead(_) => {
+            imports.encode_call_msg = true;
+            imports.encode_function_data = true;
+        }
         Operation::AbiEncode(_) => {
             imports.encode_function_data = true;
         }
@@ -123,6 +128,9 @@ pub fn emit_imports(imports: &ImportSet, w: &mut CodeWriter) {
     }
     if imports.get_network {
         sdk_items.push("getNetwork");
+    }
+    if imports.encode_call_msg {
+        sdk_items.push("encodeCallMsg");
     }
     if imports.bytes_to_hex {
         sdk_items.push("bytesToHex");

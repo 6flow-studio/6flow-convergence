@@ -1,4 +1,5 @@
-import { cre, ok, consensusIdenticalAggregation, getNetwork, Runner, type Runtime, type HTTPSendRequester, type CronTrigger } from "@chainlink/cre-sdk";
+import { cre, ok, consensusIdenticalAggregation, getNetwork, encodeCallMsg, Runner, type Runtime, type HTTPSendRequester, type CronTrigger } from "@chainlink/cre-sdk";
+import { encodeFunctionData } from "viem";
 import { z } from "zod";
 
 const configSchema = z.object({
@@ -32,10 +33,12 @@ const onCronTrigger = (runtime: Runtime<Config>, triggerData: CronTrigger): stri
   const step_node_1772451941969_1 = httpClient.sendRequest(runtime, fetch_node_1772451941969_1, consensusIdenticalAggregation())(runtime.config).result();
   runtime.log(`[getOffChainReserves] ${__stringify(step_node_1772451941969_1)}`);
   // getOnChainSupply
-  const step_node_1772452114820_3 = evmClient_ethereum_testnet_sepolia.read(runtime, {
-    contractAddress: "0x41f77d6aa3F8C8113Bc95831490D5206c5d1cFeE",
+  const _calldata_node_1772452114820_3 = encodeFunctionData({
+    abi: [{"type":"function","name":"totalSupply","inputs":[],"outputs":[{"name":"","type":"uint256","indexed":null,"components":null}],"stateMutability":"view"}] as const,
     functionName: "totalSupply",
-    abi: [{"type":"function","name":"totalSupply","inputs":[],"outputs":[{"name":"","type":"uint256","indexed":null,"components":null}],"stateMutability":"view"}],
+  });
+  const step_node_1772452114820_3 = evmClient_ethereum_testnet_sepolia.callContract(runtime, {
+    call: encodeCallMsg({ from: "0x0000000000000000000000000000000000000000", to: "0x41f77d6aa3F8C8113Bc95831490D5206c5d1cFeE", data: _calldata_node_1772452114820_3 }),
   }).result();
   runtime.log(`[getOnChainSupply] ${__stringify(step_node_1772452114820_3)}`);
   return "Workflow completed";
