@@ -20,8 +20,8 @@ use crate::parse::types::Workflow;
 
 /// Lower a parsed workflow + graph into a WorkflowIR.
 pub fn lower(workflow: &Workflow, graph: &WorkflowGraph) -> Result<WorkflowIR, Vec<CompilerError>> {
-    // 1. Topological sort
-    let topo_order = topo::topo_sort(graph)?;
+    // 1. Topological sort (position-aware: topmost then leftmost, matching n8n v1 order)
+    let topo_order = topo::topo_sort(graph, workflow)?;
 
     // 2. Find trigger node
     let trigger_node = workflow

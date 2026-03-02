@@ -239,6 +239,27 @@ impl WorkflowNode {
     pub fn is_terminal(&self) -> bool {
         matches!(self, WorkflowNode::Return(_) | WorkflowNode::Error(_))
     }
+
+    pub fn position(&self) -> &Position {
+        match self {
+            WorkflowNode::CronTrigger(n) => &n.position,
+            WorkflowNode::HttpTrigger(n) => &n.position,
+            WorkflowNode::EvmLogTrigger(n) => &n.position,
+            WorkflowNode::HttpRequest(n) => &n.position,
+            WorkflowNode::EvmRead(n) => &n.position,
+            WorkflowNode::EvmWrite(n) => &n.position,
+            WorkflowNode::CodeNode(n) => &n.position,
+            WorkflowNode::JsonParse(n) => &n.position,
+            WorkflowNode::AbiEncode(n) => &n.position,
+            WorkflowNode::AbiDecode(n) => &n.position,
+            WorkflowNode::Merge(n) => &n.position,
+            WorkflowNode::Filter(n) => &n.position,
+            WorkflowNode::If(n) => &n.position,
+            WorkflowNode::Ai(n) => &n.position,
+            WorkflowNode::Return(n) => &n.position,
+            WorkflowNode::Error(n) => &n.position,
+        }
+    }
 }
 
 // =============================================================================

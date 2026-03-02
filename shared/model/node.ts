@@ -154,6 +154,7 @@ export interface Workflow {
 export interface AbiParameter {
   name: string;
   type: string; // "address", "uint256", "bytes32", "tuple", etc.
+  internalType?: string; // Solidity internal type from compiler output
   indexed?: boolean; // For event parameters
   components?: AbiParameter[]; // For tuple/struct types
 }

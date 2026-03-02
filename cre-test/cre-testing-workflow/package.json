@@ -1,5 +1,5 @@
 {
-  "name": "k17dnx68tjya99nmh71cehbe9181z1gj",
+  "name": "k17ce7ppz28n0wx5wq9vk95srn8255tf",
   "version": "1.0.0",
   "main": "dist/main.js",
   "private": true,
@@ -8,7 +8,8 @@
   },
   "dependencies": {
     "@chainlink/cre-sdk": "^1.0.9",
-    "zod": "^3.24"
+    "zod": "^3.24",
+    "viem": "^2.0"
   },
   "devDependencies": {
     "@types/bun": "1.2.21"

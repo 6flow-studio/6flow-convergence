@@ -1,55 +1,43 @@
-import { cre, ok, consensusIdenticalAggregation, Runner, type Runtime, type HTTPSendRequester, type CronTrigger } from "@chainlink/cre-sdk";
+import { cre, ok, consensusIdenticalAggregation, getNetwork, Runner, type Runtime, type HTTPSendRequester, type CronTrigger } from "@chainlink/cre-sdk";
 import { z } from "zod";
 
 const configSchema = z.object({
-  schedule: z.string().default("TZ=UTC 0 0 */1 * * *"),
+  schedule: z.string().default("TZ=UTC 0 */10 * * * *"),
 });
 
 type Config = z.infer<typeof configSchema>;
 
-const fetch_node_1772176743838_1 = (sendRequester: HTTPSendRequester, config: any, apiKey: string) => {
-  const body = {
-    system_instruction: {
-      parts: [{ text: "Let's play the rock, paper, scissor game" }],
-    },
-    contents: [
-      { role: "user", parts: [{ text: "Choose your move" }] },
-    ],
-    generationConfig: {
-      temperature: 0.7,
-    },
-  };
-
-  const bodyBytes = new TextEncoder().encode(JSON.stringify(body));
-
+const fetch_node_1772451941969_1 = (sendRequester: HTTPSendRequester, config: Config) => {
   const req = {
-    url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
-    method: "POST" as const,
-    body: Buffer.from(bodyBytes).toString("base64"),
-    headers: {
-      "Content-Type": "application/json",
-      "x-goog-api-key": apiKey,
-    },
+    url: "https://api.real-time-reserves.verinumus.io/v1/chainlink/proof-of-reserves/TrueUSD",
+    method: "GET" as const,
   };
 
   const resp = sendRequester.sendRequest(req).result();
 
   if (!ok(resp)) {
-    throw new Error(`AI call failed with status: ${resp.statusCode}`);
+    throw new Error(`HTTP request failed with status: ${resp.statusCode}`);
   }
 
-  return JSON.parse(Buffer.from(resp.body, "base64").toString("utf-8"));
+  return { statusCode: resp.statusCode, body: resp.body, headers: resp.headers };
 };
 
 const onCronTrigger = (runtime: Runtime<Config>, triggerData: CronTrigger): string => {
   const httpClient = new cre.capabilities.HTTPClient();
+  const evmClient_ethereum_testnet_sepolia = new cre.capabilities.EVMClient(getNetwork({ chainFamily: "evm", chainSelectorName: "ethereum-testnet-sepolia", isTestnet: true })!.chainSelector.selector);
 
   const __stringify = (v: unknown) => JSON.stringify(v, (_, x) => typeof x === "bigint" ? x.toString() : x);
 
-  // AI
-  const _aiApiKey_node_1772176743838_1 = runtime.getSecret({ id: "GEMINI_KEY" }).result();
-  const step_node_1772176743838_1 = httpClient.sendRequest(runtime, fetch_node_1772176743838_1, consensusIdenticalAggregation())(runtime.config, _aiApiKey_node_1772176743838_1.value).result();
-  runtime.log(`[AI] ${__stringify(step_node_1772176743838_1)}`);
+  // getOffChainReserves
+  const step_node_1772451941969_1 = httpClient.sendRequest(runtime, fetch_node_1772451941969_1, consensusIdenticalAggregation())(runtime.config).result();
+  runtime.log(`[getOffChainReserves] ${__stringify(step_node_1772451941969_1)}`);
+  // getOnChainSupply
+  const step_node_1772452114820_3 = evmClient_ethereum_testnet_sepolia.read(runtime, {
+    contractAddress: "0x41f77d6aa3F8C8113Bc95831490D5206c5d1cFeE",
+    functionName: "totalSupply",
+    abi: [{"type":"function","name":"totalSupply","inputs":[],"outputs":[{"name":"","type":"uint256","indexed":null,"components":null}],"stateMutability":"view"}],
+  }).result();
+  runtime.log(`[getOnChainSupply] ${__stringify(step_node_1772452114820_3)}`);
   return "Workflow completed";
 };
 

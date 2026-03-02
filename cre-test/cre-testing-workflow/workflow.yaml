@@ -1,13 +1,13 @@
 staging-settings:
   user-workflow:
-    workflow-name: "k17dnx68tjya99nmh71cehbe9181z1gj-staging"
+    workflow-name: "k17ce7ppz28n0wx5wq9vk95srn8255tf-staging"
   workflow-artifacts:
     workflow-path: "./main.ts"
     config-path: "./config.staging.json"
     secrets-path: "../secrets.yaml"
 production-settings:
   user-workflow:
-    workflow-name: "k17dnx68tjya99nmh71cehbe9181z1gj-production"
+    workflow-name: "k17ce7ppz28n0wx5wq9vk95srn8255tf-production"
   workflow-artifacts:
     workflow-path: "./main.ts"
     config-path: "./config.production.json"

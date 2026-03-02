@@ -1,64 +1,335 @@
 {
-    "id": "k17dnx68tjya99nmh71cehbe9181z1gj",
-    "name": "ai rock paper scissor",
+    "id": "k17ce7ppz28n0wx5wq9vk95srn8255tf",
+    "name": "POR 1",
     "version": "1.0.0",
     "nodes": [
         {
-            "id": "node_1772176730524_0",
+            "id": "node_1772451937785_0",
             "type": "cronTrigger",
             "position": {
-                "x": 221,
-                "y": 185
+                "x": 278,
+                "y": 224
             },
             "data": {
                 "label": "Cron Trigger",
                 "config": {
-                    "schedule": "0 0 */1 * * *",
+                    "schedule": "0 */10 * * * *",
                     "timezone": "UTC"
                 }
             }
         },
         {
-            "id": "node_1772176743838_1",
-            "type": "ai",
+            "id": "node_1772451941969_1",
+            "type": "httpRequest",
             "position": {
-                "x": 451.8609815119554,
-                "y": 182.15484673009522
+                "x": 507.1131603830647,
+                "y": 222.86656728508015
             },
             "data": {
-                "label": "AI",
+                "label": "getOffChainReserves",
                 "config": {
-                    "provider": "google",
-                    "baseUrl": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
-                    "model": "gemini-2.5-flash-lite",
-                    "apiKeySecret": "GEMINI_KEY",
-                    "systemPrompt": "Let's play the rock, paper, scissor game",
-                    "userPrompt": "Choose your move",
-                    "temperature": 0.7,
-                    "responseFormat": "text"
+                    "method": "GET",
+                    "url": "https://api.real-time-reserves.verinumus.io/v1/chainlink/proof-of-reserves/TrueUSD",
+                    "responseFormat": "json"
+                },
+                "editor": {
+                    "lastExecution": {
+                        "raw": {
+                            "statusCode": 200,
+                            "headers": {
+                                "apigw-requestid": "Zl_TgiszCYcEP-w=",
+                                "connection": "keep-alive",
+                                "content-length": "410",
+                                "content-type": "application/json",
+                                "date": "Mon, 02 Mar 2026 11:47:46 GMT",
+                                "via": "1.1 cf40c55059848a32e2e055e331dd1eb6.cloudfront.net (CloudFront)",
+                                "x-amz-cf-id": "SzYsKsj15o1CviqFNhgkzgnVQSSa1ELylAtBJtrbIRZ4mA0pGjvKzA==",
+                                "x-amz-cf-pop": "MRS52-P6",
+                                "x-cache": "Miss from cloudfront"
+                            },
+                            "body": "{\"accountName\":\"TrueUSD\",\"totalTrust\":501928900.88,\"totalToken\":494515082.75,\"updatedAt\":\"2026-03-02T11:47:35.666Z\",\"token\":[{\"tokenName\":\"TUSD (ETH)\",\"totalTokenByChain\":315125540.9523497},{\"tokenName\":\"TUSD (AVAX)\",\"totalTokenByChain\":845723.78},{\"tokenName\":\"TUSD (TRON)\",\"totalTokenByChain\":168513454.1376503},{\"tokenName\":\"TUSD (BSC)\",\"totalTokenByChain\":10030363.88}],\"ripcord\":false,\"ripcordDetails\":[]}"
+                        },
+                        "normalized": {
+                            "accountName": "TrueUSD",
+                            "totalTrust": 501928900.88,
+                            "totalToken": "[redacted]",
+                            "updatedAt": "2026-03-02T11:47:35.666Z",
+                            "token": "[redacted]",
+                            "ripcord": false,
+                            "ripcordDetails": []
+                        },
+                        "warnings": [],
+                        "truncated": false
+                    },
+                    "outputSchema": {
+                        "type": "object",
+                        "path": "",
+                        "fields": [
+                            {
+                                "key": "accountName",
+                                "path": "accountName",
+                                "schema": {
+                                    "type": "string",
+                                    "path": "accountName"
+                                }
+                            },
+                            {
+                                "key": "totalTrust",
+                                "path": "totalTrust",
+                                "schema": {
+                                    "type": "number",
+                                    "path": "totalTrust"
+                                }
+                            },
+                            {
+                                "key": "totalToken",
+                                "path": "totalToken",
+                                "schema": {
+                                    "type": "string",
+                                    "path": "totalToken"
+                                }
+                            },
+                            {
+                                "key": "updatedAt",
+                                "path": "updatedAt",
+                                "schema": {
+                                    "type": "string",
+                                    "path": "updatedAt"
+                                }
+                            },
+                            {
+                                "key": "token",
+                                "path": "token",
+                                "schema": {
+                                    "type": "string",
+                                    "path": "token"
+                                }
+                            },
+                            {
+                                "key": "ripcord",
+                                "path": "ripcord",
+                                "schema": {
+                                    "type": "boolean",
+                                    "path": "ripcord"
+                                }
+                            },
+                            {
+                                "key": "ripcordDetails",
+                                "path": "ripcordDetails",
+                                "schema": {
+                                    "type": "array",
+                                    "path": "ripcordDetails",
+                                    "itemSchema": {
+                                        "type": "unknown",
+                                        "path": "ripcordDetails[]"
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    "schemaSource": "executed",
+                    "executedAt": "2026-03-02T11:47:47.039Z"
+                }
+            }
+        },
+        {
+            "id": "node_1772452114820_3",
+            "type": "evmRead",
+            "position": {
+                "x": 506,
+                "y": 360
+            },
+            "data": {
+                "label": "getOnChainSupply",
+                "config": {
+                    "chainSelectorName": "ethereum-testnet-sepolia",
+                    "contractAddress": "0x41f77d6aa3F8C8113Bc95831490D5206c5d1cFeE",
+                    "functionName": "totalSupply",
+                    "args": [],
+                    "abi": {
+                        "inputs": [],
+                        "name": "totalSupply",
+                        "outputs": [
+                            {
+                                "internalType": "uint256",
+                                "name": "",
+                                "type": "uint256"
+                            }
+                        ],
+                        "stateMutability": "view",
+                        "type": "function"
+                    },
+                    "cachedAbi": {
+                        "address": "0x41f77d6aa3F8C8113Bc95831490D5206c5d1cFeE",
+                        "chain": "ethereum-testnet-sepolia",
+                        "functions": [
+                            {
+                                "inputs": [
+                                    {
+                                        "internalType": "address",
+                                        "name": "owner",
+                                        "type": "address"
+                                    },
+                                    {
+                                        "internalType": "address",
+                                        "name": "spender",
+                                        "type": "address"
+                                    }
+                                ],
+                                "name": "allowance",
+                                "outputs": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "stateMutability": "view",
+                                "type": "function"
+                            },
+                            {
+                                "inputs": [
+                                    {
+                                        "internalType": "address",
+                                        "name": "account",
+                                        "type": "address"
+                                    }
+                                ],
+                                "name": "balanceOf",
+                                "outputs": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "stateMutability": "view",
+                                "type": "function"
+                            },
+                            {
+                                "inputs": [],
+                                "name": "decimals",
+                                "outputs": [
+                                    {
+                                        "internalType": "uint8",
+                                        "name": "",
+                                        "type": "uint8"
+                                    }
+                                ],
+                                "stateMutability": "view",
+                                "type": "function"
+                            },
+                            {
+                                "inputs": [],
+                                "name": "name",
+                                "outputs": [
+                                    {
+                                        "internalType": "string",
+                                        "name": "",
+                                        "type": "string"
+                                    }
+                                ],
+                                "stateMutability": "view",
+                                "type": "function"
+                            },
+                            {
+                                "inputs": [],
+                                "name": "owner",
+                                "outputs": [
+                                    {
+                                        "internalType": "address",
+                                        "name": "",
+                                        "type": "address"
+                                    }
+                                ],
+                                "stateMutability": "view",
+                                "type": "function"
+                            },
+                            {
+                                "inputs": [],
+                                "name": "symbol",
+                                "outputs": [
+                                    {
+                                        "internalType": "string",
+                                        "name": "",
+                                        "type": "string"
+                                    }
+                                ],
+                                "stateMutability": "view",
+                                "type": "function"
+                            },
+                            {
+                                "inputs": [],
+                                "name": "totalSupply",
+                                "outputs": [
+                                    {
+                                        "internalType": "uint256",
+                                        "name": "",
+                                        "type": "uint256"
+                                    }
+                                ],
+                                "stateMutability": "view",
+                                "type": "function"
+                            }
+                        ]
+                    }
+                },
+                "editor": {
+                    "lastExecution": {
+                        "raw": {
+                            "rpcUrl": "https://eth-sepolia.g.alchemy.com/v2/5ksCAZD8NOI0ANaeCVCnS",
+                            "contractAddress": "0x41f77d6aa3F8C8113Bc95831490D5206c5d1cFeE",
+                            "functionName": "totalSupply",
+                            "args": [],
+                            "result": "1000000000000000000000000"
+                        },
+                        "normalized": {
+                            "value": "1000000000000000000000000"
+                        },
+                        "warnings": [],
+                        "truncated": false
+                    },
+                    "outputSchema": {
+                        "type": "object",
+                        "path": "",
+                        "fields": [
+                            {
+                                "key": "value",
+                                "path": "value",
+                                "schema": {
+                                    "type": "string",
+                                    "path": "value"
+                                }
+                            }
+                        ]
+                    },
+                    "schemaSource": "executed",
+                    "executedAt": "2026-03-02T13:03:47.625Z"
                 }
             }
         }
     ],
     "edges": [
         {
-            "id": "xy-edge__node_1772176730524_0output-node_1772176743838_1input",
-            "source": "node_1772176730524_0",
-            "target": "node_1772176743838_1",
+            "id": "xy-edge__node_1772451937785_0output-node_1772451941969_1input",
+            "source": "node_1772451937785_0",
+            "target": "node_1772451941969_1",
+            "sourceHandle": "output",
+            "targetHandle": "input"
+        },
+        {
+            "id": "xy-edge__node_1772451937785_0output-node_1772452114820_3input",
+            "source": "node_1772451937785_0",
+            "target": "node_1772452114820_3",
             "sourceHandle": "output",
             "targetHandle": "input"
         }
     ],
     "globalConfig": {
         "isTestnet": true,
-        "secrets": [
-            {
-                "name": "GEMINI_KEY",
-                "envVariable": "GEMINI_KEY_VALUE"
-            }
-        ],
+        "secrets": [],
         "rpcs": []
     },
-    "createdAt": "2026-02-27T16:37:03.323Z",
-    "updatedAt": "2026-02-27T16:37:03.323Z"
+    "createdAt": "2026-03-02T13:09:00.446Z",
+    "updatedAt": "2026-03-02T13:09:00.446Z"
 }
