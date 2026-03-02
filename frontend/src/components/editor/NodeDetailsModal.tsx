@@ -40,7 +40,8 @@ function renderNodeConfig(
   config: Record<string, unknown>,
   onChange: (patch: Record<string, unknown>) => void,
   isTestnet?: boolean,
-  secretNames?: string[]
+  secretNames?: string[],
+  nodeId?: string
 ) {
   const typedConfig = <T,>(value: Record<string, unknown>) => value as unknown as T;
 
@@ -86,6 +87,7 @@ function renderNodeConfig(
           config={typedConfig<Parameters<typeof AIConfigRenderer>[0]["config"]>(config)}
           onChange={onChange}
           secretNames={secretNames}
+          nodeId={nodeId}
         />
       );
     case "cronTrigger":
@@ -325,7 +327,8 @@ export function NodeDetailsModal() {
                 config,
                 (patch) => updateNodeConfig(node.id, patch),
                 workflowGlobalConfig.isTestnet,
-                workflowGlobalConfig.secrets.map((s) => s.name).filter(Boolean)
+                workflowGlobalConfig.secrets.map((s) => s.name).filter(Boolean),
+                node.id
               )}
             </div>
           </div>
@@ -340,6 +343,10 @@ export function NodeDetailsModal() {
             <div className="flex-1 overflow-y-auto p-3">
               {isExecutionPreviewSupported(node.data.nodeType) ? (
                 <NodeExecutionPanel node={node} />
+              ) : node.data.editor?.outputSchema ? (
+                <CollapsibleSection label="Output Schema" defaultOpen>
+                  <SchemaTree schema={node.data.editor.outputSchema} />
+                </CollapsibleSection>
               ) : (
                 <EmptyState
                   icon={<Inbox size={24} className="text-zinc-600" />}

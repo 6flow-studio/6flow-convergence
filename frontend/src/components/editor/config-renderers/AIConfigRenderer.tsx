@@ -8,12 +8,14 @@ import {
   CollapsibleSection,
 } from "../config-fields";
 import type { AINodeConfig } from "@6flow/shared/model/node";
-import { AI_PROVIDERS } from "@6flow/shared/listAIProviders";
+import { AI_PROVIDERS, getAIOutputDataSchema } from "@6flow/shared/listAIProviders";
+import { useEditorStore } from "@/lib/editor-store";
 
 interface Props {
   config: AINodeConfig;
   onChange: (patch: Record<string, unknown>) => void;
   secretNames?: string[];
+  nodeId?: string;
 }
 
 const MODEL_OPTIONS = AI_PROVIDERS.map((p) => ({
@@ -30,8 +32,9 @@ function getModelPreset(model: string) {
   return AI_PROVIDERS.find((p) => p.value === model);
 }
 
-export function AIConfigRenderer({ config, onChange, secretNames = [] }: Props) {
+export function AIConfigRenderer({ config, onChange, secretNames = [], nodeId }: Props) {
   const selectedPreset = getModelPreset(config.model);
+  const updateNodeEditor = useEditorStore((s) => s.updateNodeEditor);
 
   useEffect(() => {
     const targetPreset = selectedPreset ?? AI_PROVIDERS[0];
@@ -51,6 +54,17 @@ export function AIConfigRenderer({ config, onChange, secretNames = [] }: Props) 
       baseUrl: targetPreset.baseUrl,
     });
   }, [config.baseUrl, config.model, config.provider, onChange, selectedPreset]);
+
+  // Set declared output schema based on the selected provider
+  useEffect(() => {
+    if (!nodeId) return;
+    const preset = selectedPreset ?? AI_PROVIDERS[0];
+    if (!preset) return;
+
+    const providerName = preset.provider as "OpenAI" | "Anthropic" | "Google";
+    const schema = getAIOutputDataSchema(providerName);
+    updateNodeEditor(nodeId, { outputSchema: schema, schemaSource: "declared" });
+  }, [nodeId, selectedPreset, updateNodeEditor]);
 
   const handleModelSelect = (value: string) => {
     const preset = AI_PROVIDERS.find((p) => p.value === value);
