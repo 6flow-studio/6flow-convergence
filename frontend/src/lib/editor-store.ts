@@ -74,6 +74,20 @@ function generateNodeId(): string {
   return `node_${Date.now()}_${nodeIdCounter++}`;
 }
 
+function toReadableNodeIdLabel(label: string): string {
+  const normalized = label
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  return normalized || "node";
+}
+
+function generateReadableNodeId(label: string): string {
+  return `${toReadableNodeIdLabel(label)}_${nodeIdCounter++}`;
+}
+
 export const useEditorStore = create<EditorState>((set, get) => ({
   nodes: [],
   edges: [],
@@ -146,10 +160,44 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   updateNodeLabel: (id, label) => {
+    const state = get();
+    const currentNode = state.nodes.find((node) => node.id === id);
+    if (!currentNode) return;
+
+    const nextId =
+      currentNode.data.label === label ? id : generateReadableNodeId(label);
+
+    const nextLiveNodeErrorsByNodeId = {
+      ...state.liveNodeErrorsByNodeId,
+    };
+
+    if (nextId !== id && nextLiveNodeErrorsByNodeId[id]) {
+      nextLiveNodeErrorsByNodeId[nextId] = nextLiveNodeErrorsByNodeId[id];
+      delete nextLiveNodeErrorsByNodeId[id];
+    }
+
     set({
-      nodes: get().nodes.map((n) =>
-        n.id === id ? { ...n, data: { ...n.data, label } } : n
+      nodes: state.nodes.map((node) =>
+        node.id === id
+          ? { ...node, id: nextId, data: { ...node.data, label } }
+          : node
       ),
+      edges:
+        nextId === id
+          ? state.edges
+          : state.edges.map((edge) => ({
+              ...edge,
+              source: edge.source === id ? nextId : edge.source,
+              target: edge.target === id ? nextId : edge.target,
+            })),
+      selectedNodeId: state.selectedNodeId === id ? nextId : state.selectedNodeId,
+      workflowErrors:
+        nextId === id
+          ? state.workflowErrors
+          : state.workflowErrors.map((error) =>
+              error.node_id === id ? { ...error, node_id: nextId } : error
+            ),
+      liveNodeErrorsByNodeId: nextLiveNodeErrorsByNodeId,
     });
   },
 

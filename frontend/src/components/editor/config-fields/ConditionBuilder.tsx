@@ -1,7 +1,6 @@
 "use client";
 
 import { Plus, X } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -9,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DroppableInput } from "./DroppableInput";
 import type { Condition, ComparisonOperator } from "@6flow/shared/model/node";
 
 const OPERATORS: { value: ComparisonOperator; label: string }[] = [
@@ -102,11 +102,12 @@ export function ConditionBuilder({
       <div className="space-y-1.5">
         {conditions.map((condition, i) => (
           <div key={i} className="flex gap-1 items-start">
-            <Input
+            <DroppableInput
               value={condition.field}
-              onChange={(e) => updateCondition(i, { field: e.target.value })}
+              onChange={(val) => updateCondition(i, { field: val })}
               placeholder="Field"
-              className="h-7 flex-1 bg-surface-2 border-edge-dim text-zinc-300 text-[11px] font-mono"
+              mode="replace"
+              className="h-7 flex-1 rounded-md border border-edge-dim bg-surface-2 px-2 text-zinc-300 text-[11px] font-mono focus:border-accent-blue focus:outline-none transition-colors min-w-0"
             />
             <Select
               value={condition.operator}
@@ -133,11 +134,12 @@ export function ConditionBuilder({
               </SelectContent>
             </Select>
             {!NO_VALUE_OPERATORS.includes(condition.operator) && (
-              <Input
+              <DroppableInput
                 value={condition.value ?? ""}
-                onChange={(e) => updateCondition(i, { value: e.target.value })}
+                onChange={(val) => updateCondition(i, { value: val })}
                 placeholder="Value"
-                className="h-7 flex-1 bg-surface-2 border-edge-dim text-zinc-300 text-[11px] font-mono"
+                mode="insert"
+                className="h-7 flex-1 rounded-md border border-edge-dim bg-surface-2 px-2 text-zinc-300 text-[11px] font-mono focus:border-accent-blue focus:outline-none transition-colors min-w-0"
               />
             )}
             <button

@@ -3,6 +3,7 @@
 import { Plus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { FieldLabel } from "./FieldLabel";
+import { DroppableInput } from "./DroppableInput";
 
 interface KeyValueEditorProps {
   label: string;
@@ -57,11 +58,12 @@ export function KeyValueEditor({
               placeholder={keyPlaceholder}
               className="h-7 flex-1 bg-surface-2 border-edge-dim text-zinc-300 text-[11px] font-mono"
             />
-            <Input
+            <DroppableInput
               value={val}
-              onChange={(e) => updateEntry(key, key, e.target.value)}
+              onChange={(newVal) => updateEntry(key, key, newVal)}
               placeholder={valuePlaceholder}
-              className="h-7 flex-1 bg-surface-2 border-edge-dim text-zinc-300 text-[11px] font-mono"
+              mode="insert"
+              className="h-7 flex-1 rounded-md border border-edge-dim bg-surface-2 px-2 text-zinc-300 text-[11px] font-mono focus:border-accent-blue focus:outline-none transition-colors min-w-0"
             />
             <button
               type="button"

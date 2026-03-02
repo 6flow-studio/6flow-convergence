@@ -12,3 +12,4 @@ export { ChainSelectorField } from "./ChainSelectorField";
 export { AbiParamsEditor } from "./AbiParamsEditor";
 export { EvmArgEditor } from "./EvmArgEditor";
 export { SchemaTree, PreviewCode } from "./DataPreview";
+export { DroppableInput } from "./DroppableInput";

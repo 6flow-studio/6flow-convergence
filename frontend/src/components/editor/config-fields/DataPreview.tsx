@@ -1,10 +1,22 @@
 import { safeJsonStringify } from "@/lib/node-execution/schema";
+import { FIELD_REF_MIME, encodeFieldRef } from "@/lib/drag-field-ref";
 import type { DataSchema } from "@6flow/shared/model/node";
 
-export function SchemaTree({ schema }: { schema: DataSchema }) {
+export function SchemaTree({
+  schema,
+  upstreamNodeId,
+}: {
+  schema: DataSchema;
+  upstreamNodeId?: string;
+}) {
   return (
     <div className="space-y-1">
-      <SchemaNode schema={schema} label="root" depth={0} />
+      <SchemaNode
+        schema={schema}
+        label="root"
+        depth={0}
+        upstreamNodeId={upstreamNodeId}
+      />
     </div>
   );
 }
@@ -13,18 +25,43 @@ function SchemaNode({
   schema,
   label,
   depth,
+  upstreamNodeId,
 }: {
   schema: DataSchema;
   label: string;
   depth: number;
+  upstreamNodeId?: string;
 }) {
   const rowStyle = { paddingLeft: `${depth * 12}px` };
+  const isDraggable = !!upstreamNodeId && !!schema.path;
+
+  function onDragStart(e: React.DragEvent) {
+    if (!upstreamNodeId || !schema.path) return;
+    const data = encodeFieldRef({ nodeId: upstreamNodeId, path: schema.path });
+    e.dataTransfer.setData(FIELD_REF_MIME, data);
+    e.dataTransfer.effectAllowed = "copy";
+
+    // Custom drag image showing {{path}}
+    const badge = document.createElement("div");
+    badge.textContent = `{{${schema.path}}}`;
+    badge.style.cssText =
+      "position:fixed;left:-9999px;padding:2px 8px;border-radius:4px;background:#3b82f6;color:#fff;font-size:11px;font-family:monospace;white-space:nowrap;";
+    document.body.appendChild(badge);
+    e.dataTransfer.setDragImage(badge, 0, 0);
+    requestAnimationFrame(() => badge.remove());
+  }
 
   return (
     <div className="space-y-1">
       <div
         style={rowStyle}
-        className="flex items-center gap-2 rounded px-1.5 py-1 text-[11px] text-zinc-300"
+        draggable={isDraggable}
+        onDragStart={isDraggable ? onDragStart : undefined}
+        className={`flex items-center gap-2 rounded px-1.5 py-1 text-[11px] text-zinc-300 ${
+          isDraggable
+            ? "cursor-grab hover:bg-surface-3 active:cursor-grabbing"
+            : ""
+        }`}
       >
         <span className="font-mono text-zinc-200">{label}</span>
         <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.06em] text-zinc-500">
@@ -41,6 +78,7 @@ function SchemaNode({
           schema={field.schema}
           label={field.optional ? `${field.key}?` : field.key}
           depth={depth + 1}
+          upstreamNodeId={upstreamNodeId}
         />
       ))}
 
@@ -49,6 +87,7 @@ function SchemaNode({
           schema={schema.itemSchema}
           label="[]"
           depth={depth + 1}
+          upstreamNodeId={upstreamNodeId}
         />
       )}
     </div>

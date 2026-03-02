@@ -100,6 +100,7 @@ export function AIConfigRenderer({ config, onChange, secretNames = [], nodeId }:
         value={config.systemPrompt}
         onChange={(systemPrompt) => onChange({ systemPrompt })}
         rows={3}
+        autoResize
         placeholder="You are a helpful assistant..."
       />
 
@@ -109,6 +110,7 @@ export function AIConfigRenderer({ config, onChange, secretNames = [], nodeId }:
         value={config.userPrompt}
         onChange={(userPrompt) => onChange({ userPrompt })}
         rows={5}
+        autoResize
         placeholder="Process this data: {{input}}"
       />
 

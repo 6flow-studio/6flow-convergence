@@ -2,6 +2,7 @@
 
 import { X, Plus } from "lucide-react";
 import { FieldLabel } from "./FieldLabel";
+import { DroppableInput } from "./DroppableInput";
 import type { EvmArg } from "@6flow/shared/model/node";
 
 interface EvmArgEditorProps {
@@ -62,10 +63,11 @@ export function EvmArgEditor({
                 </option>
               ))}
             </select>
-            <input
+            <DroppableInput
               value={arg.value}
-              onChange={(e) => updateArg(i, { value: e.target.value })}
+              onChange={(val) => updateArg(i, { value: val })}
               placeholder={arg.type === "reference" ? "{{nodeId.field}}" : "value"}
+              mode="replace"
               className="flex-1 h-7 rounded border border-edge-dim bg-surface-2 px-2 text-[11px] text-zinc-300 font-mono focus:border-accent-blue focus:outline-none transition-colors min-w-0"
             />
             <select
