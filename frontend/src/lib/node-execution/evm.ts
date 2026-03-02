@@ -186,6 +186,14 @@ function resolveRpcUrl(chainSelectorName: string, globalConfig: GlobalConfig): s
   const supported = SUPPORTED_CHAINS.find(
     (chain) => chain.chainSelectorName === chainSelectorName,
   );
+
+  // 2. Internal Alchemy RPC (for server-side preview execution)
+  const alchemyKey = process.env.ALCHEMY_API_KEY;
+  if (supported?.internalRPCUrl && alchemyKey) {
+    return `${supported.internalRPCUrl}${alchemyKey}`;
+  }
+
+  // 3. Public RPC fallback
   if (supported?.defaultRPCUrl) {
     return supported.defaultRPCUrl;
   }

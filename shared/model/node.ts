@@ -299,6 +299,12 @@ export interface EvmReadConfig {
   args: EvmArg[];
   fromAddress?: string; // Sender address (default zero address)
   blockNumber?: BlockNumber;
+  /** Cached ABI functions from block explorer (avoids re-fetching on re-mount) */
+  cachedAbi?: {
+    address: string;
+    chain: string;
+    functions: AbiFunction[];
+  };
 }
 
 export type EvmReadNode = BaseNode<"evmRead", EvmReadConfig>;
