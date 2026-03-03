@@ -353,18 +353,6 @@ export type CodeNodeNode = BaseNode<"codeNode", CodeNodeConfig>;
 
 // -----------------------------------------------------------------------------
 
-/** JSON Parse - parse HTTP response body */
-export interface JsonParseConfig {
-  sourcePath?: string; // JSONPath to extract specific data
-  strict?: boolean; // Throw on invalid JSON (default true)
-}
-
-export type JsonParseNode = BaseNode<"jsonParse", JsonParseConfig>;
-
-// Output type is the parsed JSON structure
-
-// -----------------------------------------------------------------------------
-
 /** ABI Encode - encode data for EVM write */
 export interface AbiEncodeConfig {
   abiParams: AbiParameter[];
@@ -527,7 +515,6 @@ export type NodeType =
   | "evmWrite"
   // Transforms
   | "codeNode"
-  | "jsonParse"
   | "abiEncode"
   | "abiDecode"
   | "merge"
@@ -561,7 +548,6 @@ export const NODE_TYPE_TO_CATEGORY: Record<NodeType, NodeCategory> = {
   evmWrite: "action",
   // Transforms
   codeNode: "transform",
-  jsonParse: "transform",
   abiEncode: "transform",
   abiDecode: "transform",
   merge: "transform",
@@ -592,7 +578,6 @@ export type WorkflowNode =
   | EvmWriteNode
   // Transforms
   | CodeNodeNode
-  | JsonParseNode
   | AbiEncodeNode
   | AbiDecodeNode
   | MergeNode
@@ -623,9 +608,7 @@ export function isActionNode(node: WorkflowNode): boolean {
 
 /** Check if a node is a transform node */
 export function isTransformNode(node: WorkflowNode): boolean {
-  return ["codeNode", "jsonParse", "abiEncode", "abiDecode", "merge"].includes(
-    node.type,
-  );
+  return ["codeNode", "abiEncode", "abiDecode", "merge"].includes(node.type);
 }
 
 /** Check if a node is a control flow node */
@@ -663,15 +646,15 @@ export type { ChainSelectorName } from "../supportedChain";
 /**
  * Example: A conditional EVM write workflow
  *
- * [Cron Trigger] -> [HTTP Request] -> [JSON Parse] -> [If (isApproved)]
- *                                                       |
- *                                           true -------+------- false
- *                                             |                    |
- *                                       [ABI Encode]          [Return]
+ * [Cron Trigger] -> [HTTP Request] -> [If (body.isApproved)]
  *                                             |
- *                                        [EVM Write]
- *                                             |
- *                                         [Return]
+ *                                 true -------+------- false
+ *                                   |                    |
+ *                             [ABI Encode]          [Return]
+ *                                   |
+ *                              [EVM Write]
+ *                                   |
+ *                               [Return]
  */
 export const exampleWorkflow: Workflow = {
   id: "example-tokenization-workflow",
@@ -717,15 +700,6 @@ export const exampleWorkflow: Workflow = {
       },
     },
     {
-      id: "parse-1",
-      type: "jsonParse",
-      position: { x: 500, y: 200 },
-      data: {
-        label: "Parse KYC Response",
-        config: {},
-      },
-    },
-    {
       id: "condition-1",
       type: "if",
       position: { x: 700, y: 200 },
@@ -733,7 +707,11 @@ export const exampleWorkflow: Workflow = {
         label: "Is Approved?",
         config: {
           conditions: [
-            { field: "input.isApproved", operator: "equals", value: "true" },
+            {
+              field: "{{http-1.body.isApproved}}",
+              operator: "equals",
+              value: "true",
+            },
           ],
           combineWith: "and",
         },
@@ -751,8 +729,8 @@ export const exampleWorkflow: Workflow = {
             { name: "amount", type: "uint256" },
           ],
           dataMapping: [
-            { paramName: "to", source: "{{parse-1.walletAddress}}" },
-            { paramName: "amount", source: "{{parse-1.tokenAmount}}" },
+            { paramName: "to", source: "{{http-1.body.walletAddress}}" },
+            { paramName: "amount", source: "{{http-1.body.tokenAmount}}" },
           ],
         },
       },
@@ -792,8 +770,7 @@ export const exampleWorkflow: Workflow = {
   ],
   edges: [
     { id: "e1", source: "trigger-1", target: "http-1" },
-    { id: "e2", source: "http-1", target: "parse-1" },
-    { id: "e3", source: "parse-1", target: "condition-1" },
+    { id: "e2", source: "http-1", target: "condition-1" },
     { id: "e4", source: "condition-1", target: "encode-1", sourceHandle: "true" },
     { id: "e5", source: "condition-1", target: "return-2", sourceHandle: "false" },
     { id: "e6", source: "encode-1", target: "write-1" },

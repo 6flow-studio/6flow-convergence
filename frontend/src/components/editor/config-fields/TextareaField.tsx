@@ -23,7 +23,11 @@ export function TextareaField({
   mono,
   autoResize = false,
 }: TextareaFieldProps) {
-  const { isDragOver, dropProps } = useFieldDrop({ value, onChange, mode: "insert" });
+  const { isDragOver, dropProps } = useFieldDrop({
+    value,
+    onChange,
+    mode: "insert",
+  });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -38,7 +42,7 @@ export function TextareaField({
       <FieldLabel label={label} description={description} />
       <textarea
         ref={textareaRef}
-        value={value}
+        value={value ?? ""}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         rows={rows}

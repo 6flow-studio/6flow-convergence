@@ -32,7 +32,7 @@ const fetch_http_1 = (sendRequester: HTTPSendRequester, config: any) => {
     throw new Error(`HTTP request failed with status: ${resp.statusCode}`);
   }
 
-  return { statusCode: resp.statusCode, body: resp.body, headers: resp.headers };
+  return { statusCode: resp.statusCode, body: JSON.parse(Buffer.from(resp.body, "base64").toString("utf-8")), headers: resp.headers };
 };
 
 const onCronTrigger = (runtime: Runtime<Config>, triggerData: CronTrigger): string => {
@@ -49,13 +49,10 @@ const onCronTrigger = (runtime: Runtime<Config>, triggerData: CronTrigger): stri
   };
   const step_http_1 = httpClient.sendRequest(runtime, fetch_http_1, consensusIdenticalAggregation())(_fetchCfg_http_1).result();
   runtime.log(`[Fetch status] ${__stringify(step_http_1)}`);
-  // Parse response
-  const step_parse_1 = JSON.parse(Buffer.from(step_http_1.body, "base64").toString("utf-8"));
-  runtime.log(`[Parse response] ${__stringify(step_parse_1)}`);
   // Check if approved
-  if (step_parse_1.isApproved === true) {
+  if (step_http_1.body.isApproved === true) {
     // Write to contract
-    const report_write_1 = runtime.report(prepareReportRequest(step_parse_1.data)).result();
+    const report_write_1 = runtime.report(prepareReportRequest(step_http_1.body.data)).result();
     const step_write_1 = evmClient_eth_sepolia.writeReport(runtime, {
       receiver: runtime.config.receiverAddress,
       report: report_write_1,

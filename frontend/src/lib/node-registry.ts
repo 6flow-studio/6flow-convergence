@@ -135,16 +135,6 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     },
   },
   {
-    type: "jsonParse",
-    label: "JSON Parse",
-    category: "transform",
-    color: CATEGORY_COLORS.transform,
-    icon: "Braces",
-    inputs: [{ name: "input" }],
-    outputs: [{ name: "output" }],
-    defaultConfig: { strict: true },
-  },
-  {
     type: "abiEncode",
     label: "ABI Encode",
     category: "transform",

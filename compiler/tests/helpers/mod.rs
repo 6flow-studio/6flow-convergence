@@ -7,7 +7,7 @@ use compiler::ir::*;
 // Canonical Test IRs
 // =============================================================================
 
-/// Branching workflow IR with HTTP + JSON parse + conditional EVM write.
+/// Branching workflow IR with decoded HTTP JSON + conditional EVM write.
 pub fn branching_workflow_ir() -> WorkflowIR {
     WorkflowIR {
         metadata: WorkflowMetadata {
@@ -87,23 +87,8 @@ pub fn branching_workflow_ir() -> WorkflowIR {
                     output: Some(OutputBinding {
                         variable_name: "step_http_1".into(),
                         ts_type:
-                            "{ statusCode: number; body: string; headers: Record<string, string> }"
+                            "{ statusCode: number; body: any; headers: Record<string, string> }"
                                 .into(),
-                        destructure_fields: None,
-                    }),
-                },
-                Step {
-                    id: "parse-1".into(),
-                    source_node_ids: vec!["parse-1".into()],
-                    label: "Parse response".into(),
-                    operation: Operation::JsonParse(JsonParseOp {
-                        input: ValueExpr::binding("http-1", "body"),
-                        source_path: None,
-                        strict: true,
-                    }),
-                    output: Some(OutputBinding {
-                        variable_name: "step_parse_1".into(),
-                        ts_type: "any".into(),
                         destructure_fields: None,
                     }),
                 },
@@ -113,7 +98,7 @@ pub fn branching_workflow_ir() -> WorkflowIR {
                     label: "Check if approved".into(),
                     operation: Operation::Branch(BranchOp {
                         conditions: vec![ConditionIR {
-                            field: ValueExpr::binding("parse-1", "isApproved"),
+                            field: ValueExpr::binding("http-1", "body.isApproved"),
                             operator: ComparisonOp::Equals,
                             value: Some(ValueExpr::boolean(true)),
                         }],
@@ -128,7 +113,7 @@ pub fn branching_workflow_ir() -> WorkflowIR {
                                         evm_client_binding: "evmClient_eth_sepolia".into(),
                                         receiver_address: ValueExpr::config("receiverAddress"),
                                         gas_limit: ValueExpr::integer(500_000),
-                                        encoded_data: ValueExpr::binding("parse-1", "data"),
+                                        encoded_data: ValueExpr::binding("http-1", "body.data"),
                                         value_wei: None,
                                     }),
                                     output: Some(OutputBinding {
@@ -410,14 +395,6 @@ pub fn code_node_op(code: &str, inputs: Vec<(&str, ValueExpr)>) -> Operation {
             .collect(),
         execution_mode: CodeExecutionMode::RunOnceForAll,
         timeout_ms: None,
-    })
-}
-
-pub fn json_parse_op(input: ValueExpr) -> Operation {
-    Operation::JsonParse(JsonParseOp {
-        input,
-        source_path: None,
-        strict: true,
     })
 }
 

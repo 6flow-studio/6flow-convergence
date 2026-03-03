@@ -314,8 +314,8 @@ export const mockupWorkflow: Workflow = {
       "id": "getriskscore_1",
       "type": "ai",
       "position": {
-        "x": 771.0390604638048,
-        "y": 267.3422207047588
+        "x": 748.8482515595015,
+        "y": 280.6282816466045
       },
       "data": {
         "label": "getRiskScore",
@@ -325,7 +325,7 @@ export const mockupWorkflow: Workflow = {
           "model": "gemini-3-flash-preview",
           "apiKeySecret": "GEMINI_KEY",
           "systemPrompt": "You are a risk analyst. You will receive two numbers:\n- TotalSupply: total token supply, scaled to 18 decimal places (raw integer).\n- TotalReserveScaled: total reserved/collateral amount, scaled to 18 decimal places (raw integer).\n\nCompute coverage as: coverage = TotalReserveScaled / TotalSupply (both are same scale, so this is the reserve-to-supply ratio).\n\nApply this risk scale exactly:\n- If coverage >= 1.2: riskScore = 0\n- Else: riskScore = min(100, round(((1.2 - coverage) / 1.2) * 100))\n\nRespond with the risk score as structured JSON only, no other text or markdown.\n\nOutput format (valid JSON only):\n{\"riskScore\": <integer>}",
-          "userPrompt": "TotalSupply: {{getonchainsupply_3.value}}\nTotalReserveScaled: {{getoffchainreserves_1.token}}",
+          "userPrompt": "TotalSupply: {{getonchainsupply_3.value}}\nTotalReserveScaled: {{getoffchainreserves_1.totalToken}}",
           "temperature": 0.7,
           "responseFormat": "text"
         },
@@ -346,27 +346,27 @@ export const mockupWorkflow: Workflow = {
                     "fields": [
                       {
                         "key": "content",
-                        "path": "candidates[0][0].content",
+                        "path": "candidates[0].content",
                         "schema": {
                           "type": "object",
-                          "path": "candidates[0][0].content",
+                          "path": "candidates[0].content",
                           "fields": [
                             {
                               "key": "parts",
-                              "path": "candidates[0][0].content.parts",
+                              "path": "candidates[0].content.parts",
                               "schema": {
                                 "type": "array",
-                                "path": "candidates[0][0].content.parts",
+                                "path": "candidates[0].content.parts",
                                 "itemSchema": {
                                   "type": "object",
-                                  "path": "candidates[0][0].content.parts[]",
+                                  "path": "candidates[0].content.parts[]",
                                   "fields": [
                                     {
                                       "key": "text",
-                                      "path": "candidates[0][0].content.parts[0][0].text",
+                                      "path": "candidates[0].content.parts[0].text",
                                       "schema": {
                                         "type": "string",
-                                        "path": "candidates[0][0].content.parts[0][0].text"
+                                        "path": "candidates[0].content.parts[0].text"
                                       }
                                     }
                                   ]
@@ -375,10 +375,10 @@ export const mockupWorkflow: Workflow = {
                             },
                             {
                               "key": "role",
-                              "path": "candidates[0][0].content.role",
+                              "path": "candidates[0].content.role",
                               "schema": {
                                 "type": "string",
-                                "path": "candidates[0][0].content.role"
+                                "path": "candidates[0].content.role"
                               }
                             }
                           ]
@@ -386,10 +386,10 @@ export const mockupWorkflow: Workflow = {
                       },
                       {
                         "key": "finishReason",
-                        "path": "candidates[0][0].finishReason",
+                        "path": "candidates[0].finishReason",
                         "schema": {
                           "type": "string",
-                          "path": "candidates[0][0].finishReason"
+                          "path": "candidates[0].finishReason"
                         }
                       }
                     ]
@@ -458,8 +458,8 @@ export const mockupWorkflow: Workflow = {
       "id": "node_1772523224998_2",
       "type": "abiEncode",
       "position": {
-        "x": 1021.511604888773,
-        "y": 314.1638526366584
+        "x": 1221.9381339879453,
+        "y": 301.50683932017273
       },
       "data": {
         "label": "ABI Encode",
@@ -475,7 +475,7 @@ export const mockupWorkflow: Workflow = {
             },
             {
               "name": "riskScore",
-              "type": "address"
+              "type": "uint256"
             }
           ],
           "dataMapping": [
@@ -489,9 +489,45 @@ export const mockupWorkflow: Workflow = {
             },
             {
               "paramName": "riskScore",
-              "source": "{{getriskscore_1.candidates[0][0].content.parts[0][0].text}}"
+              "source": "{{getriskscore_1.candidates[0].content.parts[0].text}}"
             }
           ]
+        },
+        "editor": {
+          "outputSchema": {
+            "type": "object",
+            "path": "",
+            "fields": [
+              {
+                "key": "encoded",
+                "path": "encoded",
+                "schema": {
+                  "type": "string",
+                  "path": "encoded"
+                }
+              }
+            ]
+          },
+          "schemaSource": "derived"
+        }
+      }
+    },
+    {
+      "id": "node_1772544727219_1",
+      "type": "evmWrite",
+      "position": {
+        "x": 1458.2326849721512,
+        "y": 303.93164347546445
+      },
+      "data": {
+        "label": "EVM Write",
+        "config": {
+          "chainSelectorName": "ethereum-testnet-sepolia",
+          "receiverAddress": "0x93F212a3634D6259cF38cfad4AA4A3485C3d7D59",
+          "gasLimit": "500000",
+          "abiParams": [],
+          "dataMapping": [],
+          "encodedData": "{{node_1772523224998_2.encoded}}"
         }
       }
     }
@@ -512,23 +548,9 @@ export const mockupWorkflow: Workflow = {
       "targetHandle": "input"
     },
     {
-      "id": "xy-edge__node_1772451941969_1output-node_1772461505671_1input",
-      "source": "getoffchainreserves_1",
-      "target": "getriskscore_1",
-      "sourceHandle": "output",
-      "targetHandle": "input"
-    },
-    {
       "id": "xy-edge__node_1772452114820_3output-node_1772461505671_1input",
       "source": "getonchainsupply_3",
       "target": "getriskscore_1",
-      "sourceHandle": "output",
-      "targetHandle": "input"
-    },
-    {
-      "id": "xy-edge__getoffchainreserves_1output-node_1772523224998_2input",
-      "source": "getoffchainreserves_1",
-      "target": "node_1772523224998_2",
       "sourceHandle": "output",
       "targetHandle": "input"
     },
@@ -545,6 +567,27 @@ export const mockupWorkflow: Workflow = {
       "target": "node_1772523224998_2",
       "sourceHandle": "output",
       "targetHandle": "input"
+    },
+    {
+      "id": "xy-edge__getoffchainreserves_1output-getriskscore_1input",
+      "source": "getoffchainreserves_1",
+      "target": "getriskscore_1",
+      "sourceHandle": "output",
+      "targetHandle": "input"
+    },
+    {
+      "id": "xy-edge__getoffchainreserves_1output-node_1772523224998_2input",
+      "source": "getoffchainreserves_1",
+      "target": "node_1772523224998_2",
+      "sourceHandle": "output",
+      "targetHandle": "input"
+    },
+    {
+      "id": "xy-edge__node_1772523224998_2output-node_1772544727219_1input",
+      "source": "node_1772523224998_2",
+      "target": "node_1772544727219_1",
+      "sourceHandle": "output",
+      "targetHandle": "input"
     }
   ],
   "globalConfig": {
@@ -557,6 +600,6 @@ export const mockupWorkflow: Workflow = {
     ],
     "rpcs": []
   },
-  "createdAt": "2026-03-03T07:53:32.259Z",
-  "updatedAt": "2026-03-03T07:53:32.259Z"
+  "createdAt": "2026-03-03T14:33:39.500Z",
+  "updatedAt": "2026-03-03T14:33:39.500Z"
 };

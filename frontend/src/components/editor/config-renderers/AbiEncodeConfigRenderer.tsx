@@ -47,8 +47,7 @@ function deriveRows(config: AbiEncodeConfig): UnifiedParam[] {
 
   return params.map((p, i) => {
     // Match by paramName first, fall back to positional index
-    const matched =
-      mapping.find((m) => m.paramName === p.name) ?? mapping[i];
+    const matched = mapping.find((m) => m.paramName === p.name) ?? mapping[i];
     return {
       name: p.name,
       type: p.type,
@@ -156,7 +155,7 @@ export function AbiEncodeConfigRenderer({ config, onChange, nodeId }: Props) {
             {/* Main row: name + type + source + remove */}
             <div className="flex items-center gap-1">
               <input
-                value={row.name}
+                value={row.name ?? ""}
                 onChange={(e) => updateRow(i, { name: e.target.value })}
                 placeholder="name"
                 className={`flex-1 ${inputClass}`}
@@ -194,7 +193,7 @@ export function AbiEncodeConfigRenderer({ config, onChange, nodeId }: Props) {
                 {(row.components ?? []).map((comp, ci) => (
                   <div key={ci} className="flex items-center gap-1">
                     <input
-                      value={comp.name}
+                      value={comp.name ?? ""}
                       onChange={(e) =>
                         updateComponent(i, ci, {
                           ...comp,

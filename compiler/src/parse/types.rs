@@ -128,8 +128,6 @@ pub enum WorkflowNode {
     // Transforms
     #[serde(rename = "codeNode")]
     CodeNode(NodeBase<CodeNodeConfig>),
-    #[serde(rename = "jsonParse")]
-    JsonParse(NodeBase<JsonParseConfig>),
     #[serde(rename = "abiEncode")]
     AbiEncode(NodeBase<AbiEncodeConfig>),
     #[serde(rename = "abiDecode")]
@@ -173,7 +171,6 @@ impl WorkflowNode {
             WorkflowNode::EvmRead(n) => &n.id,
             WorkflowNode::EvmWrite(n) => &n.id,
             WorkflowNode::CodeNode(n) => &n.id,
-            WorkflowNode::JsonParse(n) => &n.id,
             WorkflowNode::AbiEncode(n) => &n.id,
             WorkflowNode::AbiDecode(n) => &n.id,
             WorkflowNode::Merge(n) => &n.id,
@@ -194,7 +191,6 @@ impl WorkflowNode {
             WorkflowNode::EvmRead(n) => &n.data.label,
             WorkflowNode::EvmWrite(n) => &n.data.label,
             WorkflowNode::CodeNode(n) => &n.data.label,
-            WorkflowNode::JsonParse(n) => &n.data.label,
             WorkflowNode::AbiEncode(n) => &n.data.label,
             WorkflowNode::AbiDecode(n) => &n.data.label,
             WorkflowNode::Merge(n) => &n.data.label,
@@ -215,7 +211,6 @@ impl WorkflowNode {
             WorkflowNode::EvmRead(_) => "evmRead",
             WorkflowNode::EvmWrite(_) => "evmWrite",
             WorkflowNode::CodeNode(_) => "codeNode",
-            WorkflowNode::JsonParse(_) => "jsonParse",
             WorkflowNode::AbiEncode(_) => "abiEncode",
             WorkflowNode::AbiDecode(_) => "abiDecode",
             WorkflowNode::Merge(_) => "merge",
@@ -249,7 +244,6 @@ impl WorkflowNode {
             WorkflowNode::EvmRead(n) => &n.position,
             WorkflowNode::EvmWrite(n) => &n.position,
             WorkflowNode::CodeNode(n) => &n.position,
-            WorkflowNode::JsonParse(n) => &n.position,
             WorkflowNode::AbiEncode(n) => &n.position,
             WorkflowNode::AbiDecode(n) => &n.position,
             WorkflowNode::Merge(n) => &n.position,
@@ -429,13 +423,6 @@ pub struct CodeNodeConfig {
     pub execution_mode: String,
     pub input_variables: Vec<String>,
     pub timeout: Option<u32>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct JsonParseConfig {
-    pub source_path: Option<String>,
-    pub strict: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

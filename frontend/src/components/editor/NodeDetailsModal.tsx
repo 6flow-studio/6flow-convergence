@@ -22,7 +22,6 @@ import {
   AIConfigRenderer,
   GenericConfigRenderer,
   CronTriggerConfigRenderer,
-  JsonParseConfigRenderer,
   ReturnConfigRenderer,
   ErrorConfigRenderer,
   EvmLogTriggerConfigRenderer,
@@ -119,13 +118,6 @@ function renderNodeConfig(
           config={typedConfig<Parameters<typeof EvmWriteConfigRenderer>[0]["config"]>(config)}
           onChange={onChange}
           isTestnet={isTestnet}
-        />
-      );
-    case "jsonParse":
-      return (
-        <JsonParseConfigRenderer
-          config={typedConfig<Parameters<typeof JsonParseConfigRenderer>[0]["config"]>(config)}
-          onChange={onChange}
         />
       );
     case "abiEncode":

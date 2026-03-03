@@ -124,7 +124,6 @@ pub fn validate_node_config(node: &WorkflowNode, global: &GlobalConfig) -> Vec<C
                 ));
             }
         }
-        WorkflowNode::JsonParse(_) => {}
         WorkflowNode::AbiEncode(n) => {
             if n.data.config.abi_params.is_empty() {
                 errors.push(CompilerError::validate(
