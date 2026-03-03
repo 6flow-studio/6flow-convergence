@@ -80,9 +80,13 @@ fn test_e003_cross_branch_ref() {
             Block {
                 steps: vec![
                     // References "true-step" from the other branch — INVALID
-                    make_step(
+                    make_step_with_output(
                         "false-step",
-                        json_parse_op(ValueExpr::binding("true-step", "")),
+                        code_node_op(
+                            "return input;",
+                            vec![("input", ValueExpr::binding("true-step", ""))],
+                        ),
+                        "any",
                     ),
                     make_step("return-f", return_op(ValueExpr::string("f"))),
                 ],
@@ -109,8 +113,11 @@ fn test_e003_binding_from_parent_scope() {
                     steps: vec![
                         // References parent-scoped "http-1" — valid
                         make_step_with_output(
-                            "parse-t",
-                            json_parse_op(ValueExpr::binding("http-1", "body")),
+                            "code-t",
+                            code_node_op(
+                                "return input;",
+                                vec![("input", ValueExpr::binding("http-1", "body"))],
+                            ),
                             "any",
                         ),
                     ],

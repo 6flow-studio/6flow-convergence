@@ -12,7 +12,7 @@ interface AbiParamsEditorProps {
   showIndexed?: boolean;
 }
 
-const ABI_TYPES = [
+export const ABI_TYPES = [
   { value: "address", label: "address" },
   { value: "uint256", label: "uint256" },
   { value: "bytes32", label: "bytes32" },

@@ -16,26 +16,18 @@ fn lower_linear_workflow() {
     let ir = lower::lower(&workflow, &graph).expect("Should lower successfully");
 
     assert_eq!(ir.metadata.id, "linear-test");
-    assert_eq!(ir.handler_body.steps.len(), 3); // http, parse, return
+    assert_eq!(ir.handler_body.steps.len(), 2); // http, return
     assert_eq!(ir.handler_body.steps[0].id, "h1");
-    assert_eq!(ir.handler_body.steps[1].id, "p1");
-    assert_eq!(ir.handler_body.steps[2].id, "r1");
+    assert_eq!(ir.handler_body.steps[1].id, "r1");
     assert_eq!(ir.required_secrets.len(), 1);
     assert_eq!(ir.required_secrets[0].name, "API_KEY");
 
-    // Verify JsonParse auto-wired its input from the HttpRequest predecessor
-    let parse_step = &ir.handler_body.steps[1];
-    assert_eq!(parse_step.id, "p1");
-    match &parse_step.operation {
-        Operation::JsonParse(op) => match &op.input {
-            compiler::ir::types::ValueExpr::Binding(binding) => {
-                assert_eq!(binding.step_id, "h1");
-                assert_eq!(binding.field_path, "body");
-            }
-            other => panic!("Expected Binding ValueExpr, got {:?}", other),
-        },
-        other => panic!("Expected JsonParse operation, got {:?}", other),
-    }
+    let http_step = &ir.handler_body.steps[0];
+    let http_output = http_step.output.as_ref().expect("HTTP step should have output");
+    assert_eq!(
+        http_output.ts_type,
+        "{ statusCode: number; body: any; headers: Record<string, string> }"
+    );
 }
 
 #[test]
@@ -57,8 +49,21 @@ fn lower_example_workflow_produces_valid_ir() {
     assert_eq!(ir.required_secrets[0].name, "KYC_API_KEY");
 
     // The handler body should contain:
-    // http-1, parse-1, condition-1 (branch with write-1 inside true, return in false)
+    // http-1, condition-1 (branch with write-1 inside true, return in false)
     assert!(!ir.handler_body.steps.is_empty());
+
+    match &ir.handler_body.steps[1].operation {
+        Operation::Branch(op) => {
+            match &op.conditions[0].field {
+                ValueExpr::Binding(binding) => {
+                    assert_eq!(binding.step_id, "http-1");
+                    assert_eq!(binding.field_path, "body.isApproved");
+                }
+                other => panic!("Expected binding condition field, got {:?}", other),
+            }
+        }
+        other => panic!("Expected Branch operation, got {:?}", other),
+    }
 }
 
 #[test]

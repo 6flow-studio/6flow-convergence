@@ -10,12 +10,10 @@ import type {
 import { SUPPORTED_CHAINS } from "@6flow/shared/supportedChain";
 import {
   createPublicClient,
-  encodeAbiParameters,
   http,
   stringToHex,
   zeroAddress,
   type Abi,
-  type AbiParameter,
   type Address,
   type Hex,
 } from "viem";
@@ -92,27 +90,17 @@ export async function executeEvmWriteNode(
       "EVM write receiver address is required.",
     );
   }
-  if (config.abiParams.length === 0) {
+  if (!config.encodedData.trim()) {
     throw new NodeExecutionError(
       "invalid_evm_write_config",
-      "EVM write preview requires at least one ABI parameter.",
-    );
-  }
-  if (config.dataMapping.length !== config.abiParams.length) {
-    throw new NodeExecutionError(
-      "invalid_evm_write_config",
-      "EVM write data mapping must match the ABI parameter count for execution preview.",
+      "EVM write encoded data is required. Connect an upstream ABI Encode node and reference its output.",
     );
   }
 
+  const resolvedData = resolveTemplateValue(config.encodedData, workflow);
+  const encodedData = String(resolvedData) as Hex;
+
   const { client, rpcUrl } = createEvmClient(config.chainSelectorName, workflow.globalConfig);
-  const resolvedArgs = config.dataMapping.map((arg, index) =>
-    resolveEvmArgValue(arg, workflow, config.abiParams[index]),
-  );
-  const encodedData = encodeAbiParameters(
-    toViemAbiParameters(config.abiParams),
-    resolvedArgs,
-  );
 
   const warnings = [
     "EVM write preview prepares calldata and estimates gas; it does not broadcast a transaction.",
@@ -130,7 +118,6 @@ export async function executeEvmWriteNode(
   const raw: Record<string, unknown> = {
     rpcUrl,
     receiverAddress: config.receiverAddress,
-    resolvedArgs,
     encodedData,
   };
 
@@ -387,12 +374,3 @@ function toSharedAbiParameter(parameter: SharedAbiParameter): SharedAbiParameter
   };
 }
 
-function toViemAbiParameters(parameters: SharedAbiParameter[]): readonly AbiParameter[] {
-  return parameters.map((parameter) => ({
-    name: parameter.name,
-    type: parameter.type,
-    ...(parameter.components
-      ? { components: toViemAbiParameters(parameter.components) }
-      : {}),
-  }));
-}

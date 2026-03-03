@@ -102,11 +102,10 @@ fn minimal_workflow_codegen() {
 fn ai_call_with_upstream_refs_uses_augmented_config() {
     let ir = helpers::ir_with_steps_and_deps(
         vec![
-            helpers::make_step_with_output("http-1", helpers::http_get("https://api.example.com/data"), "any"),
             helpers::make_step_with_output(
-                "parse-1",
-                helpers::json_parse_op(ValueExpr::binding("http-1", "body")),
-                "any",
+                "http-1",
+                helpers::http_get("https://api.example.com/data"),
+                "{ statusCode: number; body: any; headers: Record<string, string> }",
             ),
             helpers::make_step_with_output(
                 "ai-1",
@@ -117,7 +116,9 @@ fn ai_call_with_upstream_refs_uses_augmented_config() {
                     ValueExpr::Template {
                         parts: vec![
                             TemplatePart::Lit { value: "Analyze: ".into() },
-                            TemplatePart::Expr { value: ValueExpr::binding("parse-1", "value") },
+                            TemplatePart::Expr {
+                                value: ValueExpr::binding("http-1", "body.value"),
+                            },
                         ],
                     },
                 ),
@@ -148,10 +149,10 @@ fn ai_call_with_upstream_refs_uses_augmented_config() {
     );
     // The augmented config should contain the upstream ref
     assert!(
-        main_ts.content.contains("step_parse_1.value"),
+        main_ts.content.contains("step_http_1.body.value"),
         "Augmented config should pass upstream step value, got:\n{}",
         main_ts.content
     );
     // Should NOT contain free variable reference in fetch function
-    // (the fetch fn uses config._dyn0, not step_parse_1.value)
+    // (the fetch fn uses config._dyn0, not a handler-local upstream value)
 }

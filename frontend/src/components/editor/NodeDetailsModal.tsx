@@ -22,7 +22,6 @@ import {
   AIConfigRenderer,
   GenericConfigRenderer,
   CronTriggerConfigRenderer,
-  JsonParseConfigRenderer,
   ReturnConfigRenderer,
   ErrorConfigRenderer,
   EvmLogTriggerConfigRenderer,
@@ -121,18 +120,12 @@ function renderNodeConfig(
           isTestnet={isTestnet}
         />
       );
-    case "jsonParse":
-      return (
-        <JsonParseConfigRenderer
-          config={typedConfig<Parameters<typeof JsonParseConfigRenderer>[0]["config"]>(config)}
-          onChange={onChange}
-        />
-      );
     case "abiEncode":
       return (
         <AbiEncodeConfigRenderer
           config={typedConfig<Parameters<typeof AbiEncodeConfigRenderer>[0]["config"]>(config)}
           onChange={onChange}
+          nodeId={nodeId}
         />
       );
     case "abiDecode":
@@ -140,6 +133,7 @@ function renderNodeConfig(
         <AbiDecodeConfigRenderer
           config={typedConfig<Parameters<typeof AbiDecodeConfigRenderer>[0]["config"]>(config)}
           onChange={onChange}
+          nodeId={nodeId}
         />
       );
     case "merge":
@@ -417,7 +411,7 @@ function UpstreamPreview({ node }: { node: WorkflowNode }) {
   const entry = getNodeEntry(node.data.nodeType);
   const isTrigger = entry?.category === "trigger";
 
-  if (!execution) {
+  if (!execution && !schema) {
     if (isTrigger) {
       return (
         <EmptyState
@@ -452,13 +446,17 @@ function UpstreamPreview({ node }: { node: WorkflowNode }) {
         </CollapsibleSection>
       )}
 
-      <CollapsibleSection label="Normalized Output" defaultOpen>
-        <PreviewCode value={execution.normalized} />
-      </CollapsibleSection>
+      {execution && (
+        <CollapsibleSection label="Normalized Output" defaultOpen>
+          <PreviewCode value={execution.normalized} />
+        </CollapsibleSection>
+      )}
 
-      <CollapsibleSection label="Raw Output">
-        <PreviewCode value={execution.raw} />
-      </CollapsibleSection>
+      {execution && (
+        <CollapsibleSection label="Raw Output">
+          <PreviewCode value={execution.raw} />
+        </CollapsibleSection>
+      )}
     </div>
   );
 }

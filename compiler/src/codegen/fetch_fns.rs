@@ -311,7 +311,7 @@ fn emit_http_fetch_fn(fn_name: &str, op: &HttpRequestOp, ctx: &FetchContext, w: 
     match op.response_format {
         HttpResponseFormat::Json => {
             w.line(
-                "return { statusCode: resp.statusCode, body: resp.body, headers: resp.headers };",
+                "return { statusCode: resp.statusCode, body: JSON.parse(Buffer.from(resp.body, \"base64\").toString(\"utf-8\")), headers: resp.headers };",
             );
         }
         HttpResponseFormat::Text => {

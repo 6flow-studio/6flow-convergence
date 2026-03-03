@@ -21,7 +21,7 @@ export function DroppableInput({
 
   return (
     <input
-      value={value}
+      value={value ?? ""}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       className={`${className} ${isDragOver ? "border-accent-blue ring-1 ring-accent-blue/30 bg-accent-blue/5" : ""}`}

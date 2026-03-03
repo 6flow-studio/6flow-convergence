@@ -21,9 +21,11 @@ pub struct ImportSet {
     pub encode_call_msg: bool,
     pub bytes_to_hex: bool,
     pub prepare_report_request: bool,
+    pub tx_status: bool,
 
     // viem
     pub encode_function_data: bool,
+    pub encode_abi_parameters: bool,
     pub decode_function_result: bool,
     pub parse_abi: bool,
     pub keccak256: bool,
@@ -100,11 +102,17 @@ fn scan_operation(op: &Operation, imports: &mut ImportSet) {
             imports.encode_call_msg = true;
             imports.encode_function_data = true;
         }
-        Operation::AbiEncode(_) => {
-            imports.encode_function_data = true;
+        Operation::AbiEncode(op) => {
+            if op.function_name.is_some() {
+                imports.encode_function_data = true;
+            } else {
+                imports.encode_abi_parameters = true;
+            }
         }
         Operation::EvmWrite(_) => {
             imports.prepare_report_request = true;
+            imports.tx_status = true;
+            imports.bytes_to_hex = true;
         }
         Operation::AbiDecode(_) => {
             imports.decode_function_result = true;
@@ -141,6 +149,9 @@ pub fn emit_imports(imports: &ImportSet, w: &mut CodeWriter) {
     }
     if imports.prepare_report_request {
         sdk_items.push("prepareReportRequest");
+    }
+    if imports.tx_status {
+        sdk_items.push("TxStatus");
     }
 
     let mut sdk_types: Vec<&str> = Vec::new();
@@ -183,6 +194,9 @@ pub fn emit_imports(imports: &ImportSet, w: &mut CodeWriter) {
     }
     if imports.encode_function_data {
         viem_items.push("encodeFunctionData");
+    }
+    if imports.encode_abi_parameters {
+        viem_items.push("encodeAbiParameters");
     }
     if imports.decode_function_result {
         viem_items.push("decodeFunctionResult");

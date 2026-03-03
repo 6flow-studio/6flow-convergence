@@ -331,7 +331,6 @@ pub enum Operation {
 
     // --- Transforms (inline TypeScript) ---
     CodeNode(CodeNodeOp),
-    JsonParse(JsonParseOp),
     AbiEncode(AbiEncodeOp),
     AbiDecode(AbiDecodeOp),
 
@@ -487,20 +486,6 @@ pub struct CodeInputBinding {
 pub enum CodeExecutionMode {
     RunOnceForAll,
     RunOnceForEach,
-}
-
-// =============================================================================
-// JSON PARSE
-// =============================================================================
-
-/// `JSON.parse(Buffer.from(input, "base64").toString("utf-8"))`
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct JsonParseOp {
-    /// Typically a binding to an HTTP response body.
-    pub input: ValueExpr,
-    /// Optional JSONPath to extract a sub-value.
-    pub source_path: Option<String>,
-    pub strict: bool,
 }
 
 // =============================================================================

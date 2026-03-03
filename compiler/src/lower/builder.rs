@@ -463,9 +463,6 @@ fn lower_node(
         WorkflowNode::EvmRead(n) => lower_evm_read(node_id, &n.data.config, id_map),
         WorkflowNode::EvmWrite(n) => lower_evm_write(node_id, &n.data.config, id_map),
         WorkflowNode::CodeNode(n) => lower_code_node(node_id, &n.data.config, id_map),
-        WorkflowNode::JsonParse(n) => {
-            lower_json_parse(node_id, &n.data.config, graph, node_map, id_map)
-        }
         WorkflowNode::AbiEncode(n) => lower_abi_encode(node_id, &n.data.config, id_map),
         WorkflowNode::AbiDecode(n) => {
             lower_abi_decode(node_id, &n.data.config, graph, node_map, id_map)
@@ -562,6 +559,11 @@ fn lower_http_request(
         _ => HttpResponseFormat::Json,
     };
 
+    let body_ts_type = match response_format {
+        HttpResponseFormat::Json => "any",
+        HttpResponseFormat::Text | HttpResponseFormat::Binary => "string",
+    };
+
     let op = Operation::HttpRequest(HttpRequestOp {
         method,
         url,
@@ -581,7 +583,10 @@ fn lower_http_request(
 
     let output = Some(OutputBinding {
         variable_name: format!("step_{}", node_id.replace('-', "_")),
-        ts_type: "{ statusCode: number; body: string; headers: Record<string, string> }".into(),
+        ts_type: format!(
+            "{{ statusCode: number; body: {}; headers: Record<string, string> }}",
+            body_ts_type
+        ),
         destructure_fields: None,
     });
 
@@ -642,15 +647,7 @@ fn lower_evm_write(
     let binding_name = make_evm_binding_name(&config.chain_selector_name);
     let gas_limit: i64 = config.gas_limit.parse().unwrap_or(500_000);
 
-    // For EvmWrite, the data needs to be pre-encoded. The dataMapping provides
-    // the raw args, but we need an ABI encode step. For a standalone EvmWrite node,
-    // the user is expected to have an AbiEncode node upstream providing encoded data.
-    // We use the first data mapping reference as the encoded_data source.
-    let encoded_data = if let Some(first) = config.data_mapping.first() {
-        resolve_value_expr(&first.value, id_map)
-    } else {
-        ValueExpr::raw("/* no data mapping */")
-    };
+    let encoded_data = resolve_value_expr(&config.encoded_data, id_map);
 
     let op = Operation::EvmWrite(EvmWriteOp {
         evm_client_binding: binding_name,
@@ -698,29 +695,6 @@ fn lower_code_node(
         input_bindings,
         execution_mode,
         timeout_ms: config.timeout,
-    });
-
-    let output = Some(OutputBinding {
-        variable_name: format!("step_{}", node_id.replace('-', "_")),
-        ts_type: "any".into(),
-        destructure_fields: None,
-    });
-
-    (op, output)
-}
-
-fn lower_json_parse(
-    node_id: &str,
-    config: &crate::parse::types::JsonParseConfig,
-    graph: &WorkflowGraph,
-    node_map: &HashMap<&str, &WorkflowNode>,
-    id_map: &HashMap<String, String>,
-) -> (Operation, Option<OutputBinding>) {
-    let input = resolve_predecessor_input(node_id, "body", "", graph, node_map, id_map);
-    let op = Operation::JsonParse(JsonParseOp {
-        input,
-        source_path: config.source_path.clone(),
-        strict: config.strict.unwrap_or(true),
     });
 
     let output = Some(OutputBinding {

@@ -142,9 +142,10 @@ function buildSchema(
   const fields: DataSchemaField[] = [];
 
   for (const [key, node] of map) {
-    // Skip numeric indices — recurse into the index's children
+    // Skip numeric indices — recurse into the index's children.
+    // The parent array node already appended [0] to basePath, so pass it through unchanged.
     if (/^\d+$/.test(key)) {
-      return buildSchema(node.children, `${basePath}[${key}]`);
+      return buildSchema(node.children, basePath);
     }
 
     const path = basePath ? `${basePath}.${key}` : key;

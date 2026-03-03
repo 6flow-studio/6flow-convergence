@@ -17,8 +17,8 @@ fn end_to_end_linear_pipeline() {
     let ir = lower::lower(&workflow, &graph).unwrap();
 
     let ir_errors = validate_ir(&ir);
-    // The lowered IR may have some validation issues due to placeholder inputs
-    // (e.g., jsonParse input), but the pipeline should at least not crash.
+    // The lowered IR may have some validation issues due to placeholder inputs,
+    // but the pipeline should at least not crash.
     let _ = ir_errors;
 
     let output = compiler::codegen::codegen(&ir);

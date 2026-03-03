@@ -168,32 +168,6 @@ fn test_code_node() {
 }
 
 // =============================================================================
-// JSON PARSE
-// =============================================================================
-
-#[test]
-fn test_json_parse() {
-    let ir = ir_with_steps(vec![
-        make_step_with_output("http-1", http_get("https://example.com"), "any"),
-        make_step_with_output(
-            "parse-1",
-            json_parse_op(ValueExpr::binding("http-1", "body")),
-            "any",
-        ),
-    ]);
-    let errors = validate_ir(&ir);
-    assert!(errors.is_empty(), "Expected no errors, got: {:?}", errors);
-
-    let rt = roundtrip(&ir);
-    if let Operation::JsonParse(op) = &rt.handler_body.steps[1].operation {
-        assert!(op.strict);
-        assert!(op.source_path.is_none());
-    } else {
-        panic!("Expected JsonParse");
-    }
-}
-
-// =============================================================================
 // ABI ENCODE
 // =============================================================================
 
