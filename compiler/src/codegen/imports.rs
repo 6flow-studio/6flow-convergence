@@ -20,6 +20,7 @@ pub struct ImportSet {
     pub get_network: bool,
     pub encode_call_msg: bool,
     pub bytes_to_hex: bool,
+    pub prepare_report_request: bool,
 
     // viem
     pub encode_function_data: bool,
@@ -102,6 +103,9 @@ fn scan_operation(op: &Operation, imports: &mut ImportSet) {
         Operation::AbiEncode(_) => {
             imports.encode_function_data = true;
         }
+        Operation::EvmWrite(_) => {
+            imports.prepare_report_request = true;
+        }
         Operation::AbiDecode(_) => {
             imports.decode_function_result = true;
         }
@@ -134,6 +138,9 @@ pub fn emit_imports(imports: &ImportSet, w: &mut CodeWriter) {
     }
     if imports.bytes_to_hex {
         sdk_items.push("bytesToHex");
+    }
+    if imports.prepare_report_request {
+        sdk_items.push("prepareReportRequest");
     }
 
     let mut sdk_types: Vec<&str> = Vec::new();

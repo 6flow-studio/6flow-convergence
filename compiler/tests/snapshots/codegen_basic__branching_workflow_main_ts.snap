@@ -2,7 +2,7 @@
 source: tests/codegen_basic.rs
 expression: main_ts.content
 ---
-import { cre, ok, consensusIdenticalAggregation, getNetwork, Runner, type Runtime, type HTTPSendRequester, type CronTrigger } from "@chainlink/cre-sdk";
+import { cre, ok, consensusIdenticalAggregation, getNetwork, prepareReportRequest, Runner, type Runtime, type HTTPSendRequester, type CronTrigger } from "@chainlink/cre-sdk";
 import { z } from "zod";
 
 const configSchema = z.object({
@@ -55,10 +55,11 @@ const onCronTrigger = (runtime: Runtime<Config>, triggerData: CronTrigger): stri
   // Check if approved
   if (step_parse_1.isApproved === true) {
     // Write to contract
-    const step_write_1 = evmClient_eth_sepolia.write(runtime, {
-      receiverAddress: runtime.config.receiverAddress,
-      gasLimit: BigInt(500000),
-      data: step_parse_1.data,
+    const report_write_1 = runtime.report(prepareReportRequest(step_parse_1.data)).result();
+    const step_write_1 = evmClient_eth_sepolia.writeReport(runtime, {
+      receiver: runtime.config.receiverAddress,
+      report: report_write_1,
+      gasConfig: { gasLimit: "500000" },
     }).result();
     runtime.log(`[Write to contract] ${__stringify(step_write_1)}`);
     return "Minted successfully";
