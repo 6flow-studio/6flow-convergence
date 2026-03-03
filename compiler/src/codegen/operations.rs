@@ -139,28 +139,47 @@ pub fn emit_evm_read(step: &Step, op: &EvmReadOp, w: &mut CodeWriter) {
     }
 }
 
-/// Emit an EvmWrite call.
+/// Emit an EvmWrite call using the CRE report-based pattern:
+///   1. `runtime.report(prepareReportRequest(data))` — generate signed report
+///   2. `evmClient.writeReport(runtime, { receiver, report, gasConfig })` — submit via KeystoneForwarder
 pub fn emit_evm_write(step: &Step, op: &EvmWriteOp, w: &mut CodeWriter) {
     w.line(&format!("// {}", step.label));
     let binding = &op.evm_client_binding;
     let receiver = emit_value_expr(&op.receiver_address);
-    let gas = emit_value_expr(&op.gas_limit);
+    let gas_str = emit_gas_limit_string(&op.gas_limit);
     let data = emit_value_expr(&op.encoded_data);
 
     if let Some(ref out) = step.output {
+        // Step 1: generate signed report
+        let report_var = format!("report_{}", step.id.replace('-', "_"));
         w.line(&format!(
-            "const {} = {}.write(runtime, {{",
+            "const {} = runtime.report(prepareReportRequest({})).result();",
+            report_var, data,
+        ));
+
+        // Step 2: submit report on-chain
+        w.line(&format!(
+            "const {} = {}.writeReport(runtime, {{",
             out.variable_name, binding,
         ));
         w.indent();
-        w.line(&format!("receiverAddress: {},", receiver));
-        w.line(&format!("gasLimit: BigInt({}),", gas));
-        w.line(&format!("data: {},", data));
-        if let Some(ref value_wei) = op.value_wei {
-            w.line(&format!("value: BigInt({}),", emit_value_expr(value_wei)));
-        }
+        w.line(&format!("receiver: {},", receiver));
+        w.line(&format!("report: {},", report_var));
+        w.line(&format!("gasConfig: {{ gasLimit: {} }},", gas_str));
         w.dedent();
         w.line("}).result();");
+    }
+}
+
+/// Convert a gas limit `ValueExpr` to a string literal for `gasConfig`.
+/// Integer literals become `"500000"`, other expressions use template literals.
+fn emit_gas_limit_string(expr: &ValueExpr) -> String {
+    match expr {
+        ValueExpr::Literal(LiteralValue::Integer { value }) => format!("\"{}\"", value),
+        ValueExpr::Literal(LiteralValue::Number { value }) => {
+            format!("\"{}\"", *value as i64)
+        }
+        _ => format!("`${{{}}}`", emit_value_expr(expr)),
     }
 }
 

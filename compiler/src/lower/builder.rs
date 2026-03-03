@@ -662,7 +662,7 @@ fn lower_evm_write(
 
     let output = Some(OutputBinding {
         variable_name: format!("step_{}", node_id.replace('-', "_")),
-        ts_type: "{ txHash: string; status: string }".into(),
+        ts_type: "any".into(),
         destructure_fields: None,
     });
 
