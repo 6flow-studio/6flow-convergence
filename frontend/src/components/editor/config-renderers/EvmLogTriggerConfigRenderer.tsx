@@ -34,12 +34,6 @@ function mapAbiTypeToSchemaType(abiType: string): DataSchemaType {
 }
 
 function deriveEvmLogOutputSchema(eventAbi: AbiEvent): DataSchema {
-  const eventArgFields: DataSchemaField[] = eventAbi.inputs.map(param => ({
-    key: param.name,
-    path: `eventArgs.${param.name}`,
-    schema: { type: mapAbiTypeToSchemaType(param.type), path: `eventArgs.${param.name}` },
-  }));
-
   return {
     type: "object",
     path: "",
@@ -47,11 +41,11 @@ function deriveEvmLogOutputSchema(eventAbi: AbiEvent): DataSchema {
       { key: "blockNumber", path: "blockNumber", schema: { type: "string", path: "blockNumber" } },
       { key: "transactionHash", path: "transactionHash", schema: { type: "string", path: "transactionHash" } },
       { key: "logIndex", path: "logIndex", schema: { type: "number", path: "logIndex" } },
-      {
-        key: "eventArgs",
-        path: "eventArgs",
-        schema: { type: "object", path: "eventArgs", fields: eventArgFields },
-      },
+      ...eventAbi.inputs.map((param): DataSchemaField => ({
+        key: param.name,
+        path: param.name,
+        schema: { type: mapAbiTypeToSchemaType(param.type), path: param.name },
+      })),
     ],
   };
 }

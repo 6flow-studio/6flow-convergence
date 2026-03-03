@@ -54,6 +54,7 @@ pub fn collect_imports(ir: &WorkflowIR) -> ImportSet {
             imports.keccak256 = true;
             imports.to_hex = true;
             imports.decode_event_log = true;
+            imports.parse_abi = true;
         }
         _ => {}
     }

@@ -5,9 +5,11 @@ import type { DataSchema } from "@6flow/shared/model/node";
 export function SchemaTree({
   schema,
   upstreamNodeId,
+  upstreamNodeName,
 }: {
   schema: DataSchema;
   upstreamNodeId?: string;
+  upstreamNodeName?: string;
 }) {
   return (
     <div className="space-y-1">
@@ -16,6 +18,7 @@ export function SchemaTree({
         label="root"
         depth={0}
         upstreamNodeId={upstreamNodeId}
+        upstreamNodeName={upstreamNodeName}
       />
     </div>
   );
@@ -26,24 +29,31 @@ function SchemaNode({
   label,
   depth,
   upstreamNodeId,
+  upstreamNodeName,
 }: {
   schema: DataSchema;
   label: string;
   depth: number;
   upstreamNodeId?: string;
+  upstreamNodeName?: string;
 }) {
   const rowStyle = { paddingLeft: `${depth * 12}px` };
   const isDraggable = !!upstreamNodeId && !!schema.path;
 
   function onDragStart(e: React.DragEvent) {
     if (!upstreamNodeId || !schema.path) return;
-    const data = encodeFieldRef({ nodeId: upstreamNodeId, path: schema.path });
+    const data = encodeFieldRef({
+      nodeId: upstreamNodeId,
+      nodeName: upstreamNodeName ?? upstreamNodeId,
+      path: schema.path,
+    });
     e.dataTransfer.setData(FIELD_REF_MIME, data);
     e.dataTransfer.effectAllowed = "copy";
 
-    // Custom drag image showing {{path}}
+    // Custom drag image showing {{nodeName.path}}
+    const displayName = upstreamNodeName ?? upstreamNodeId;
     const badge = document.createElement("div");
-    badge.textContent = `{{${schema.path}}}`;
+    badge.textContent = `{{${displayName}.${schema.path}}}`;
     badge.style.cssText =
       "position:fixed;left:-9999px;padding:2px 8px;border-radius:4px;background:#3b82f6;color:#fff;font-size:11px;font-family:monospace;white-space:nowrap;";
     document.body.appendChild(badge);
@@ -79,6 +89,7 @@ function SchemaNode({
           label={field.optional ? `${field.key}?` : field.key}
           depth={depth + 1}
           upstreamNodeId={upstreamNodeId}
+          upstreamNodeName={upstreamNodeName}
         />
       ))}
 
@@ -88,6 +99,7 @@ function SchemaNode({
           label="[]"
           depth={depth + 1}
           upstreamNodeId={upstreamNodeId}
+          upstreamNodeName={upstreamNodeName}
         />
       )}
     </div>

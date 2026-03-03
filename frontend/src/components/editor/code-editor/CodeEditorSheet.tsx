@@ -23,6 +23,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { SelectField, TagInput } from "../config-fields";
 import { editorTheme, editorHighlighting } from "./codemirror-theme";
+import { buildVariableCompletions } from "./variable-completions";
+import { useScopedVariables } from "@/hooks/useScopedVariables";
 import type { CodeExecutionMode } from "@6flow/shared/model/node";
 
 interface CodeEditorSheetProps {
@@ -56,6 +58,10 @@ export function CodeEditorSheet({
   const onCodeChangeRef = useRef(onCodeChange);
   onCodeChangeRef.current = onCodeChange;
 
+  const scopedVariables = useScopedVariables();
+  const scopedVarsRef = useRef(scopedVariables);
+  scopedVarsRef.current = scopedVariables;
+
   const initEditor = useCallback(() => {
     if (!editorContainerRef.current) return;
 
@@ -64,6 +70,10 @@ export function CodeEditorSheet({
       viewRef.current.destroy();
       viewRef.current = null;
     }
+
+    const completionSource = buildVariableCompletions(() =>
+      scopedVarsRef.current.map((v) => ({ label: v.codeInsert, detail: v.type })),
+    );
 
     const state = EditorState.create({
       doc: code,
@@ -74,7 +84,7 @@ export function CodeEditorSheet({
         indentOnInput(),
         bracketMatching(),
         closeBrackets(),
-        autocompletion(),
+        autocompletion({ override: [completionSource] }),
         javascript({ typescript: true }),
         editorTheme,
         editorHighlighting,
@@ -110,6 +120,17 @@ export function CodeEditorSheet({
       viewRef.current = null;
     }
   }, [open, initEditor]);
+
+  function insertAtCursor(text: string) {
+    const view = viewRef.current;
+    if (!view) return;
+    const { from, to } = view.state.selection.main;
+    view.dispatch({
+      changes: { from, to, insert: text },
+      selection: { anchor: from + text.length },
+    });
+    view.focus();
+  }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -159,6 +180,25 @@ export function CodeEditorSheet({
             />
           </div>
         </div>
+
+        {/* Variables in scope chip bar */}
+        {scopedVariables.length > 0 && (
+          <div className="px-4 py-2 border-b border-edge-dim flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] text-zinc-600 shrink-0">In scope:</span>
+            {scopedVariables.map((v) => (
+              <button
+                key={v.expression}
+                type="button"
+                onClick={() => insertAtCursor(v.codeInsert)}
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-edge-dim bg-surface-2 hover:bg-surface-3 hover:border-edge-bright transition-colors cursor-pointer"
+                title={`Insert ${v.codeInsert}`}
+              >
+                <span className="font-mono text-[11px] text-zinc-300">{v.name}</span>
+                <span className="text-[10px] text-zinc-600">{v.type}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Editor */}
         <div ref={editorContainerRef} className="flex-1 overflow-auto" />

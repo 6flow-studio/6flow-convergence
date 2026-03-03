@@ -55,6 +55,12 @@ fn parse_single_ref(inner: &str, id_map: &HashMap<String, String>) -> ValueExpr 
         return ValueExpr::trigger_data(field_path);
     }
 
+    // EVM Log trigger event args are decoded as local `const` variables in the handler scope.
+    // Reference them by bare name (e.g. `marketId` not `triggerData.marketId`).
+    if step_id == "evmLogTrigger" {
+        return ValueExpr::raw(field_path);
+    }
+
     ValueExpr::binding(step_id, field_path)
 }
 
@@ -155,6 +161,30 @@ mod tests {
         let result = resolve_value_expr("{{mint-1.txHash}}", &map);
         assert!(
             matches!(result, ValueExpr::Binding(BindingRef { step_id, .. }) if step_id == "mint-1___write")
+        );
+    }
+
+    #[test]
+    fn evm_log_trigger_event_arg_by_label() {
+        let mut map = HashMap::new();
+        // Trigger node label maps to "evmLogTrigger" marker
+        map.insert("Settlement Requested".to_string(), "evmLogTrigger".to_string());
+        let result = resolve_value_expr("{{Settlement Requested.marketId}}", &map);
+        // Event arg should emit as bare variable name via RawExpr
+        assert!(
+            matches!(result, ValueExpr::RawExpr { expr } if expr == "marketId")
+        );
+    }
+
+    #[test]
+    fn step_node_by_label() {
+        let mut map = HashMap::new();
+        // Regular step node label maps to node id
+        map.insert("HTTP Step".to_string(), "http_step_0".to_string());
+        let result = resolve_value_expr("{{HTTP Step.body}}", &map);
+        assert!(
+            matches!(result, ValueExpr::Binding(BindingRef { step_id, field_path })
+                if step_id == "http_step_0" && field_path == "body")
         );
     }
 }

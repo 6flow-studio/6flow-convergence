@@ -92,6 +92,9 @@ fn gen_main_ts(ir: &WorkflowIR) -> String {
     config_schema::emit_config_schema(&ir.config_schema, &mut w);
     w.blank();
 
+    // 2.5 EVM LOG MODULE CONSTANTS (eventAbi, eventSignature)
+    handler::emit_evm_log_module_consts(ir, &mut w);
+
     // 3. FETCH FUNCTIONS (top-level, before handler)
     let fetch_fn_list = fetch_fns::collect_fetch_fns(&ir.handler_body);
     let fetch_contexts = if !fetch_fn_list.is_empty() {

@@ -449,7 +449,7 @@ function UpstreamPreview({ node }: { node: WorkflowNode }) {
 
       {schema && (
         <CollapsibleSection label="Output Schema" defaultOpen>
-          <SchemaTree schema={schema} upstreamNodeId={node.id} />
+          <SchemaTree schema={schema} upstreamNodeId={node.id} upstreamNodeName={node.data.label} />
         </CollapsibleSection>
       )}
 

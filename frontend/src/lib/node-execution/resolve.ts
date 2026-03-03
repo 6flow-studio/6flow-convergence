@@ -40,7 +40,9 @@ function resolveReference(rawReference: string, workflow: Workflow): unknown {
     return getByPath(workflow.globalConfig as unknown, path, reference);
   }
 
-  const sourceNode = workflow.nodes.find((node) => node.id === root);
+  const sourceNode = workflow.nodes.find(
+    (node) => node.data.label === root || node.id === root,
+  );
   if (!sourceNode) {
     throw new NodeExecutionReferenceError(
       `Referenced node '${root}' was not found for '{{${reference}}}'.`,

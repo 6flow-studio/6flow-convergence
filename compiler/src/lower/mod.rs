@@ -35,6 +35,15 @@ pub fn lower(workflow: &Workflow, graph: &WorkflowGraph) -> Result<WorkflowIR, V
     // Map trigger node ID (e.g. "trigger-1") → "trigger" so that
     // {{trigger-1.field}} resolves to TriggerDataRef via parse_single_ref.
     id_map.insert(trigger_node.id().to_string(), "trigger".to_string());
+    // Also map by label for name-based expressions: {{nodeName.field}}.
+    // EVM Log event args are decoded as local consts, so use "evmLogTrigger" to
+    // distinguish them from cron/http trigger data (which uses `triggerData.field`).
+    let trigger_id_map_target = if trigger_node.node_type() == "evmLogTrigger" {
+        "evmLogTrigger"
+    } else {
+        "trigger"
+    };
+    id_map.insert(trigger_node.label().to_string(), trigger_id_map_target.to_string());
 
     // 4. Lower trigger
     let mut config_fields = Vec::new();
@@ -85,13 +94,22 @@ pub fn lower(workflow: &Workflow, graph: &WorkflowGraph) -> Result<WorkflowIR, V
     Ok(ir)
 }
 
-/// Build a mapping from original convenience node IDs to their "output" step IDs.
+/// Build a mapping from node IDs (and labels) to their resolved step IDs.
+///
+/// - Convenience nodes: node ID → expanded output step ID
+/// - Regular non-trigger nodes: node label → node ID (for name-based `{{nodeName.field}}`)
+/// - Trigger nodes: handled in `lower()` after this function (needs trigger type info)
 fn build_id_map(workflow: &Workflow) -> HashMap<String, String> {
     let mut map = HashMap::new();
 
     for node in &workflow.nodes {
         if let Some(output_id) = expand::output_step_id(node) {
-            map.insert(node.id().to_string(), output_id);
+            map.insert(node.id().to_string(), output_id.clone());
+            // Also map by label for name-based expressions
+            map.insert(node.label().to_string(), output_id);
+        } else if !node.is_trigger() {
+            // Regular (non-trigger) nodes: map label → id for {{nodeName.field}} lookup
+            map.insert(node.label().to_string(), node.id().to_string());
         }
     }
 
