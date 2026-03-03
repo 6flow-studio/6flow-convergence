@@ -51,6 +51,7 @@ function renderNodeConfig(
         <CodeNodeConfigRenderer
           config={typedConfig<Parameters<typeof CodeNodeConfigRenderer>[0]["config"]>(config)}
           onChange={onChange}
+          nodeId={nodeId}
         />
       );
     case "httpRequest":

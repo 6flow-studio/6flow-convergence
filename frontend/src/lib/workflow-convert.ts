@@ -44,13 +44,26 @@ export function fromReactFlowNodes(nodes: WorkflowNode[]): SharedWorkflowNode[] 
     const { nodeType, label, config, editor, ...rest } = node.data;
     void rest; // discard extra RF data keys
 
+    let resolvedConfig = config;
+    if (nodeType === "codeNode") {
+      const outputFields = (config.outputFields as Array<{ key: string }> | undefined) ?? [];
+      const validKeys = outputFields.map((f) => f.key).filter(Boolean);
+      if (validKeys.length > 0) {
+        const returnLine = `return { ${validKeys.join(", ")} };`;
+        resolvedConfig = {
+          ...config,
+          code: `${config.code as string}\n${returnLine}`,
+        };
+      }
+    }
+
     return {
       id: node.id,
       type: nodeType,
       position: node.position,
       data: {
         label,
-        config,
+        config: resolvedConfig,
         editor,
       },
     } as SharedWorkflowNode;

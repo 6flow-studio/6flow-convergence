@@ -346,6 +346,7 @@ export interface CodeNodeConfig {
   executionMode: CodeExecutionMode;
   inputVariables: string[];
   timeout?: number; // Max execution time (ms)
+  outputFields?: { key: string; type: DataSchemaType }[]; // Manually declared output fields
 }
 
 export type CodeNodeNode = BaseNode<"codeNode", CodeNodeConfig>;

@@ -36,6 +36,7 @@ interface CodeEditorSheetProps {
   onLanguageChange: (language: string) => void;
   executionMode: CodeExecutionMode;
   onExecutionModeChange: (mode: CodeExecutionMode) => void;
+  returnLine?: string;
 }
 
 export function CodeEditorSheet({
@@ -47,12 +48,17 @@ export function CodeEditorSheet({
   onLanguageChange,
   executionMode,
   onExecutionModeChange,
+  returnLine,
 }: CodeEditorSheetProps) {
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
 
   const onCodeChangeRef = useRef(onCodeChange);
   onCodeChangeRef.current = onCodeChange;
+
+  // Keep a ref to the current code so initEditor always initializes with the latest value
+  const codeRef = useRef(code);
+  codeRef.current = code;
 
   const scopedVariables = useScopedVariables();
   const scopedVarsRef = useRef(scopedVariables);
@@ -71,8 +77,15 @@ export function CodeEditorSheet({
       scopedVarsRef.current.map((v) => ({ label: v.codeInsert, detail: v.type })),
     );
 
+    const blockReturnKeyword = EditorState.transactionFilter.of((tr) => {
+      if (!tr.docChanged) return tr;
+      const newDoc = tr.newDoc.toString();
+      const hasReturn = newDoc.split("\n").some((line) => /^\s*return\b/.test(line));
+      return hasReturn ? [] : tr;
+    });
+
     const state = EditorState.create({
-      doc: code,
+      doc: codeRef.current,
       extensions: [
         lineNumbers(),
         history(),
@@ -84,6 +97,7 @@ export function CodeEditorSheet({
         javascript({ typescript: true }),
         editorTheme,
         editorHighlighting,
+        blockReturnKeyword,
         keymap.of([
           ...defaultKeymap,
           ...historyKeymap,
@@ -196,8 +210,16 @@ export function CodeEditorSheet({
           </div>
         )}
 
-        {/* Editor */}
-        <div ref={editorContainerRef} className="flex-1 overflow-auto" />
+        {/* Editor + auto-generated return line */}
+        <div className="flex flex-col flex-1 min-h-0">
+          <div ref={editorContainerRef} className="flex-1 overflow-auto" />
+          {returnLine && (
+            <div className="shrink-0 border-t border-edge-dim px-3 py-1.5 font-mono text-[12px] text-zinc-500 bg-surface-1 flex items-center justify-between">
+              <span>{returnLine}</span>
+              <span className="text-[10px] text-zinc-700 ml-3">auto</span>
+            </div>
+          )}
+        </div>
       </SheetContent>
     </Sheet>
   );
