@@ -211,13 +211,45 @@ export function CodeEditorSheet({
         )}
 
         {/* Editor + auto-generated return line */}
-        <div className="flex flex-col flex-1 min-h-0">
-          <div ref={editorContainerRef} className="flex-1 overflow-auto" />
+        <div className="flex flex-col flex-1 min-h-0 overflow-auto">
+          <div ref={editorContainerRef} />
           {returnLine && (
-            <div className="shrink-0 border-t border-edge-dim px-3 py-1.5 font-mono text-[12px] text-zinc-500 bg-surface-1 flex items-center justify-between">
-              <span>{returnLine}</span>
-              <span className="text-[10px] text-zinc-700 ml-3">auto</span>
-            </div>
+            <>
+              <div
+                className="shrink-0 px-3 py-1 border-t border-edge-dim font-mono text-[11px] text-orange-500 select-none"
+                style={{ backgroundColor: "rgb(24, 24, 27)" }}
+              >
+                6flow will automatically return the following value from this node. To customize it, edit the output fields in the node config. <br />
+                No type checking is done in the current version, so make sure the returned value matches the expected type in the node config.
+              </div>
+              <div
+                className="shrink-0 flex items-center font-mono text-[13px] select-none"
+                style={{ backgroundColor: "rgb(24, 24, 27)" }}
+              >
+                {/* Gutter */}
+                <div
+                  className="text-right shrink-0"
+                  style={{ minWidth: "32px", paddingRight: "8px", color: "#52525b" }}
+                >
+                  {code.split("\n").length + 1}
+                </div>
+                {/* Line content with syntax coloring */}
+                <div className="flex-1" style={{ padding: "1px 12px" }}>
+                  <span style={{ color: "#c084fc" }}>return</span>
+                  <span style={{ color: "#71717a" }}>{" { "}</span>
+                  <span style={{ color: "#d4d4d8" }}>
+                    {returnLine
+                      .replace(/^return \{ /, "")
+                      .replace(/ \};$/, "")}
+                  </span>
+                  <span style={{ color: "#71717a" }}>{" };"}</span>
+                </div>
+                {/* Auto badge */}
+                <div className="shrink-0 pr-3 text-[10px]" style={{ color: "#3f3f46" }}>
+                  auto
+                </div>
+              </div>
+            </>
           )}
         </div>
       </SheetContent>

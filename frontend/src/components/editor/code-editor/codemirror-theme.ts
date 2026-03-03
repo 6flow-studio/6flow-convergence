@@ -8,7 +8,6 @@ export const editorTheme = EditorView.theme(
       backgroundColor: "rgb(24, 24, 27)", // surface-2
       color: "#d4d4d8", // zinc-300
       fontSize: "13px",
-      height: "100%",
     },
     ".cm-content": {
       caretColor: "#60a5fa", // accent-blue

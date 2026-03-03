@@ -129,21 +129,6 @@ export function CodeNodeConfigRenderer({ config, onChange, nodeId }: Props) {
         returnLine={returnLine}
       />
 
-      <NumberField
-        label="Timeout (ms)"
-        description="Max execution time"
-        value={config.timeout}
-        onChange={(timeout) => onChange({ timeout })}
-        min={0}
-        max={30000}
-        step={100}
-      />
-
-      {/* Beta warning */}
-      <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-2.5 py-2 text-[11px] text-amber-200 leading-relaxed">
-        6flow is in beta — there is no type checking. Make sure your output field types match your actual return values, or the compiled code may be invalid.
-      </div>
-
       {/* Output Fields */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
@@ -196,6 +181,16 @@ export function CodeNodeConfigRenderer({ config, onChange, nodeId }: Props) {
           Add Field
         </button>
       </div>
+
+      <NumberField
+        label="Timeout (ms)"
+        description="Max execution time"
+        value={config.timeout}
+        onChange={(timeout) => onChange({ timeout })}
+        min={0}
+        max={30000}
+        step={100}
+      />
     </div>
   );
 }
