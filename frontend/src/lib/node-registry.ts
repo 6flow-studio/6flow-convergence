@@ -118,6 +118,27 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     },
   },
 
+  // AI
+  {
+    type: "ai",
+    label: "AI",
+    category: "ai",
+    color: CATEGORY_COLORS.ai,
+    icon: "Brain",
+    inputs: [{ name: "input" }],
+    outputs: [{ name: "output" }],
+    defaultConfig: {
+      provider: "openai",
+      baseUrl: "https://api.openai.com/v1/chat/completions",
+      model: "gpt-5-mini",
+      apiKeySecret: "",
+      systemPrompt: "",
+      userPrompt: "",
+      temperature: 0.7,
+      responseFormat: "text",
+    },
+  },
+
   // Transforms
   {
     type: "codeNode",
@@ -190,27 +211,6 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
     defaultConfig: {
       conditions: [{ field: "", operator: "equals", value: "" }],
       combineWith: "and",
-    },
-  },
-
-  // AI
-  {
-    type: "ai",
-    label: "AI",
-    category: "ai",
-    color: CATEGORY_COLORS.ai,
-    icon: "Brain",
-    inputs: [{ name: "input" }],
-    outputs: [{ name: "output" }],
-    defaultConfig: {
-      provider: "openai",
-      baseUrl: "https://api.openai.com/v1/chat/completions",
-      model: "gpt-5-mini",
-      apiKeySecret: "",
-      systemPrompt: "",
-      userPrompt: "",
-      temperature: 0.7,
-      responseFormat: "text",
     },
   },
 

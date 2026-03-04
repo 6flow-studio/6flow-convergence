@@ -14,117 +14,21 @@ const stagger = {
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" as const } },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, ease: "easeOut" as const },
+  },
 } as const;
 
 const cardReveal = {
   hidden: { opacity: 0, y: 32 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as const } },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: "easeOut" as const },
+  },
 } as const;
-
-/* ── Workflow SVG visualization ── */
-function WorkflowDiagram() {
-  const nodes = [
-    { id: 1, x: 80, y: 80, label: "Trigger" },
-    { id: 2, x: 280, y: 40, label: "Check KYC" },
-    { id: 3, x: 280, y: 140, label: "Fetch Price" },
-    { id: 4, x: 480, y: 80, label: "Mint Token" },
-    { id: 5, x: 640, y: 80, label: "Settle" },
-  ];
-
-  const edges = [
-    { from: 1, to: 2 },
-    { from: 1, to: 3 },
-    { from: 2, to: 4 },
-    { from: 3, to: 4 },
-    { from: 4, to: 5 },
-  ];
-
-  return (
-    <svg
-      viewBox="0 0 740 200"
-      className="w-full max-w-2xl mx-auto"
-      fill="none"
-    >
-      {/* Glow filter */}
-      <defs>
-        <filter id="glow">
-          <feGaussianBlur stdDeviation="4" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-        <filter id="glow-strong">
-          <feGaussianBlur stdDeviation="6" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-
-      {/* Edges */}
-      {edges.map((e, i) => {
-        const from = nodes.find((n) => n.id === e.from)!;
-        const to = nodes.find((n) => n.id === e.to)!;
-        return (
-          <g key={i}>
-            {/* Base dim edge */}
-            <line
-              x1={from.x + 50}
-              y1={from.y + 16}
-              x2={to.x - 10}
-              y2={to.y + 16}
-              stroke="#2a2a2e"
-              strokeWidth="2"
-            />
-            {/* Animated glowing edge */}
-            <line
-              x1={from.x + 50}
-              y1={from.y + 16}
-              x2={to.x - 10}
-              y2={to.y + 16}
-              stroke="#3A9AFF"
-              strokeWidth="2"
-              strokeDasharray="8 12"
-              className="animate-dash-flow"
-              filter="url(#glow)"
-              opacity="0.7"
-            />
-          </g>
-        );
-      })}
-
-      {/* Nodes */}
-      {nodes.map((node) => (
-        <g key={node.id} className="animate-node-pulse" style={{ animationDelay: `${node.id * 0.4}s` }}>
-          <rect
-            x={node.x - 10}
-            y={node.y}
-            width={100}
-            height={32}
-            rx="8"
-            fill="#111113"
-            stroke="#3A9AFF"
-            strokeWidth="1"
-            filter="url(#glow)"
-          />
-          <text
-            x={node.x + 40}
-            y={node.y + 20}
-            textAnchor="middle"
-            fill="#e4e4e7"
-            fontSize="11"
-            fontFamily="var(--font-geist-mono)"
-          >
-            {node.label}
-          </text>
-        </g>
-      ))}
-    </svg>
-  );
-}
 
 /* ── Feature cards data ── */
 const features = [
@@ -132,19 +36,19 @@ const features = [
     icon: Workflow,
     title: "Visual Workflow Builder",
     description:
-      "Drag, connect, and configure nodes in a React Flow-powered editor. Design non-linear workflows with conditionals and loops — no boilerplate.",
+      "Drag, connect, and configure nodes like a game.",
   },
   {
     icon: Cpu,
-    title: "Rust Compiler",
+    title: "Provided Templates",
     description:
-      "Your visual graph compiles into a full CRE project bundle — main.ts, config, secrets, and all — ready for deployment on Chainlink.",
+      "We have templates for various use-cases, such as prediction market, RWA tokenization, and more.",
   },
   {
     icon: Code2,
-    title: "Code-First Extensibility",
+    title: "Developer Experience",
     description:
-      "Inject custom JavaScript or TypeScript logic into any node. Full CodeMirror editor with autocomplete, right inside the workflow.",
+      "We provide programmable node, so that you can inject custom TypeScript code into it.",
   },
 ];
 
@@ -218,14 +122,16 @@ export default function Home() {
             variants={fadeUp}
             className="font-display text-5xl sm:text-6xl md:text-7xl font-bold leading-[1.1] tracking-tight mb-6"
           >
-            Like n8n,{" "}
-            <span className="text-accent-blue">for CRE</span>
+            Like n8n, <span className="text-accent-blue">for CRE</span>
           </motion.h1>
           <motion.p
             variants={fadeUp}
             className="text-lg sm:text-xl text-zinc-400 max-w-xl mx-auto mb-10 leading-relaxed"
           >
-            6Flow Studio is Tokenization Workflow Platform. We provide a programmable, low-code orchestration layer for the Chainlink Runtime Environment (CRE). We empower corporate developers to visually design complex workflows for their use cases.
+            6Flow Studio is Tokenization Workflow Platform. We provide a
+            programmable, low-code orchestration layer for the Chainlink Runtime
+            Environment (CRE). We abstract the complexity so that developers can
+            focus on their use cases.
           </motion.p>
         </motion.div>
       </section>
@@ -233,23 +139,28 @@ export default function Home() {
       {/* ── Visual Showcase ── */}
       <section className="relative py-24 px-6">
         <motion.div
-          className="max-w-4xl mx-auto"
+          className="max-w-5xl mx-auto"
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 0.7, ease: "easeOut" }}
         >
-          <div className="relative rounded-2xl border border-edge-dim bg-surface-1/50 p-8 sm:p-12 backdrop-blur-sm">
+          <div className="relative rounded-2xl border border-edge-dim bg-surface-1/50 p-2 sm:p-4 backdrop-blur-sm overflow-hidden shadow-2xl">
             {/* Corner glow accents */}
-            <div className="absolute -top-px -left-px w-24 h-24 bg-accent-blue/20 blur-2xl rounded-full" />
-            <div className="absolute -bottom-px -right-px w-24 h-24 bg-accent-yellow/10 blur-2xl rounded-full" />
+            <div className="absolute -top-px -left-px w-32 h-32 bg-accent-blue/20 blur-3xl rounded-full" />
+            <div className="absolute -bottom-px -right-px w-32 h-32 bg-accent-yellow/10 blur-3xl rounded-full" />
 
-            <WorkflowDiagram />
-
-            <p className="text-center mt-8 text-zinc-500 text-sm font-mono tracking-wide uppercase">
-              Visual-first. Compiler-powered.
-            </p>
+            <Image
+              src="/screenshot_6flow.png"
+              alt="6Flow Designer Screenshot"
+              width={1600}
+              height={1000}
+              className="rounded-xl relative z-10 w-full h-auto"
+            />
           </div>
+          <p className="text-center mt-8 text-zinc-500 text-sm font-mono tracking-wide uppercase">
+            The workflow that everyone can feel
+          </p>
         </motion.div>
       </section>
 
@@ -267,14 +178,13 @@ export default function Home() {
             className="font-display text-3xl sm:text-4xl font-bold text-center mb-4"
           >
             Built for{" "}
-            <span className="text-accent-blue">serious engineers</span>
+            <span className="text-accent-blue">complex smart contracts</span>
           </motion.h2>
           <motion.p
             variants={fadeUp}
             className="text-zinc-400 text-center max-w-lg mx-auto mb-16"
           >
-            Everything you need to design, compile, and deploy tokenization
-            workflows on the Chainlink Runtime Environment.
+            From prediction market to RWA tokenization. Now anyone can design logics on Chainlink Runtime Environment.
           </motion.p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -1,5 +1,5 @@
 import { cre, ok, consensusIdenticalAggregation, getNetwork, encodeCallMsg, bytesToHex, prepareReportRequest, TxStatus, Runner, type Runtime, type HTTPSendRequester, type CronTrigger } from "@chainlink/cre-sdk";
-import { decodeFunctionResult, encodeFunctionData, encodeAbiParameters } from "viem";
+import { encodeFunctionData, encodeAbiParameters } from "viem";
 import { z } from "zod";
 
 const configSchema = z.object({
@@ -7,50 +7,6 @@ const configSchema = z.object({
 });
 
 type Config = z.infer<typeof configSchema>;
-
-const totalSupplyAbi = [
-  {
-    type: "function",
-    name: "totalSupply",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256", indexed: null, components: null }],
-    stateMutability: "view",
-  },
-] as const;
-
-const toScaledUint = (value: number | string, decimals = 18): bigint => {
-  const normalized = String(value).trim();
-  if (!/^\d+(\.\d+)?$/.test(normalized)) {
-    throw new Error(`Invalid decimal value: ${normalized}`);
-  }
-
-  const [whole, fraction = ""] = normalized.split(".");
-  const paddedFraction = (fraction + "0".repeat(decimals)).slice(0, decimals);
-  return BigInt(`${whole}${paddedFraction}`);
-};
-
-const decodeTotalSupply = (data: Uint8Array): bigint => {
-  return decodeFunctionResult({
-    abi: totalSupplyAbi,
-    functionName: "totalSupply",
-    data: bytesToHex(data),
-  }) as bigint;
-};
-
-const extractRiskScore = (response: any): bigint => {
-  const text = response?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (typeof text !== "string") {
-    throw new Error("Gemini response did not contain a text payload");
-  }
-
-  const jsonText = text.match(/\{[\s\S]*\}/)?.[0] ?? text;
-  const parsed = JSON.parse(jsonText) as { riskScore?: number };
-  if (!Number.isInteger(parsed.riskScore)) {
-    throw new Error(`Invalid riskScore payload: ${text}`);
-  }
-
-  return BigInt(parsed.riskScore);
-};
 
 const fetch_getoffchainreserves_1 = (sendRequester: HTTPSendRequester, config: Config) => {
   const req = {
@@ -77,7 +33,7 @@ const fetch_getriskscore_1 = (sendRequester: HTTPSendRequester, config: any, api
 TotalReserveScaled: ${config._dyn1}` }] },
     ],
     generationConfig: {
-      temperature: 0,
+      temperature: 0.7,
     },
   };
 
@@ -120,21 +76,18 @@ const onCronTrigger = (runtime: Runtime<Config>, triggerData: CronTrigger): stri
     call: encodeCallMsg({ from: "0x0000000000000000000000000000000000000000", to: "0x41f77d6aa3F8C8113Bc95831490D5206c5d1cFeE", data: _calldata_getonchainsupply_3 }),
   }).result();
   runtime.log(`[getOnChainSupply] ${__stringify(step_getonchainsupply_3)}`);
-  const totalSupply = decodeTotalSupply(step_getonchainsupply_3.data);
-  const totalReserveScaled = toScaledUint(step_getoffchainreserves_1.body.totalToken);
   // getRiskScore
   const _aiApiKey_getriskscore_1 = runtime.getSecret({ id: "GEMINI_KEY" }).result();
   const _fetchCfg_getriskscore_1 = {
     ...runtime.config,
-    _dyn0: totalSupply.toString(),
-    _dyn1: totalReserveScaled.toString(),
+    _dyn0: step_getonchainsupply_3.value,
+    _dyn1: step_getoffchainreserves_1.totalToken,
   };
   const step_getriskscore_1 = httpClient.sendRequest(runtime, fetch_getriskscore_1, consensusIdenticalAggregation())(_fetchCfg_getriskscore_1, _aiApiKey_getriskscore_1.value).result();
   runtime.log(`[getRiskScore] ${__stringify(step_getriskscore_1)}`);
-  const riskScore = extractRiskScore(step_getriskscore_1);
   // ABI Encode
   const step_node_1772523224998_2 = {
-    encoded: encodeAbiParameters([{"name":"totalMinted","type":"uint256","indexed":null,"components":null},{"name":"totalReserve","type":"uint256","indexed":null,"components":null},{"name":"riskScore","type":"uint256","indexed":null,"components":null}], [totalSupply, totalReserveScaled, riskScore]),
+    encoded: encodeAbiParameters([{"name":"totalMinted","type":"uint256","indexed":null,"components":null},{"name":"totalReserve","type":"uint256","indexed":null,"components":null},{"name":"riskScore","type":"uint256","indexed":null,"components":null}], [BigInt(step_getonchainsupply_3.value), BigInt(step_getoffchainreserves_1.totalToken), BigInt(step_getriskscore_1.candidates[0].content.parts[0].text)]),
   };
   runtime.log(`[ABI Encode] ${__stringify(step_node_1772523224998_2)}`);
   // EVM Write
