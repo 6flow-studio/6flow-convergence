@@ -41,8 +41,8 @@ fn parse_node_types_correct() {
     let types: Vec<&str> = workflow.nodes.iter().map(|n| n.node_type()).collect();
     assert!(types.contains(&"cronTrigger"));
     assert!(types.contains(&"httpRequest"));
-    assert!(types.contains(&"jsonParse"));
     assert!(types.contains(&"if"));
+    assert!(types.contains(&"abiEncode"));
     assert!(types.contains(&"evmWrite"));
     assert!(types.contains(&"return"));
 }

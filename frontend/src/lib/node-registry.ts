@@ -114,8 +114,7 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
       chainSelectorName: "ethereum-testnet-sepolia",
       receiverAddress: "",
       gasLimit: "500000",
-      abiParams: [],
-      dataMapping: [],
+      encodedData: "",
     },
   },
 
@@ -134,16 +133,6 @@ export const NODE_REGISTRY: NodeRegistryEntry[] = [
       executionMode: "runOnceForAll",
       inputVariables: [],
     },
-  },
-  {
-    type: "jsonParse",
-    label: "JSON Parse",
-    category: "transform",
-    color: CATEGORY_COLORS.transform,
-    icon: "Braces",
-    inputs: [{ name: "input" }],
-    outputs: [{ name: "output" }],
-    defaultConfig: { strict: true },
   },
   {
     type: "abiEncode",

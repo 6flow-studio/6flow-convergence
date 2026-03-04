@@ -24,7 +24,11 @@ export function TextareaField({
   mono,
   autoResize = false,
 }: TextareaFieldProps) {
-  const { isDragOver, dropProps } = useFieldDrop({ value, onChange, mode: "insert" });
+  const { isDragOver, dropProps } = useFieldDrop({
+    value,
+    onChange,
+    mode: "insert",
+  });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scopedVariables = useScopedVariables();
 
@@ -71,7 +75,7 @@ export function TextareaField({
       )}
       <textarea
         ref={textareaRef}
-        value={value}
+        value={value ?? ""}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         rows={rows}

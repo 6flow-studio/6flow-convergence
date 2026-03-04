@@ -110,6 +110,8 @@ fn build_id_map(workflow: &Workflow) -> HashMap<String, String> {
         } else if !node.is_trigger() {
             // Regular (non-trigger) nodes: map label → id for {{nodeName.field}} lookup
             map.insert(node.label().to_string(), node.id().to_string());
+            // Also map id → id explicitly so ID-based refs don't rely on fallback
+            map.insert(node.id().to_string(), node.id().to_string());
         }
     }
 

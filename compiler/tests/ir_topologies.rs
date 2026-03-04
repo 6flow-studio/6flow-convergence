@@ -5,7 +5,7 @@ use compiler::ir::*;
 use helpers::*;
 
 // =============================================================================
-// Linear chain: trigger → http → parse → code → return
+// Linear chain: trigger → http → code → return
 // =============================================================================
 
 #[test]
@@ -13,23 +13,18 @@ fn test_linear_chain() {
     let ir = ir_with_steps(vec![
         make_step_with_output("http-1", http_get("https://api.example.com"), "any"),
         make_step_with_output(
-            "parse-1",
-            json_parse_op(ValueExpr::binding("http-1", "body")),
-            "any",
-        ),
-        make_step_with_output(
             "code-1",
             code_node_op(
                 "return data.length;",
-                vec![("data", ValueExpr::binding("parse-1", ""))],
+                vec![("data", ValueExpr::binding("http-1", "body"))],
             ),
             "number",
         ),
     ]);
     let errors = validate_ir(&ir);
     assert!(errors.is_empty(), "Expected no errors, got: {:?}", errors);
-    // 4 steps total (3 + return-final)
-    assert_eq!(ir.handler_body.steps.len(), 4);
+    // 3 steps total (2 + return-final)
+    assert_eq!(ir.handler_body.steps.len(), 3);
 }
 
 // =============================================================================

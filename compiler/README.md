@@ -126,7 +126,7 @@ Execution model:
 ### Operation families
 
 - CRE capabilities: `HttpRequest`, `EvmRead`, `EvmWrite`
-- Transforms: `CodeNode`, `JsonParse`, `AbiEncode`, `AbiDecode`
+- Transforms: `CodeNode`, `AbiEncode`, `AbiDecode`
 - Control flow: `Branch`, `Filter`, `Merge`
 - AI: `AiCall`
 - Output/termination: `Log`, `ErrorThrow`, `Return`

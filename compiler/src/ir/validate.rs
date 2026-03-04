@@ -203,9 +203,6 @@ fn collect_binding_refs_from_operation(op: &Operation, refs: &mut Vec<BindingRef
                 collect_binding_refs_from_value_expr(&binding.value, refs);
             }
         }
-        Operation::JsonParse(o) => {
-            collect_binding_refs_from_value_expr(&o.input, refs);
-        }
         Operation::AbiEncode(o) => {
             for mapping in &o.data_mappings {
                 collect_binding_refs_from_value_expr(&mapping.value, refs);
@@ -673,21 +670,25 @@ mod tests {
                 }),
                 output: Some(OutputBinding {
                     variable_name: "step_http_1".into(),
-                    ts_type: "{ statusCode: number; body: string }".into(),
+                    ts_type: "{ statusCode: number; body: any }".into(),
                     destructure_fields: None,
                 }),
             },
             Step {
-                id: "parse-1".into(),
-                source_node_ids: vec!["parse-1".into()],
-                label: "Parse response".into(),
-                operation: Operation::JsonParse(JsonParseOp {
-                    input: ValueExpr::binding("http-1", "body"),
-                    source_path: None,
-                    strict: true,
+                id: "code-1".into(),
+                source_node_ids: vec!["code-1".into()],
+                label: "Use response".into(),
+                operation: Operation::CodeNode(CodeNodeOp {
+                    code: "return input.value;".into(),
+                    input_bindings: vec![CodeInputBinding {
+                        variable_name: "input".into(),
+                        value: ValueExpr::binding("http-1", "body"),
+                    }],
+                    execution_mode: CodeExecutionMode::RunOnceForAll,
+                    timeout_ms: None,
                 }),
                 output: Some(OutputBinding {
-                    variable_name: "step_parse_1".into(),
+                    variable_name: "step_code_1".into(),
                     ts_type: "any".into(),
                     destructure_fields: None,
                 }),
@@ -711,16 +712,20 @@ mod tests {
         let mut ir = minimal_valid_ir();
         ir.handler_body.steps = vec![
             Step {
-                id: "parse-1".into(),
-                source_node_ids: vec!["parse-1".into()],
-                label: "Parse (references future step)".into(),
-                operation: Operation::JsonParse(JsonParseOp {
-                    input: ValueExpr::binding("http-1", "body"), // http-1 not defined yet!
-                    source_path: None,
-                    strict: true,
+                id: "code-1".into(),
+                source_node_ids: vec!["code-1".into()],
+                label: "Code (references future step)".into(),
+                operation: Operation::CodeNode(CodeNodeOp {
+                    code: "return input;".into(),
+                    input_bindings: vec![CodeInputBinding {
+                        variable_name: "input".into(),
+                        value: ValueExpr::binding("http-1", "body"),
+                    }],
+                    execution_mode: CodeExecutionMode::RunOnceForAll,
+                    timeout_ms: None,
                 }),
                 output: Some(OutputBinding {
-                    variable_name: "step_parse_1".into(),
+                    variable_name: "step_code_1".into(),
                     ts_type: "any".into(),
                     destructure_fields: None,
                 }),
@@ -744,7 +749,7 @@ mod tests {
                 }),
                 output: Some(OutputBinding {
                     variable_name: "step_http_1".into(),
-                    ts_type: "{ statusCode: number; body: string }".into(),
+                    ts_type: "{ statusCode: number; body: any }".into(),
                     destructure_fields: None,
                 }),
             },

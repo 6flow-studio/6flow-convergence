@@ -168,6 +168,30 @@ pub fn emit_evm_write(step: &Step, op: &EvmWriteOp, w: &mut CodeWriter) {
         w.line(&format!("gasConfig: {{ gasLimit: {} }},", gas_str));
         w.dedent();
         w.line("}).result();");
+
+        // Step 3: check txStatus
+        w.line(&format!(
+            "if ({}.txStatus !== TxStatus.SUCCESS) {{",
+            out.variable_name,
+        ));
+        w.indent();
+        w.line(&format!(
+            "throw new Error(`Failed to write report: ${{{}.errorMessage || {}.txStatus}}`);",
+            out.variable_name, out.variable_name,
+        ));
+        w.dedent();
+        w.line("}");
+
+        // Step 4: log txHash
+        let tx_hash_var = format!("txHash_{}", step.id.replace('-', "_"));
+        w.line(&format!(
+            "const {} = {}.txHash || new Uint8Array(32);",
+            tx_hash_var, out.variable_name,
+        ));
+        w.line(&format!(
+            "runtime.log(`Write report transaction succeeded at txHash: ${{bytesToHex({})}}`);",
+            tx_hash_var,
+        ));
     }
 }
 
@@ -211,40 +235,38 @@ pub fn emit_code_node(step: &Step, op: &CodeNodeOp, w: &mut CodeWriter) {
     w.line("})();");
 }
 
-/// Emit a JsonParse expression.
-pub fn emit_json_parse(step: &Step, op: &JsonParseOp, w: &mut CodeWriter) {
-    w.line(&format!("// {}", step.label));
-    let input = emit_value_expr(&op.input);
-
-    let parse_expr = if matches!(&op.input, ValueExpr::TriggerDataRef { .. }) {
-        // Trigger input is Uint8Array — decode directly
-        format!("JSON.parse(new TextDecoder().decode({}))", input)
-    } else {
-        // HTTP response body is base64-encoded
-        format!(
-            "JSON.parse(Buffer.from({}, \"base64\").toString(\"utf-8\"))",
-            input
-        )
-    };
-
-    let final_expr = if let Some(ref path) = op.source_path {
-        format!("{}{}", parse_expr, path)
-    } else {
-        parse_expr
-    };
-
-    if let Some(ref out) = step.output {
-        w.line(&format!("const {} = {};", out.variable_name, final_expr));
-    }
+fn needs_bigint(ty: &str) -> bool {
+    ty.starts_with("uint") || ty.starts_with("int")
 }
 
 /// Emit an AbiEncode expression.
 pub fn emit_abi_encode(step: &Step, op: &AbiEncodeOp, w: &mut CodeWriter) {
     w.line(&format!("// {}", step.label));
+
+    // Build param_name -> abi_type map from abi_json for BigInt wrapping
+    let type_map: HashMap<String, String> =
+        serde_json::from_str::<Vec<serde_json::Value>>(&op.abi_json)
+            .unwrap_or_default()
+            .into_iter()
+            .filter_map(|v| {
+                let name = v.get("name")?.as_str()?.to_string();
+                let ty = v.get("type")?.as_str()?.to_string();
+                Some((name, ty))
+            })
+            .collect();
+
     let args: Vec<String> = op
         .data_mappings
         .iter()
-        .map(|m| emit_value_expr(&m.value))
+        .map(|m| {
+            let val = emit_value_expr(&m.value);
+            if let Some(ty) = type_map.get(&m.param_name) {
+                if needs_bigint(ty) {
+                    return format!("BigInt({})", val);
+                }
+            }
+            val
+        })
         .collect();
 
     if let Some(ref out) = step.output {
@@ -396,39 +418,6 @@ mod tests {
             operation: op,
             output,
         }
-    }
-
-    #[test]
-    fn test_json_parse() {
-        let step = make_step(
-            "parse-1",
-            "Parse response",
-            Operation::JsonParse(JsonParseOp {
-                input: ValueExpr::binding("http-1", "body"),
-                source_path: None,
-                strict: true,
-            }),
-            Some(OutputBinding {
-                variable_name: "step_parse_1".into(),
-                ts_type: "any".into(),
-                destructure_fields: None,
-            }),
-        );
-        let mut w = CodeWriter::new();
-        emit_json_parse(
-            &step,
-            match &step.operation {
-                Operation::JsonParse(op) => op,
-                _ => unreachable!(),
-            },
-            &mut w,
-        );
-        let out = w.finish();
-        assert!(
-            out.contains(
-                "JSON.parse(Buffer.from(step_http_1.body, \"base64\").toString(\"utf-8\"))"
-            )
-        );
     }
 
     #[test]

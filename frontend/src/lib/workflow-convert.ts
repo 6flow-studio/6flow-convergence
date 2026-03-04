@@ -27,7 +27,7 @@ export function toReactFlowNodes(nodes: SharedWorkflowNode[]): WorkflowNode[] {
       data: {
         label: node.data.label,
         nodeType,
-        config: node.data.config as Record<string, unknown>,
+        config: node.data.config as unknown as Record<string, unknown>,
         editor: node.data.editor,
       },
     };
@@ -66,6 +66,6 @@ export function fromReactFlowNodes(nodes: WorkflowNode[]): SharedWorkflowNode[] 
         config: resolvedConfig,
         editor,
       },
-    } as SharedWorkflowNode;
+    } as unknown as SharedWorkflowNode;
   });
 }

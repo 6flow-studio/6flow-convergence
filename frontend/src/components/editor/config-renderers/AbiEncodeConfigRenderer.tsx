@@ -1,10 +1,16 @@
 "use client";
 
+import { useEffect } from "react";
 import { X, Plus } from "lucide-react";
 import { ABI_TYPES } from "../config-fields/AbiParamsEditor";
 import { DroppableInput } from "../config-fields/DroppableInput";
 import { FieldLabel } from "../config-fields/FieldLabel";
-import type { AbiEncodeConfig, AbiParameter } from "@6flow/shared/model/node";
+import type {
+  AbiEncodeConfig,
+  AbiParameter,
+  DataSchema,
+} from "@6flow/shared/model/node";
+import { useEditorStore } from "@/lib/editor-store";
 
 interface UnifiedParam {
   name: string;
@@ -16,7 +22,23 @@ interface UnifiedParam {
 interface Props {
   config: AbiEncodeConfig;
   onChange: (patch: Record<string, unknown>) => void;
+  nodeId?: string;
 }
+
+const ABI_ENCODE_OUTPUT_SCHEMA: DataSchema = {
+  type: "object",
+  path: "",
+  fields: [
+    {
+      key: "encoded",
+      path: "encoded",
+      schema: {
+        type: "string",
+        path: "encoded",
+      },
+    },
+  ],
+};
 
 /** Zip abiParams + dataMapping into unified rows */
 function deriveRows(config: AbiEncodeConfig): UnifiedParam[] {
@@ -25,8 +47,7 @@ function deriveRows(config: AbiEncodeConfig): UnifiedParam[] {
 
   return params.map((p, i) => {
     // Match by paramName first, fall back to positional index
-    const matched =
-      mapping.find((m) => m.paramName === p.name) ?? mapping[i];
+    const matched = mapping.find((m) => m.paramName === p.name) ?? mapping[i];
     return {
       name: p.name,
       type: p.type,
@@ -53,8 +74,17 @@ function emitArrays(rows: UnifiedParam[]) {
 const inputClass =
   "h-7 rounded border border-edge-dim bg-surface-2 px-2 text-[11px] text-zinc-300 font-mono focus:border-accent-blue focus:outline-none transition-colors min-w-0";
 
-export function AbiEncodeConfigRenderer({ config, onChange }: Props) {
+export function AbiEncodeConfigRenderer({ config, onChange, nodeId }: Props) {
   const rows = deriveRows(config);
+  const updateNodeEditor = useEditorStore((state) => state.updateNodeEditor);
+
+  useEffect(() => {
+    if (!nodeId) return;
+    updateNodeEditor(nodeId, {
+      outputSchema: ABI_ENCODE_OUTPUT_SCHEMA,
+      schemaSource: "derived",
+    });
+  }, [nodeId, updateNodeEditor]);
 
   function commit(next: UnifiedParam[]) {
     onChange(emitArrays(next));
@@ -125,7 +155,7 @@ export function AbiEncodeConfigRenderer({ config, onChange }: Props) {
             {/* Main row: name + type + source + remove */}
             <div className="flex items-center gap-1">
               <input
-                value={row.name}
+                value={row.name ?? ""}
                 onChange={(e) => updateRow(i, { name: e.target.value })}
                 placeholder="name"
                 className={`flex-1 ${inputClass}`}
@@ -163,7 +193,7 @@ export function AbiEncodeConfigRenderer({ config, onChange }: Props) {
                 {(row.components ?? []).map((comp, ci) => (
                   <div key={ci} className="flex items-center gap-1">
                     <input
-                      value={comp.name}
+                      value={comp.name ?? ""}
                       onChange={(e) =>
                         updateComponent(i, ci, {
                           ...comp,

@@ -202,9 +202,6 @@ pub fn emit_block(
             Operation::CodeNode(op) => {
                 operations::emit_code_node(step, op, w);
             }
-            Operation::JsonParse(op) => {
-                operations::emit_json_parse(step, op, w);
-            }
             Operation::AbiEncode(op) => {
                 operations::emit_abi_encode(step, op, w);
             }

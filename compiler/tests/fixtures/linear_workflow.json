@@ -37,15 +37,6 @@
             }
         },
         {
-            "id": "p1",
-            "type": "jsonParse",
-            "position": { "x": 0, "y": 0 },
-            "data": {
-                "label": "Parse Response",
-                "config": {}
-            }
-        },
-        {
             "id": "r1",
             "type": "return",
             "position": { "x": 0, "y": 0 },
@@ -57,8 +48,7 @@
     ],
     "edges": [
         { "id": "e1", "source": "t1", "target": "h1" },
-        { "id": "e2", "source": "h1", "target": "p1" },
-        { "id": "e3", "source": "p1", "target": "r1" }
+        { "id": "e2", "source": "h1", "target": "r1" }
     ],
     "createdAt": "2025-01-01T00:00:00Z",
     "updatedAt": "2025-01-01T00:00:00Z"
