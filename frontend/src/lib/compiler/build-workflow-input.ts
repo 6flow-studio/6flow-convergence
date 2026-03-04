@@ -23,7 +23,7 @@ export function buildWorkflowInput(input: WorkflowCompilerInput): Workflow {
     id: input.workflowId ?? `workflow_${Date.now()}`,
     name: input.workflowName || "Untitled Workflow",
     version: WORKFLOW_VERSION,
-    nodes: fromReactFlowNodes(input.nodes),
+    nodes: fromReactFlowNodes(input.nodes, { includeCompileReturnLine: true }),
     edges: input.edges.map((edge) => ({
       id: edge.id,
       source: edge.source,

@@ -39,20 +39,44 @@ export function toReactFlowNodes(nodes: SharedWorkflowNode[]): WorkflowNode[] {
  * - Restores `node.data.nodeType` back to `node.type`
  * - Strips `nodeType` from data
  */
-export function fromReactFlowNodes(nodes: WorkflowNode[]): SharedWorkflowNode[] {
+function stripTrailingAutoReturnLines(code: string): string {
+  const lines = code.split("\n");
+  let end = lines.length - 1;
+
+  while (end >= 0 && lines[end].trim() === "") {
+    end -= 1;
+  }
+
+  const autoReturnPattern = /^return\s*\{\s*[^{}]*\}\s*;$/;
+  while (end >= 0 && autoReturnPattern.test(lines[end].trim())) {
+    lines.splice(end, 1);
+    end -= 1;
+    while (end >= 0 && lines[end].trim() === "") {
+      end -= 1;
+    }
+  }
+
+  return lines.join("\n").trimEnd();
+}
+
+export function fromReactFlowNodes(
+  nodes: WorkflowNode[],
+  options?: { includeCompileReturnLine?: boolean }
+): SharedWorkflowNode[] {
   return nodes.map((node) => {
     const { nodeType, label, config, editor, ...rest } = node.data;
     void rest; // discard extra RF data keys
 
     let resolvedConfig = config;
-    if (nodeType === "codeNode") {
+    if (nodeType === "codeNode" && options?.includeCompileReturnLine) {
       const outputFields = (config.outputFields as Array<{ key: string }> | undefined) ?? [];
       const validKeys = outputFields.map((f) => f.key).filter(Boolean);
       if (validKeys.length > 0) {
         const returnLine = `return { ${validKeys.join(", ")} };`;
+        const baseCode = stripTrailingAutoReturnLines(String(config.code ?? ""));
         resolvedConfig = {
           ...config,
-          code: `${config.code as string}\n${returnLine}`,
+          code: `${baseCode}\n${returnLine}`,
         };
       }
     }

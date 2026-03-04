@@ -1,7 +1,7 @@
 "use client";
 
 import { useConvexAuth } from "convex/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, use } from "react";
 import { WorkflowEditor } from "@/components/editor/WorkflowEditor";
 
@@ -13,6 +13,8 @@ export default function EditorByIdPage({
   const { id } = use(params);
   const { isLoading, isAuthenticated } = useConvexAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const showStarterModal = searchParams.get("onboarding") === "1";
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -24,5 +26,5 @@ export default function EditorByIdPage({
     return null;
   }
 
-  return <WorkflowEditor workflowId={id} />;
+  return <WorkflowEditor workflowId={id} showStarterModal={showStarterModal} />;
 }

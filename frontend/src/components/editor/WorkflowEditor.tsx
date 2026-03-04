@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
+import { useRouter } from "next/navigation";
 import { useWorkflowPersistence } from "@/lib/use-workflow-persistence";
 import { useCompiler } from "@/lib/use-compiler";
 import { useEditorStore } from "@/lib/editor-store";
+import { getWorkflowTemplateById } from "@/lib/workflow-templates";
+import { fromReactFlowNodes } from "@/lib/workflow-convert";
 import { Canvas } from "./Canvas";
 import { NodePalette } from "./NodePalette";
 import { NodeDetailsModal } from "./NodeDetailsModal";
@@ -13,12 +16,18 @@ import { StatusBar } from "./StatusBar";
 import { CompilerErrorsPanel } from "./CompilerErrorsPanel";
 import { WorkflowSettingsSheet } from "./WorkflowSettingsSheet";
 import { CompileProgressModal } from "./CompileProgressModal";
+import { NewWorkflowStarterModal } from "./NewWorkflowStarterModal";
 
 interface WorkflowEditorProps {
   workflowId: string;
+  showStarterModal?: boolean;
 }
 
-export function WorkflowEditor({ workflowId }: WorkflowEditorProps) {
+export function WorkflowEditor({
+  workflowId,
+  showStarterModal = false,
+}: WorkflowEditorProps) {
+  const router = useRouter();
   const { saveStatus, isLoading } = useWorkflowPersistence(workflowId);
   const {
     canRunCompiler,
@@ -38,7 +47,75 @@ export function WorkflowEditor({ workflowId }: WorkflowEditorProps) {
   const setWorkflowGlobalConfig = useEditorStore(
     (state) => state.setWorkflowGlobalConfig
   );
+  const nodes = useEditorStore((state) => state.nodes);
+  const edges = useEditorStore((state) => state.edges);
+  const workflowName = useEditorStore((state) => state.workflowName);
+  const currentWorkflowId = useEditorStore((state) => state.workflowId);
+  const loadWorkflow = useEditorStore((state) => state.loadWorkflow);
+  const setWorkflowName = useEditorStore((state) => state.setWorkflowName);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [starterOpen, setStarterOpen] = useState(showStarterModal);
+  const hasLoggedTemplateDump = useRef(false);
+
+  useEffect(() => {
+    setStarterOpen(showStarterModal);
+  }, [showStarterModal]);
+
+  useEffect(() => {
+    if (isLoading || currentWorkflowId !== workflowId || hasLoggedTemplateDump.current) {
+      return;
+    }
+
+    const workflowTemplatePayload = {
+      workflowName,
+      nodes,
+      edges,
+      globalConfig: workflowGlobalConfig,
+    };
+
+    const persistedPayload = {
+      workflowName,
+      nodes: fromReactFlowNodes(nodes),
+      edges,
+      globalConfig: workflowGlobalConfig,
+    };
+
+    console.log("6flow-template-json", {
+      workflowId,
+      workflowTemplatePayload,
+      persistedPayload,
+    });
+
+    hasLoggedTemplateDump.current = true;
+  }, [
+    currentWorkflowId,
+    edges,
+    isLoading,
+    nodes,
+    workflowGlobalConfig,
+    workflowId,
+    workflowName,
+  ]);
+
+  function closeStarterModal() {
+    setStarterOpen(false);
+    if (showStarterModal) {
+      router.replace(`/editor/${workflowId}`);
+    }
+  }
+
+  function handleApplyTemplate(templateId: string) {
+    const template = getWorkflowTemplateById(templateId);
+    if (!template) {
+      closeStarterModal();
+      return;
+    }
+
+    setWorkflowName(template.workflowName);
+    loadWorkflow(template.nodes, template.edges);
+    setWorkflowGlobalConfig(template.globalConfig);
+    closeStarterModal();
+  }
 
   if (isLoading) {
     return (
@@ -93,6 +170,11 @@ export function WorkflowEditor({ workflowId }: WorkflowEditorProps) {
           downloadUrl={compiledZipDownload?.url ?? null}
           downloadFileName={compiledZipDownload?.fileName ?? null}
           onClose={onCloseCompileModal}
+        />
+        <NewWorkflowStarterModal
+          open={starterOpen}
+          onStartFromScratch={closeStarterModal}
+          onApplyTemplate={handleApplyTemplate}
         />
         <NodeDetailsModal />
       </div>

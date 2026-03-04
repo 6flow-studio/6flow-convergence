@@ -36,7 +36,7 @@ export default function DashboardPage() {
       edges: "[]",
       globalConfig: JSON.stringify(DEFAULT_WORKFLOW_GLOBAL_CONFIG),
     });
-    router.push(`/editor/${id}`);
+    router.push(`/editor/${id}?onboarding=1`);
   }
 
   async function handleDelete(id: Id<"workflows">) {
