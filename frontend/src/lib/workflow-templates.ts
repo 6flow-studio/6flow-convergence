@@ -20,7 +20,7 @@ const PREDICTION_MARKET_TEMPLATE: WorkflowTemplate = {
   name: "Prediction Market",
   description:
     "End-to-end prediction-market settlement workflow (EVM Log Trigger -> AI -> Code -> ABI Encode -> EVM Write).",
-  workflowName: "Prediction markets",
+  workflowName: "Example Prediction market",
   nodes: [
     {
       id: "node_1772523397985_0",
@@ -150,8 +150,7 @@ switch (rawResult) {
 }
 
 // TODO: replace with real response ID from your execution context
-const responseId = "<response_id>";
-return { result, confidence, responseId };`,
+const responseId = "<response_id>";`,
           language: "typescript",
           executionMode: "runOnceForAll",
           inputVariables: [],
