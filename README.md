@@ -1,68 +1,73 @@
 # Overview
 
-6Flow Studio is Tokenization Workflow Platform.
-We provide a programmable, low-code orchestration layer for the Chainlink Runtime Environment (CRE). We empower corporate developers to visually design complex workflows—combining off-chain data (KYC, Banks) with on-chain actions (Minting, Burning)—without managing underlying infrastructure.
+6Flow Studio is Tokenization Workflow Platform for CRE: a programmable, low-code orchestration layer for the Chainlink Runtime Environment (CRE).
 
 # Vision
 
-IDE for Smart Contract Engineers in Financial Enterprise
-It's like an n8n for CRE
+next-gen IDE for Smart Contract Engineers in Financial Enterprise.
+It's like an n8n for CRE.
 
-# Product Strategy
+# Architecture
 
-Target Group: Banks that are not top-tier and still want to do tokenization
-Pain Point: I want to do tokenization stuff (stablecoin, stock, bond, etc.) But I don’t want (and won’t) to handle all technology issues myself. The ideas to hiring internal smart contract engineer, get smart contract audit blah blah are too crazy for me.
+![6Flow-diagram](6Flow-diagram.jpg)
 
-The only solution for now is on cloud (but we will provide on-premise later)
+# Chainlink Usages
 
-# Philosophy in Coding
+We built 6Flow on top of Chainlink Runtime Environment (CRE). Here are where we use CRE:
+- Compiler outputs a full CRE project bundle (`main.ts`, `workflow.yaml`, `project.yaml`, `secrets.yaml`, config, package, tsconfig, `.env`) in `compiler/src/codegen/mod.rs`.
+- Generated workflow code imports and uses CRE SDK from `@chainlink/cre-sdk` in `compiler/src/codegen/imports.rs`.
+- Generated workflow structure follows CRE patterns (`cre.handler`, `HTTPClient`, `EVMClient`, `runtime.getSecret`, `runtime.report`, `Runner.newRunner`) in `compiler/tests/snapshots/codegen_basic__branching_workflow_main_ts.snap`.
+- Generated `package.json` includes CRE dependency and setup (`@chainlink/cre-sdk`, `bun x cre-setup`) in `compiler/src/codegen/files.rs`.
+- Generated workflow manifests are CRE-style artifacts (`workflow.yaml`, `project.yaml`, `secrets.yaml`) in `compiler/src/codegen/files.rs`.
+- TUI runs local CRE simulation via CLI command `cre workflow simulate ...` in `tools/tui/internal/tui/cre_cli.go`.
+- Frontend distributes compiled artifacts as `*-cre-bundle.zip` in `frontend/src/lib/compiler/download-compiled-zip.ts`.
 
-- Code-First Extensibility: Modeled after n8n, we reject the "black box" node approach. While we offer pre-built nodes (e.g., "Mint ERC-20"), our killer feature is the Code Node. Users can inject raw JavaScript/TypeScript into any step of the workflow, allowing for infinite flexibility in data transformation and logic.
-- Workflow is non-linear (conditional, loop)
-- The "Compiler" Pattern (Not Interpreter): We do not "run" workflows on our servers. We compile in browser, check errors, send it to server to run workflow simulate. The end goal for now is to download .zip project and let user deploy manually.
+In short: 6Flow is a visual builder that compiles workflows into native Chainlink CRE projects and executes/simulates them with the CRE toolchain.
 
 # Tech Stack
 
 ## Frontend
 
 - NextJS
-- Chart: React Flow (inspired from n8n)
+- Chart: React Flow
 
-## Backend
+## Compiler
 
-- NestJS for services
-- Rust for compiler (inspired from SWC Speedy Web Compiler)
+- Rust
 
 ## Database
 
-- PostgreSQL
-
-## Deployment
-
-- Frontend: Vercel
-- Backend: Google Cloud?
+- Convex
 
 ## Runtime
 
 - Chainlink Runtime Environment
 
-## Testing
-
-- Jest
-
 # Project Structure
 
 ```bash
 .
-├── backend/    # NestJS backend services
 ├── compiler/   # Rust-based compiler for CRE
 ├── frontend/   # NextJS frontend application
-├── shared/     # Shared helper functions and data models across codebase
+├── shared/     # Shared helper functions and data models across TypeScript codebase
+├── tools/      # TUI tooling for local secrets/simulation workflows
 ```
+
 
 # Run Locally
 
-Use separate terminals for each process.
+While we encourage you to use [6flow.studio](https://6flow.studio) to build your workflow, you can also run it locally.
+
+1. Setup [Convex](https://www.convex.dev/)
+
+2. Add in /frontend/.env
+   CONVEX_DEPLOYMENT
+   NEXT_PUBLIC_CONVEX_URL
+   NEXT_PUBLIC_CONVEX_SITE_URL
+   ETHER_SCAN_API_KEY
+   ALCHEMY_API_KEY
+
+3. Use separate terminals for each process.
 
 ## Frontend (Next.js)
 
