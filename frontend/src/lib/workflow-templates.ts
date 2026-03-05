@@ -1,9 +1,5 @@
 import { type GlobalConfig } from "@6flow/shared/model/node";
 import { type WorkflowEdge, type WorkflowNode } from "./editor-store";
-import {
-  DEFAULT_WORKFLOW_GLOBAL_CONFIG,
-  cloneGlobalConfig,
-} from "./workflow-defaults";
 
 export type WorkflowTemplate = {
   id: string;
@@ -338,43 +334,405 @@ const PROOF_OF_RESERVE_TEMPLATE: WorkflowTemplate = {
   id: "proof-of-reserve",
   name: "Proof of Reserve",
   description:
-    "Starter workflow scaffold for proof-of-reserve monitoring and reporting. Replace with final JSON template.",
-  workflowName: "Proof of Reserve Workflow",
+    "Proof-of-reserve monitoring workflow (Cron Trigger -> Off-chain reserves + On-chain supply -> AI risk scoring -> ABI encode -> EVM write).",
+  workflowName: "Proof of Reserve",
   nodes: [
     {
-      id: "por_trigger_0",
+      id: "node_1772451937785_0",
       type: "trigger",
-      position: { x: 120, y: 220 },
+      position: {
+        x: 272.34559225816463,
+        y: 286.90528612791843,
+      },
       data: {
-        label: "Reserve Check Trigger",
+        label: "Cron Trigger",
         nodeType: "cronTrigger",
         config: {
-          schedule: "0 */15 * * * *",
+          schedule: "0 */10 * * * *",
           timezone: "UTC",
         },
       },
     },
     {
-      id: "por_return_1",
-      type: "output",
-      position: { x: 460, y: 220 },
+      id: "getoffchainreserves_1",
+      type: "action",
+      position: {
+        x: 501.8148906363406,
+        y: 213.33844177696471,
+      },
       data: {
-        label: "Reserve Result",
-        nodeType: "return",
+        label: "getOffChainReserves",
+        nodeType: "httpRequest",
         config: {
-          returnExpression: "result",
+          method: "GET",
+          url: "https://api.real-time-reserves.verinumus.io/v1/chainlink/proof-of-reserves/TrueUSD",
+          responseFormat: "json",
+        },
+      },
+    },
+    {
+      id: "getonchainsupply_3",
+      type: "action",
+      position: {
+        x: 506,
+        y: 360,
+      },
+      data: {
+        label: "getOnChainSupply",
+        nodeType: "evmRead",
+        config: {
+          chainSelectorName: "ethereum-testnet-sepolia",
+          contractAddress: "0x41f77d6aa3F8C8113Bc95831490D5206c5d1cFeE",
+          functionName: "totalSupply",
+          args: [],
+          abi: {
+            inputs: [],
+            name: "totalSupply",
+            outputs: [
+              {
+                internalType: "uint256",
+                name: "",
+                type: "uint256",
+              },
+            ],
+            stateMutability: "view",
+            type: "function",
+          },
+          cachedAbi: {
+            address: "0x41f77d6aa3F8C8113Bc95831490D5206c5d1cFeE",
+            chain: "ethereum-testnet-sepolia",
+            functions: [
+              {
+                inputs: [
+                  {
+                    internalType: "address",
+                    name: "owner",
+                    type: "address",
+                  },
+                  {
+                    internalType: "address",
+                    name: "spender",
+                    type: "address",
+                  },
+                ],
+                name: "allowance",
+                outputs: [
+                  {
+                    internalType: "uint256",
+                    name: "",
+                    type: "uint256",
+                  },
+                ],
+                stateMutability: "view",
+                type: "function",
+              },
+              {
+                inputs: [
+                  {
+                    internalType: "address",
+                    name: "account",
+                    type: "address",
+                  },
+                ],
+                name: "balanceOf",
+                outputs: [
+                  {
+                    internalType: "uint256",
+                    name: "",
+                    type: "uint256",
+                  },
+                ],
+                stateMutability: "view",
+                type: "function",
+              },
+              {
+                inputs: [],
+                name: "decimals",
+                outputs: [
+                  {
+                    internalType: "uint8",
+                    name: "",
+                    type: "uint8",
+                  },
+                ],
+                stateMutability: "view",
+                type: "function",
+              },
+              {
+                inputs: [],
+                name: "name",
+                outputs: [
+                  {
+                    internalType: "string",
+                    name: "",
+                    type: "string",
+                  },
+                ],
+                stateMutability: "view",
+                type: "function",
+              },
+              {
+                inputs: [],
+                name: "owner",
+                outputs: [
+                  {
+                    internalType: "address",
+                    name: "",
+                    type: "address",
+                  },
+                ],
+                stateMutability: "view",
+                type: "function",
+              },
+              {
+                inputs: [],
+                name: "symbol",
+                outputs: [
+                  {
+                    internalType: "string",
+                    name: "",
+                    type: "string",
+                  },
+                ],
+                stateMutability: "view",
+                type: "function",
+              },
+              {
+                inputs: [],
+                name: "totalSupply",
+                outputs: [
+                  {
+                    internalType: "uint256",
+                    name: "",
+                    type: "uint256",
+                  },
+                ],
+                stateMutability: "view",
+                type: "function",
+              },
+            ],
+          },
+        },
+      },
+    },
+    {
+      id: "getriskscore_1",
+      type: "ai",
+      position: {
+        x: 909.6775798415616,
+        y: 294.03389556814176,
+      },
+      data: {
+        label: "getRiskScore",
+        nodeType: "ai",
+        config: {
+          provider: "google",
+          baseUrl:
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent",
+          model: "gemini-3-flash-preview",
+          apiKeySecret: "GEMINI_KEY",
+          systemPrompt:
+            "You are a risk analyst. You will receive two numbers:\n- TotalSupply: total token supply, scaled to 18 decimal places (raw integer).\n- TotalReserveScaled: total reserved/collateral amount, scaled to 18 decimal places (raw integer).\n\nCompute coverage as: coverage = TotalReserveScaled / TotalSupply (both are same scale, so this is the reserve-to-supply ratio).\n\nApply this risk scale exactly:\n- If coverage >= 1.2: riskScore = 0\n- Else: riskScore = min(100, round(((1.2 - coverage) / 1.2) * 100))\n\nRespond with the risk score as structured JSON only, no other text or markdown.\n\nOutput format (valid JSON only):\n{\"riskScore\": <integer>}`",
+          userPrompt:
+            "TotalSupply: {{getOnChainSupply.value}}\nTotalReserveScaled: {{getTotalSupply._totalSupply}}",
+          temperature: 0.7,
+          responseFormat: "text",
+        },
+      },
+    },
+    {
+      id: "node_1772523224998_2",
+      type: "transform",
+      position: {
+        x: 1405.8888880454115,
+        y: 359.0012917731084,
+      },
+      data: {
+        label: "ABI Encode",
+        nodeType: "abiEncode",
+        config: {
+          abiParams: [
+            {
+              name: "totalMinted",
+              type: "uint256",
+            },
+            {
+              name: "totalReserve",
+              type: "uint256",
+            },
+            {
+              name: "riskScore",
+              type: "uint256",
+            },
+          ],
+          dataMapping: [
+            {
+              paramName: "totalMinted",
+              source: "{{getOnChainSupply.value}}",
+            },
+            {
+              paramName: "totalReserve",
+              source: "{{getTotalSupply._totalSupply}}",
+            },
+            {
+              paramName: "riskScore",
+              source: "{{riskScore.riskScore}}",
+            },
+          ],
+        },
+      },
+    },
+    {
+      id: "updatereserves_0",
+      type: "action",
+      position: {
+        x: 1633.5658978090985,
+        y: 357.7701336705854,
+      },
+      data: {
+        label: "updateReserves",
+        nodeType: "evmWrite",
+        config: {
+          chainSelectorName: "ethereum-testnet-sepolia",
+          receiverAddress: "0x93F212a3634D6259cF38cfad4AA4A3485C3d7D59",
+          gasLimit: "500000",
+          abiParams: [],
+          dataMapping: [],
+          encodedData: "{{node_1772523224998_2.encoded}}",
+        },
+      },
+    },
+    {
+      id: "gettotalsupply_14",
+      type: "transform",
+      position: {
+        x: 700.8326415553222,
+        y: 212.85653387798746,
+      },
+      data: {
+        label: "getTotalSupply",
+        nodeType: "codeNode",
+        config: {
+          code: "let _totalSupply = BigInt(Math.round(getOffChainReserves.body.totalToken)) * BigInt(1e18)",
+          language: "typescript",
+          executionMode: "runOnceForAll",
+          inputVariables: [],
+          outputFields: [
+            {
+              key: "_totalSupply",
+              type: "number",
+            },
+          ],
+        },
+      },
+    },
+    {
+      id: "riskscore_9",
+      type: "transform",
+      position: {
+        x: 1119.8485503406766,
+        y: 294.2025139915213,
+      },
+      data: {
+        label: "riskScore",
+        nodeType: "codeNode",
+        config: {
+          code: "const textString = getRiskScore.candidates[0].content.parts[0].text;\n// 2. Parse the string into a JavaScript object\nconst parsedData = JSON.parse(textString);\n// 3. Access the riskScore\nconst riskScore = parsedData.riskScore;",
+          language: "typescript",
+          executionMode: "runOnceForAll",
+          inputVariables: [],
+          outputFields: [
+            {
+              key: "riskScore",
+              type: "number",
+            },
+          ],
         },
       },
     },
   ],
   edges: [
     {
-      id: "por_edge_0",
-      source: "por_trigger_0",
-      target: "por_return_1",
+      id: "xy-edge__node_1772451937785_0output-node_1772451941969_1input",
+      source: "node_1772451937785_0",
+      target: "getoffchainreserves_1",
+      sourceHandle: "output",
+      targetHandle: "input",
+    },
+    {
+      id: "xy-edge__node_1772451937785_0output-node_1772452114820_3input",
+      source: "node_1772451937785_0",
+      target: "getonchainsupply_3",
+      sourceHandle: "output",
+      targetHandle: "input",
+    },
+    {
+      id: "xy-edge__node_1772523224998_2output-node_1772544727219_1input",
+      source: "node_1772523224998_2",
+      target: "updatereserves_0",
+      sourceHandle: "output",
+      targetHandle: "input",
+    },
+    {
+      id: "xy-edge__getonchainsupply_3output-node_1772523224998_2input",
+      source: "getonchainsupply_3",
+      target: "node_1772523224998_2",
+      sourceHandle: "output",
+      targetHandle: "input",
+    },
+    {
+      id: "xy-edge__getonchainsupply_3output-getriskscore_1input",
+      source: "getonchainsupply_3",
+      target: "getriskscore_1",
+      sourceHandle: "output",
+      targetHandle: "input",
+    },
+    {
+      id: "xy-edge__getoffchainreserves_1output-node_1772683801734_0input",
+      source: "getoffchainreserves_1",
+      target: "gettotalsupply_14",
+      sourceHandle: "output",
+      targetHandle: "input",
+    },
+    {
+      id: "xy-edge__node_1772683801734_0output-getriskscore_1input",
+      source: "gettotalsupply_14",
+      target: "getriskscore_1",
+      sourceHandle: "output",
+      targetHandle: "input",
+    },
+    {
+      id: "xy-edge__node_1772683801734_0output-node_1772523224998_2input",
+      source: "gettotalsupply_14",
+      target: "node_1772523224998_2",
+      sourceHandle: "output",
+      targetHandle: "input",
+    },
+    {
+      id: "xy-edge__getriskscore_1output-node_1772691052135_0input",
+      source: "getriskscore_1",
+      target: "riskscore_9",
+      sourceHandle: "output",
+      targetHandle: "input",
+    },
+    {
+      id: "xy-edge__riskscore_9output-node_1772523224998_2input",
+      source: "riskscore_9",
+      target: "node_1772523224998_2",
+      sourceHandle: "output",
+      targetHandle: "input",
     },
   ],
-  globalConfig: cloneGlobalConfig(DEFAULT_WORKFLOW_GLOBAL_CONFIG),
+  globalConfig: {
+    isTestnet: true,
+    secrets: [
+      {
+        name: "GEMINI_KEY",
+        envVariable: "GEMINI_KEY_VALUE",
+      },
+    ],
+    rpcs: [],
+  },
 };
 
 export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [

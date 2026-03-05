@@ -1,8 +1,8 @@
 import type { Workflow } from '../model/node';
 
 export const mockupWorkflow: Workflow = {
-  "id": "k17ce7ppz28n0wx5wq9vk95srn8255tf",
-  "name": "Proof of Reserve",
+  "id": "k17bdxba16kqd8ffxzwn7pjded82bysy",
+  "name": "Proof of Reserve Template",
   "version": "1.0.0",
   "nodes": [
     {
@@ -39,17 +39,17 @@ export const mockupWorkflow: Workflow = {
             "raw": {
               "statusCode": 200,
               "headers": {
-                "apigw-requestid": "Zu3g1gDGiYcEMmg=",
+                "apigw-requestid": "ZvKIXiwGCYcEJdw=",
                 "connection": "keep-alive",
                 "content-length": "410",
                 "content-type": "application/json",
-                "date": "Thu, 05 Mar 2026 04:26:44 GMT",
-                "via": "1.1 d0f73d242b023619d4e4df51e5950fac.cloudfront.net (CloudFront)",
-                "x-amz-cf-id": "ZnYLMn-ig3C91PLN4_9PqyxdaF8JSBaTGuaWC3ne8cFZtypy2ye6ng==",
+                "date": "Thu, 05 Mar 2026 06:33:50 GMT",
+                "via": "1.1 ba8d8ed107bf844dc316ae0f8c191068.cloudfront.net (CloudFront)",
+                "x-amz-cf-id": "NS-sZSbgIbHkvu1e8AGdk9cZKT8s3_gns6JtRy5U7yuRUy_fooFFFA==",
                 "x-amz-cf-pop": "MRS52-P6",
                 "x-cache": "Miss from cloudfront"
               },
-              "body": "{\"accountName\":\"TrueUSD\",\"totalTrust\":501928900.88,\"totalToken\":494515082.75,\"updatedAt\":\"2026-03-05T04:26:35.578Z\",\"token\":[{\"tokenName\":\"TUSD (ETH)\",\"totalTokenByChain\":315125540.9523497},{\"tokenName\":\"TUSD (AVAX)\",\"totalTokenByChain\":845723.78},{\"tokenName\":\"TUSD (TRON)\",\"totalTokenByChain\":168513454.1376503},{\"tokenName\":\"TUSD (BSC)\",\"totalTokenByChain\":10030363.88}],\"ripcord\":false,\"ripcordDetails\":[]}"
+              "body": "{\"accountName\":\"TrueUSD\",\"totalTrust\":501928900.88,\"totalToken\":494515082.75,\"updatedAt\":\"2026-03-05T06:33:37.147Z\",\"token\":[{\"tokenName\":\"TUSD (ETH)\",\"totalTokenByChain\":315125540.9523497},{\"tokenName\":\"TUSD (AVAX)\",\"totalTokenByChain\":845723.78},{\"tokenName\":\"TUSD (TRON)\",\"totalTokenByChain\":168513454.1376503},{\"tokenName\":\"TUSD (BSC)\",\"totalTokenByChain\":10030363.88}],\"ripcord\":false,\"ripcordDetails\":[]}"
             },
             "normalized": {
               "statusCode": 200,
@@ -57,19 +57,19 @@ export const mockupWorkflow: Workflow = {
                 "accountName": "TrueUSD",
                 "totalTrust": 501928900.88,
                 "totalToken": "[redacted]",
-                "updatedAt": "2026-03-05T04:26:35.578Z",
+                "updatedAt": "2026-03-05T06:33:37.147Z",
                 "token": "[redacted]",
                 "ripcord": false,
                 "ripcordDetails": []
               },
               "headers": {
-                "apigw-requestid": "Zu3g1gDGiYcEMmg=",
+                "apigw-requestid": "ZvKIXiwGCYcEJdw=",
                 "connection": "keep-alive",
                 "content-length": "410",
                 "content-type": "application/json",
-                "date": "Thu, 05 Mar 2026 04:26:44 GMT",
-                "via": "1.1 d0f73d242b023619d4e4df51e5950fac.cloudfront.net (CloudFront)",
-                "x-amz-cf-id": "ZnYLMn-ig3C91PLN4_9PqyxdaF8JSBaTGuaWC3ne8cFZtypy2ye6ng==",
+                "date": "Thu, 05 Mar 2026 06:33:50 GMT",
+                "via": "1.1 ba8d8ed107bf844dc316ae0f8c191068.cloudfront.net (CloudFront)",
+                "x-amz-cf-id": "NS-sZSbgIbHkvu1e8AGdk9cZKT8s3_gns6JtRy5U7yuRUy_fooFFFA==",
                 "x-amz-cf-pop": "MRS52-P6",
                 "x-cache": "Miss from cloudfront"
               }
@@ -244,7 +244,7 @@ export const mockupWorkflow: Workflow = {
             ]
           },
           "schemaSource": "executed",
-          "executedAt": "2026-03-05T04:26:45.011Z"
+          "executedAt": "2026-03-05T06:33:50.863Z"
         }
       }
     },
@@ -391,20 +391,6 @@ export const mockupWorkflow: Workflow = {
           }
         },
         "editor": {
-          "lastExecution": {
-            "raw": {
-              "rpcUrl": "https://eth-sepolia.g.alchemy.com/v2/5ksCAZD8NOI0ANaeCVCnS",
-              "contractAddress": "0x41f77d6aa3F8C8113Bc95831490D5206c5d1cFeE",
-              "functionName": "totalSupply",
-              "args": [],
-              "result": "1000000000000000000000000"
-            },
-            "normalized": {
-              "value": "1000000000000000000000000"
-            },
-            "warnings": [],
-            "truncated": false
-          },
           "outputSchema": {
             "type": "object",
             "path": "",
@@ -419,8 +405,7 @@ export const mockupWorkflow: Workflow = {
               }
             ]
           },
-          "schemaSource": "derived",
-          "executedAt": "2026-03-02T13:13:11.967Z"
+          "schemaSource": "derived"
         }
       }
     },
@@ -808,6 +793,6 @@ export const mockupWorkflow: Workflow = {
     ],
     "rpcs": []
   },
-  "createdAt": "2026-03-05T06:16:24.718Z",
-  "updatedAt": "2026-03-05T06:16:24.718Z"
+  "createdAt": "2026-03-05T06:34:11.418Z",
+  "updatedAt": "2026-03-05T06:34:11.418Z"
 };
