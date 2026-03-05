@@ -628,6 +628,22 @@ fn lower_evm_read(
         })
         .collect();
 
+    let output_names: Vec<String> = config
+        .abi
+        .outputs
+        .iter()
+        .enumerate()
+        .map(|(i, o)| {
+            if !o.name.is_empty() {
+                o.name.clone()
+            } else if config.abi.outputs.len() == 1 {
+                "value".to_string()
+            } else {
+                format!("output{}", i)
+            }
+        })
+        .collect();
+
     let op = Operation::EvmRead(EvmReadOp {
         evm_client_binding: binding_name,
         contract_address: resolve_value_expr(&config.contract_address, id_map),
@@ -642,6 +658,7 @@ fn lower_evm_read(
             .block_number
             .as_ref()
             .map(|b| resolve_value_expr(b, id_map)),
+        output_names,
     });
 
     let output = Some(OutputBinding {
@@ -742,11 +759,14 @@ fn lower_code_node(
         CodeExecutionMode::RunOnceForAll
     };
 
+    let output_fields: Vec<String> = config.output_fields.iter().map(|f| f.key.clone()).collect();
+
     let op = Operation::CodeNode(CodeNodeOp {
         code: config.code.clone(),
         input_bindings,
         execution_mode,
         timeout_ms: config.timeout,
+        output_fields,
     });
 
     let output = Some(OutputBinding {

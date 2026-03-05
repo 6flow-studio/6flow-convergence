@@ -423,6 +423,16 @@ pub struct CodeNodeConfig {
     pub execution_mode: String,
     pub input_variables: Vec<String>,
     pub timeout: Option<u32>,
+    #[serde(default)]
+    pub output_fields: Vec<CodeOutputField>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodeOutputField {
+    pub key: String,
+    #[serde(rename = "type")]
+    pub field_type: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

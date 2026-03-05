@@ -112,6 +112,7 @@ function renderNodeConfig(
           config={typedConfig<Parameters<typeof EvmReadConfigRenderer>[0]["config"]>(config)}
           onChange={onChange}
           isTestnet={isTestnet}
+          nodeId={nodeId}
         />
       );
     case "evmWrite":

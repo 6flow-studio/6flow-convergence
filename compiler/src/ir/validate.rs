@@ -686,6 +686,7 @@ mod tests {
                     }],
                     execution_mode: CodeExecutionMode::RunOnceForAll,
                     timeout_ms: None,
+                    output_fields: vec![],
                 }),
                 output: Some(OutputBinding {
                     variable_name: "step_code_1".into(),
@@ -723,6 +724,7 @@ mod tests {
                     }],
                     execution_mode: CodeExecutionMode::RunOnceForAll,
                     timeout_ms: None,
+                    output_fields: vec![],
                 }),
                 output: Some(OutputBinding {
                     variable_name: "step_code_1".into(),
@@ -816,6 +818,7 @@ mod tests {
                 input_bindings: vec![],
                 execution_mode: CodeExecutionMode::RunOnceForAll,
                 timeout_ms: None,
+                output_fields: vec![],
             }),
             output: None,
         }];

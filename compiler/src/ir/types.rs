@@ -427,6 +427,9 @@ pub struct EvmReadOp {
     pub args: Vec<EvmArg>,
     pub from_address: Option<ValueExpr>,
     pub block_number: Option<ValueExpr>,
+    /// Normalized output field names from ABI outputs, matching frontend `normalizeReadResult`.
+    /// Single unnamed output → ["value"], single named → ["name"], multiple → ["name_or_outputN", ...]
+    pub output_names: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -472,6 +475,8 @@ pub struct CodeNodeOp {
     pub input_bindings: Vec<CodeInputBinding>,
     pub execution_mode: CodeExecutionMode,
     pub timeout_ms: Option<u32>,
+    /// Output field keys declared by the user; used to generate the return statement.
+    pub output_fields: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -9,12 +9,28 @@ import {
 } from "../config-fields";
 import { ChainSelectorField } from "../config-fields/ChainSelectorField";
 import { EvmArgEditor } from "../config-fields/EvmArgEditor";
-import type { EvmReadConfig, AbiFunction } from "@6flow/shared/model/node";
+import { appendFieldPath, abiParamToSchema } from "../config-fields/abi-schema";
+import type { EvmReadConfig, AbiFunction, DataSchema } from "@6flow/shared/model/node";
+import { useEditorStore } from "@/lib/editor-store";
 
 interface Props {
   config: EvmReadConfig;
   onChange: (patch: Record<string, unknown>) => void;
   isTestnet?: boolean;
+  nodeId?: string;
+}
+
+function deriveEvmReadOutputSchema(abi: AbiFunction): DataSchema {
+  const outputs = abi.outputs ?? [];
+  return {
+    type: "object",
+    path: "",
+    fields: outputs.map((param, index) => {
+      const key = param.name || (outputs.length === 1 ? "value" : `output${index}`);
+      const path = appendFieldPath("", key);
+      return { key, path, schema: abiParamToSchema(param, path) };
+    }),
+  };
 }
 
 const BLOCK_OPTIONS = [
@@ -27,7 +43,17 @@ type AbiFetchStatus = "idle" | "loading" | "success" | "not_verified" | "error";
 
 const isValidAddress = (addr: string) => /^0x[a-fA-F0-9]{40}$/.test(addr);
 
-export function EvmReadConfigRenderer({ config, onChange, isTestnet }: Props) {
+export function EvmReadConfigRenderer({ config, onChange, isTestnet, nodeId }: Props) {
+  const updateNodeEditor = useEditorStore((state) => state.updateNodeEditor);
+
+  useEffect(() => {
+    if (!nodeId || !config.abi?.outputs) return;
+    updateNodeEditor(nodeId, {
+      outputSchema: deriveEvmReadOutputSchema(config.abi),
+      schemaSource: "derived",
+    });
+  }, [config.abi, nodeId, updateNodeEditor]);
+
   const [contractAbi, setContractAbi] = useState<AbiFunction[]>(() => {
     // Initialize from cached ABI if it matches current address/chain
     const cached = config.cachedAbi;

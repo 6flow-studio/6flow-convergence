@@ -172,7 +172,11 @@ async function executeHttpRequestNode(
       headers: responseHeaders,
       body: rawBody,
     },
-    normalized,
+    normalized: {
+      statusCode: response.status,
+      body: normalized,
+      headers: responseHeaders,
+    },
     warnings,
   };
 }

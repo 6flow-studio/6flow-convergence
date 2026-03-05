@@ -116,7 +116,7 @@ export default function Home() {
             variants={fadeUp}
             className="font-mono text-sm tracking-widest text-accent-blue uppercase mb-6"
           >
-            next-gen IDE for Smart Contract Engineers
+            low-code IDE for Smart Contract Engineers
           </motion.p>
           <motion.h1
             variants={fadeUp}
@@ -204,6 +204,34 @@ export default function Home() {
               </motion.div>
             ))}
           </div>
+        </motion.div>
+      </section>
+
+      {/* ── TUI Showcase ── */}
+      <section className="relative py-24 px-6">
+        <motion.div
+          className="max-w-5xl mx-auto"
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+        >
+          <div className="relative rounded-2xl border border-edge-dim bg-surface-1/50 p-2 sm:p-4 backdrop-blur-sm overflow-hidden shadow-2xl">
+            {/* Corner glow accents */}
+            <div className="absolute -top-px -left-px w-32 h-32 bg-accent-blue/20 blur-3xl rounded-full" />
+            <div className="absolute -bottom-px -right-px w-32 h-32 bg-accent-yellow/10 blur-3xl rounded-full" />
+
+            <Image
+              src="/screenshot_tui.png"
+              alt="6Flow TUI Screenshot"
+              width={1600}
+              height={1000}
+              className="rounded-xl relative z-10 w-full h-auto"
+            />
+          </div>
+          <p className="text-center mt-8 text-zinc-500 text-sm font-mono tracking-wide uppercase">
+            Your secrets belong to you. Manage secrets, simulate, deploy in your terminal.
+          </p>
         </motion.div>
       </section>
 
