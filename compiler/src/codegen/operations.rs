@@ -86,16 +86,19 @@ pub fn emit_evm_read(step: &Step, op: &EvmReadOp, w: &mut CodeWriter) {
     let abi = &op.abi_json;
 
     if let Some(ref out) = step.output {
+        let safe_id = step.id.replace('-', "_");
+
         // 1. encodeFunctionData
-        let calldata_var = format!("_calldata_{}", step.id.replace('-', "_"));
+        let calldata_var = format!("_calldata_{}", safe_id);
         w.line(&format!("const {} = encodeFunctionData({{", calldata_var));
         w.indent();
         // Wrap in array if not already one (single ABI item → [item])
-        if abi.starts_with('[') {
-            w.line(&format!("abi: {} as const,", abi));
+        let abi_array = if abi.starts_with('[') {
+            abi.clone()
         } else {
-            w.line(&format!("abi: [{}] as const,", abi));
-        }
+            format!("[{}]", abi)
+        };
+        w.line(&format!("abi: {} as const,", abi_array));
         w.line(&format!("functionName: \"{}\",", op.function_name));
         if !op.args.is_empty() {
             w.line(&format!(
@@ -117,18 +120,11 @@ pub fn emit_evm_read(step: &Step, op: &EvmReadOp, w: &mut CodeWriter) {
             .map(|a| emit_value_expr(a))
             .unwrap_or_else(|| "\"0x0000000000000000000000000000000000000000\"".to_string());
 
-        if let Some(ref fields) = out.destructure_fields {
-            w.line(&format!(
-                "const {{ {} }} = {}.callContract(runtime, {{",
-                fields.join(", "),
-                binding,
-            ));
-        } else {
-            w.line(&format!(
-                "const {} = {}.callContract(runtime, {{",
-                out.variable_name, binding,
-            ));
-        }
+        let raw_var = format!("_raw_{}", safe_id);
+        w.line(&format!(
+            "const {} = {}.callContract(runtime, {{",
+            raw_var, binding,
+        ));
         w.indent();
         w.line(&format!(
             "call: encodeCallMsg({{ from: {}, to: {}, data: {} }}),",
@@ -136,6 +132,52 @@ pub fn emit_evm_read(step: &Step, op: &EvmReadOp, w: &mut CodeWriter) {
         ));
         w.dedent();
         w.line("}).result();");
+
+        // 3. Decode raw bytes
+        let bytes_var = format!("_bytes_{}", safe_id);
+        w.line(&format!(
+            "const {} = new Uint8Array(Object.keys({}.data).length);",
+            bytes_var, raw_var
+        ));
+        w.line(&format!(
+            "for (let i = 0; i < {}.length; i++) {0}[i] = {}.data[i];",
+            bytes_var, raw_var
+        ));
+        let decoded_var = format!("_decoded_{}", safe_id);
+        w.line(&format!(
+            "const {} = decodeFunctionResult({{",
+            decoded_var,
+        ));
+        w.indent();
+        w.line(&format!("abi: {} as const,", abi_array));
+        w.line(&format!("functionName: \"{}\",", op.function_name));
+        w.line(&format!(
+            "data: `0x${{Buffer.from({}).toString(\"hex\")}}` as `0x${{string}}`,",
+            bytes_var
+        ));
+        w.dedent();
+        w.line("});");
+
+        // 4. Wrap decoded result into named object (matches frontend normalizeReadResult)
+        if op.output_names.len() <= 1 {
+            let field_name = op.output_names.first().map(|s| s.as_str()).unwrap_or("value");
+            w.line(&format!(
+                "const {} = {{ {}: {} }};",
+                out.variable_name, field_name, decoded_var
+            ));
+        } else {
+            let fields: Vec<String> = op
+                .output_names
+                .iter()
+                .enumerate()
+                .map(|(i, name)| format!("{}: {}[{}]", name, decoded_var, i))
+                .collect();
+            w.line(&format!(
+                "const {} = {{ {} }};",
+                out.variable_name,
+                fields.join(", ")
+            ));
+        }
     }
 }
 
@@ -229,6 +271,12 @@ pub fn emit_code_node(step: &Step, op: &CodeNodeOp, w: &mut CodeWriter) {
     // User code
     for line in op.code.lines() {
         w.line(line);
+    }
+
+    // Auto-generate return statement from declared output fields
+    if !op.output_fields.is_empty() {
+        let fields = op.output_fields.join(", ");
+        w.line(&format!("return {{ {} }};", fields));
     }
 
     w.dedent();

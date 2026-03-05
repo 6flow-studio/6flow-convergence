@@ -1,5 +1,5 @@
 import { cre, ok, consensusIdenticalAggregation, getNetwork, encodeCallMsg, bytesToHex, prepareReportRequest, TxStatus, Runner, type Runtime, type HTTPSendRequester, type CronTrigger } from "@chainlink/cre-sdk";
-import { decodeFunctionResult, encodeFunctionData, encodeAbiParameters } from "viem";
+import { encodeFunctionData, encodeAbiParameters, decodeFunctionResult } from "viem";
 import { z } from "zod";
 
 const configSchema = z.object({
@@ -7,50 +7,6 @@ const configSchema = z.object({
 });
 
 type Config = z.infer<typeof configSchema>;
-
-const totalSupplyAbi = [
-  {
-    type: "function",
-    name: "totalSupply",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256", indexed: null, components: null }],
-    stateMutability: "view",
-  },
-] as const;
-
-const toScaledUint = (value: number | string, decimals = 18): bigint => {
-  const normalized = String(value).trim();
-  if (!/^\d+(\.\d+)?$/.test(normalized)) {
-    throw new Error(`Invalid decimal value: ${normalized}`);
-  }
-
-  const [whole, fraction = ""] = normalized.split(".");
-  const paddedFraction = (fraction + "0".repeat(decimals)).slice(0, decimals);
-  return BigInt(`${whole}${paddedFraction}`);
-};
-
-const decodeTotalSupply = (data: Uint8Array): bigint => {
-  return decodeFunctionResult({
-    abi: totalSupplyAbi,
-    functionName: "totalSupply",
-    data: bytesToHex(data),
-  }) as bigint;
-};
-
-const extractRiskScore = (response: any): bigint => {
-  const text = response?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (typeof text !== "string") {
-    throw new Error("Gemini response did not contain a text payload");
-  }
-
-  const jsonText = text.match(/\{[\s\S]*\}/)?.[0] ?? text;
-  const parsed = JSON.parse(jsonText) as { riskScore?: number };
-  if (!Number.isInteger(parsed.riskScore)) {
-    throw new Error(`Invalid riskScore payload: ${text}`);
-  }
-
-  return BigInt(parsed.riskScore);
-};
 
 const fetch_getoffchainreserves_1 = (sendRequester: HTTPSendRequester, config: Config) => {
   const req = {
@@ -70,14 +26,14 @@ const fetch_getoffchainreserves_1 = (sendRequester: HTTPSendRequester, config: C
 const fetch_getriskscore_1 = (sendRequester: HTTPSendRequester, config: any, apiKey: string) => {
   const body = {
     system_instruction: {
-      parts: [{ text: "You are a risk analyst. You will receive two numbers:\n- TotalSupply: total token supply, scaled to 18 decimal places (raw integer).\n- TotalReserveScaled: total reserved/collateral amount, scaled to 18 decimal places (raw integer).\n\nCompute coverage as: coverage = TotalReserveScaled / TotalSupply (both are same scale, so this is the reserve-to-supply ratio).\n\nApply this risk scale exactly:\n- If coverage >= 1.2: riskScore = 0\n- Else: riskScore = min(100, round(((1.2 - coverage) / 1.2) * 100))\n\nRespond with the risk score as structured JSON only, no other text or markdown.\n\nOutput format (valid JSON only):\n{\"riskScore\": <integer>}" }],
+      parts: [{ text: "You are a risk analyst. You will receive two numbers:\n- TotalSupply: total token supply, scaled to 18 decimal places (raw integer).\n- TotalReserveScaled: total reserved/collateral amount, scaled to 18 decimal places (raw integer).\n\nCompute coverage as: coverage = TotalReserveScaled / TotalSupply (both are same scale, so this is the reserve-to-supply ratio).\n\nApply this risk scale exactly:\n- If coverage >= 1.2: riskScore = 0\n- Else: riskScore = min(100, round(((1.2 - coverage) / 1.2) * 100))\n\nRespond with the risk score as structured JSON only, no other text or markdown.\n\nOutput format (valid JSON only):\n{\"riskScore\": <integer>}`" }],
     },
     contents: [
       { role: "user", parts: [{ text: `TotalSupply: ${config._dyn0}
 TotalReserveScaled: ${config._dyn1}` }] },
     ],
     generationConfig: {
-      temperature: 0,
+      temperature: 0.7,
     },
   };
 
@@ -111,45 +67,68 @@ const onCronTrigger = (runtime: Runtime<Config>, triggerData: CronTrigger): stri
   // getOffChainReserves
   const step_getoffchainreserves_1 = httpClient.sendRequest(runtime, fetch_getoffchainreserves_1, consensusIdenticalAggregation())(runtime.config).result();
   runtime.log(`[getOffChainReserves] ${__stringify(step_getoffchainreserves_1)}`);
+  // getTotalSupply
+  const step_gettotalsupply_14 = (() => {
+    const getOffChainReserves = step_getoffchainreserves_1;
+    let _totalSupply = BigInt(Math.round(getOffChainReserves.body.totalToken)) * BigInt(1e18)
+    return { _totalSupply };
+  })();
+  runtime.log(`[getTotalSupply] ${__stringify(step_gettotalsupply_14)}`);
   // getOnChainSupply
   const _calldata_getonchainsupply_3 = encodeFunctionData({
     abi: [{"type":"function","name":"totalSupply","inputs":[],"outputs":[{"name":"","type":"uint256","indexed":null,"components":null}],"stateMutability":"view"}] as const,
     functionName: "totalSupply",
   });
-  const step_getonchainsupply_3 = evmClient_ethereum_testnet_sepolia.callContract(runtime, {
+  const _raw_getonchainsupply_3 = evmClient_ethereum_testnet_sepolia.callContract(runtime, {
     call: encodeCallMsg({ from: "0x0000000000000000000000000000000000000000", to: "0x41f77d6aa3F8C8113Bc95831490D5206c5d1cFeE", data: _calldata_getonchainsupply_3 }),
   }).result();
+  const _bytes_getonchainsupply_3 = new Uint8Array(Object.keys(_raw_getonchainsupply_3.data).length);
+  for (let i = 0; i < _bytes_getonchainsupply_3.length; i++) _bytes_getonchainsupply_3[i] = _raw_getonchainsupply_3.data[i];
+  const _decoded_getonchainsupply_3 = decodeFunctionResult({
+    abi: [{"type":"function","name":"totalSupply","inputs":[],"outputs":[{"name":"","type":"uint256","indexed":null,"components":null}],"stateMutability":"view"}] as const,
+    functionName: "totalSupply",
+    data: `0x${Buffer.from(_bytes_getonchainsupply_3).toString("hex")}` as `0x${string}`,
+  });
+  const step_getonchainsupply_3 = { value: _decoded_getonchainsupply_3 };
   runtime.log(`[getOnChainSupply] ${__stringify(step_getonchainsupply_3)}`);
-  const totalSupply = decodeTotalSupply(step_getonchainsupply_3.data);
-  const totalReserveScaled = toScaledUint(step_getoffchainreserves_1.body.totalToken);
   // getRiskScore
   const _aiApiKey_getriskscore_1 = runtime.getSecret({ id: "GEMINI_KEY" }).result();
   const _fetchCfg_getriskscore_1 = {
     ...runtime.config,
-    _dyn0: totalSupply.toString(),
-    _dyn1: totalReserveScaled.toString(),
+    _dyn0: step_getonchainsupply_3.value,
+    _dyn1: step_gettotalsupply_14._totalSupply,
   };
   const step_getriskscore_1 = httpClient.sendRequest(runtime, fetch_getriskscore_1, consensusIdenticalAggregation())(_fetchCfg_getriskscore_1, _aiApiKey_getriskscore_1.value).result();
   runtime.log(`[getRiskScore] ${__stringify(step_getriskscore_1)}`);
-  const riskScore = extractRiskScore(step_getriskscore_1);
+  // riskScore
+  const step_riskscore_9 = (() => {
+    const getRiskScore = step_getriskscore_1;
+    const textString = getRiskScore.candidates[0].content.parts[0].text;
+    // 2. Parse the string into a JavaScript object
+    const parsedData = JSON.parse(textString);
+    // 3. Access the riskScore
+    const riskScore = parsedData.riskScore;
+    return { riskScore };
+  })();
+  runtime.log(`[riskScore] ${__stringify(step_riskscore_9)}`);
   // ABI Encode
   const step_node_1772523224998_2 = {
-    encoded: encodeAbiParameters([{"name":"totalMinted","type":"uint256","indexed":null,"components":null},{"name":"totalReserve","type":"uint256","indexed":null,"components":null},{"name":"riskScore","type":"uint256","indexed":null,"components":null}], [totalSupply, totalReserveScaled, riskScore]),
+    encoded: encodeAbiParameters([{"name":"totalMinted","type":"uint256","indexed":null,"components":null},{"name":"totalReserve","type":"uint256","indexed":null,"components":null},{"name":"riskScore","type":"uint256","indexed":null,"components":null}], [BigInt(step_getonchainsupply_3.value), BigInt(step_gettotalsupply_14._totalSupply), BigInt(step_riskscore_9.riskScore)]),
   };
   runtime.log(`[ABI Encode] ${__stringify(step_node_1772523224998_2)}`);
-  // EVM Write
-  const report_node_1772544727219_1 = runtime.report(prepareReportRequest(step_node_1772523224998_2.encoded)).result();
-  const step_node_1772544727219_1 = evmClient_ethereum_testnet_sepolia.writeReport(runtime, {
+  // updateReserves
+  const report_updatereserves_0 = runtime.report(prepareReportRequest(step_node_1772523224998_2.encoded)).result();
+  const step_updatereserves_0 = evmClient_ethereum_testnet_sepolia.writeReport(runtime, {
     receiver: "0x93F212a3634D6259cF38cfad4AA4A3485C3d7D59",
-    report: report_node_1772544727219_1,
+    report: report_updatereserves_0,
     gasConfig: { gasLimit: "500000" },
   }).result();
-  if (step_node_1772544727219_1.txStatus !== TxStatus.SUCCESS) {
-    throw new Error(`Failed to write report: ${step_node_1772544727219_1.errorMessage || step_node_1772544727219_1.txStatus}`);
+  if (step_updatereserves_0.txStatus !== TxStatus.SUCCESS) {
+    throw new Error(`Failed to write report: ${step_updatereserves_0.errorMessage || step_updatereserves_0.txStatus}`);
   }
-  const txHash_node_1772544727219_1 = step_node_1772544727219_1.txHash || new Uint8Array(32);
-  runtime.log(`Write report transaction succeeded at txHash: ${bytesToHex(txHash_node_1772544727219_1)}`);
-  runtime.log(`[EVM Write] ${__stringify(step_node_1772544727219_1)}`);
+  const txHash_updatereserves_0 = step_updatereserves_0.txHash || new Uint8Array(32);
+  runtime.log(`Write report transaction succeeded at txHash: ${bytesToHex(txHash_updatereserves_0)}`);
+  runtime.log(`[updateReserves] ${__stringify(step_updatereserves_0)}`);
   return "Workflow completed";
 };
 

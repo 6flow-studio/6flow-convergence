@@ -351,6 +351,7 @@ pub fn evm_read_op(chain: &str, contract: &str, func: &str) -> Operation {
         args: vec![],
         from_address: None,
         block_number: None,
+        output_names: vec!["value".to_string()],
     })
 }
 
@@ -370,6 +371,7 @@ pub fn evm_read_op_with_args(
             "0x0000000000000000000000000000000000000000",
         )),
         block_number: None,
+        output_names: vec!["value".to_string()],
     })
 }
 
@@ -384,6 +386,10 @@ pub fn evm_write_op(chain: &str, receiver: &str, data: ValueExpr) -> Operation {
 }
 
 pub fn code_node_op(code: &str, inputs: Vec<(&str, ValueExpr)>) -> Operation {
+    code_node_op_with_outputs(code, inputs, vec![])
+}
+
+pub fn code_node_op_with_outputs(code: &str, inputs: Vec<(&str, ValueExpr)>, output_fields: Vec<&str>) -> Operation {
     Operation::CodeNode(CodeNodeOp {
         code: code.into(),
         input_bindings: inputs
@@ -395,6 +401,7 @@ pub fn code_node_op(code: &str, inputs: Vec<(&str, ValueExpr)>) -> Operation {
             .collect(),
         execution_mode: CodeExecutionMode::RunOnceForAll,
         timeout_ms: None,
+        output_fields: output_fields.into_iter().map(|s| s.to_string()).collect(),
     })
 }
 
@@ -500,6 +507,7 @@ pub fn noop_op() -> Operation {
         input_bindings: vec![],
         execution_mode: CodeExecutionMode::RunOnceForAll,
         timeout_ms: None,
+        output_fields: vec![],
     })
 }
 

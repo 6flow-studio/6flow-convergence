@@ -102,6 +102,7 @@ fn scan_operation(op: &Operation, imports: &mut ImportSet) {
         Operation::EvmRead(_) => {
             imports.encode_call_msg = true;
             imports.encode_function_data = true;
+            imports.decode_function_result = true;
         }
         Operation::AbiEncode(op) => {
             if op.function_name.is_some() {
