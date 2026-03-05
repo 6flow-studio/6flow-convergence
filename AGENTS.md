@@ -13,7 +13,6 @@ This file guides agents and contributors working in this repo.
 ├── compiler/   # Rust-based compiler for CRE
 ├── frontend/   # NextJS frontend application
 ├── shared/     # Shared helper functions and data models across TypeScript codebase
-├── cre-test/   # CRE test environment (for testing compiler output)
 ├── tools/      # TUI tooling for local secrets/simulation workflows
 ```
 
